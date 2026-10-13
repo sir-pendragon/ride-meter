@@ -40,16 +40,33 @@ main{flex:1;min-height:0;position:relative}
 .tab[hidden]{display:none}
 #tab-map{padding:0}
 #map{position:absolute;inset:0}
-/* instrument grid */
-.speed{display:flex;flex-direction:column;align-items:center;padding:6px 0 10px;border-bottom:2px solid var(--ink)}
-.speed .v{font-family:var(--f-num);font-weight:700;font-size:clamp(96px,32vw,180px);line-height:.9;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+/* instrument pages: horizontal swipe, each page = 2-column grid of fields (L/M span 2 cols, S = half) */
+#tab-meter{padding:0;display:flex;flex-direction:column;overflow:hidden}
+.pages{flex:1;min-height:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none}
+.pages::-webkit-scrollbar{display:none}
+.page{flex:0 0 100%;scroll-snap-align:start;overflow-y:auto;padding:0 12px 8px}
+.pgrid{display:grid;grid-template-columns:1fr 1fr}
 .lbl{font-size:12px;color:var(--muted);letter-spacing:.08em}
-.grid{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line)}
-.cell{padding:8px 10px;border-bottom:1px solid var(--line);min-width:0}
-.cell:nth-child(odd){border-right:1px solid var(--line)}
-.cell .v{font-family:var(--f-num);font-weight:700;font-size:clamp(34px,11vw,56px);line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap}
-.cell .v small{font-size:.42em;font-weight:500;color:var(--muted);margin-left:2px}
-.route-box{margin-top:10px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--panel);display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.cell{padding:8px 10px;border-bottom:1px solid var(--line);min-width:0;position:relative;overflow:hidden}
+.cell.S:nth-child(odd of .S){}
+.cell.L,.cell.M{grid-column:span 2;text-align:center}
+.cell.L{border-bottom:2px solid var(--ink);padding:4px 0 8px}
+.cell.S.left{border-right:1px solid var(--line)}
+.cell .v{font-family:var(--f-num);font-weight:700;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:-.01em}
+.cell.L .v{line-height:.9}
+.cell .v small{font-size:.38em;font-weight:500;color:var(--muted);margin-left:3px;letter-spacing:0}
+.dots{display:flex;justify-content:center;align-items:center;gap:8px;padding:6px 0 4px;min-height:22px}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--ink)}
+.editbar{display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--panel)}
+.editing .cell{outline:2px dashed var(--route);outline-offset:-4px;cursor:pointer}
+.editing .cell::after{content:"✎";position:absolute;right:8px;top:6px;font-size:14px;color:var(--route)}
+.addcell{grid-column:span 2;margin-top:8px;min-height:44px;border:1px dashed var(--route);border-radius:8px;background:none;color:var(--route);font-weight:700;cursor:pointer}
+.choice{display:flex;flex-wrap:wrap;gap:6px}
+.choice button{min-height:40px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);cursor:pointer}
+.choice button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:700}
+.sheet h4{margin:14px 0 6px;font-size:13px;color:var(--muted);font-weight:400;letter-spacing:.08em}
+.sheet{max-height:85vh;overflow:auto}
 .offcourse{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 52px);z-index:1000;background:var(--rec);color:#fff;font-weight:700;padding:10px 12px;border-radius:8px;text-align:center;font-size:17px}
 .note{font-size:12px;color:var(--muted);margin:8px 0 0;line-height:1.6}
 /* controls */
@@ -87,22 +104,15 @@ h2{font-size:17px;margin:4px 0 10px}
 <div id="offcourse" class="offcourse" hidden></div>
 <main>
   <section class="tab" id="tab-meter">
-    <div class="speed"><span class="v" id="v-speed">0.0</span><span class="lbl">速度 km/h</span></div>
-    <div class="grid">
-      <div class="cell"><div class="v num" id="v-dist">0.00<small>km</small></div><div class="lbl">距離</div></div>
-      <div class="cell"><div class="v num" id="v-moving">0:00:00</div><div class="lbl">走行時間</div></div>
-      <div class="cell"><div class="v num" id="v-avg">0.0<small>km/h</small></div><div class="lbl">平均速度(走行中)</div></div>
-      <div class="cell"><div class="v num" id="v-max">0.0<small>km/h</small></div><div class="lbl">最高速度</div></div>
-      <div class="cell"><div class="v num" id="v-alt">—<small>m</small></div><div class="lbl" id="l-alt">GPS高度</div></div>
-      <div class="cell"><div class="v num" id="v-asc">0<small>m</small></div><div class="lbl">獲得標高(参考)</div></div>
-      <div class="cell"><div class="v num" id="v-elapsed">0:00:00</div><div class="lbl">経過時間</div></div>
-      <div class="cell"><div class="v num" id="v-clock">--:--</div><div class="lbl">時刻</div></div>
+    <div class="editbar" id="editbar" hidden>
+      <button class="btn small" id="ed-addpage">＋画面を追加</button>
+      <button class="btn small" id="ed-delpage">この画面を削除</button>
+      <button class="btn small" id="ed-reset">初期状態に戻す</button>
+      <button class="btn small go" id="ed-done" style="margin-left:auto">完了</button>
     </div>
-    <div class="route-box" id="routebox" hidden>
-      <div><div class="lbl">ルート残り</div><div class="num" style="font-size:28px;font-weight:700" id="v-remain">— km</div></div>
-      <div style="text-align:right"><div class="lbl" id="v-routename"></div><div class="num" id="v-off" style="font-size:20px">—</div></div>
-    </div>
-    <p class="note" id="gapnote" hidden></p>
+    <div class="pages" id="pages"></div>
+    <div class="dots" id="dots"></div>
+    <p class="note" id="gapnote" hidden style="padding:0 12px 6px;margin:0"></p>
   </section>
   <section class="tab" id="tab-map" hidden><div id="map"></div></section>
   <section class="tab" id="tab-log" hidden>
@@ -112,6 +122,7 @@ h2{font-size:17px;margin:4px 0 10px}
     <div class="ride"><div class="meta" id="route-info">ルート未読み込み</div>
       <div class="row"><label class="btn small" style="cursor:pointer">GPXを読み込む<input type="file" id="route-file" accept=".gpx,application/gpx+xml,application/xml,text/xml" hidden></label><button class="btn small" id="route-clear">解除</button></div></div>
     <h2 style="margin-top:20px">設定</h2>
+    <div class="set"><span>計測画面のレイアウト<br><span class="note">画面の枚数、表示する項目、大きさを変えられます。計測画面を左右にスワイプして切り替えます</span></span><button class="btn small" id="s-layout">編集する</button></div>
     <div class="set"><span>画面を点けたままにする<br><span class="note">画面が消えると記録が途切れやすくなります</span></span><input type="checkbox" id="s-wake"></div>
     <div class="set"><span>コースアウト警告の距離 (m)</span><input type="number" id="s-off" min="20" max="500" step="10"></div>
     <div class="set"><span>高度の補正値 (m)<br><span class="note">GPS高度は楕円体高です。標高に近づけたい場合は、その地域のジオイド高を負の値で入力します</span></span><input type="number" id="s-geoid" min="-100" max="100" step="1"></div>
@@ -143,8 +154,7 @@ function saveSet(){try{localStorage.setItem('rm-set',JSON.stringify(SET))}catch(
 $('#s-wake').checked=SET.wake;$('#s-off').value=SET.off;$('#s-geoid').value=SET.geoid;
 $('#s-wake').onchange=e=>{SET.wake=e.target.checked;saveSet();wake()};
 $('#s-off').onchange=e=>{SET.off=Math.max(20,Math.min(500,+e.target.value||50));saveSet()};
-$('#s-geoid').onchange=e=>{SET.geoid=Math.max(-100,Math.min(100,+e.target.value||0));saveSet();$('#l-alt').textContent=SET.geoid?'高度(補正済み)':'GPS高度'};
-$('#l-alt').textContent=SET.geoid?'高度(補正済み)':'GPS高度';
+$('#s-geoid').onchange=e=>{SET.geoid=Math.max(-100,Math.min(100,+e.target.value||0));saveSet();renderPages()};
 
 /* ---------- IndexedDB ---------- */
 const DB={db:null,
@@ -199,6 +209,69 @@ function setRoute(route){R.route=route;R.routeCalc=route?C.prepRoute(route.pts):
 /* ---------- simulation ---------- */
 $('#sim-btn').onclick=()=>{if(R.sim){clearInterval(R.sim.iv);R.sim=null;$('#sim-btn').textContent='開始';startWatch();toast('シミュレーションを止めました');return}stopWatch();const gen=C.simulator(R.fix);R.sim={iv:setInterval(()=>onPos(gen()),1000)};$('#sim-btn').textContent='停止';toast('シミュレーション走行中(架空のデータ)')};
 
+/* ---------- layout (data pages) ---------- */
+// 表示できる項目。val() は {v:表示値, u:単位} を返す
+const FIELDS={
+  speed:{label:'速度',val:c=>({v:(c.v*3.6).toFixed(1),u:'km/h'})},
+  dist:{label:'距離',val:c=>({v:C.km(c.st.dist),u:'km'})},
+  moving:{label:'走行時間',val:c=>({v:C.hms(c.st.moving)})},
+  elapsed:{label:'経過時間',val:c=>({v:C.hms(c.ride?(c.now-c.ride.start)/1000:0)})},
+  avg:{label:'平均速度(走行中)',val:c=>({v:(c.st.moving>0?c.st.dist/c.st.moving*3.6:0).toFixed(1),u:'km/h'})},
+  avgall:{label:'平均速度(経過時間)',val:c=>{const t=c.ride?(c.now-c.ride.start)/1000:0;return{v:(t>0?c.st.dist/t*3.6:0).toFixed(1),u:'km/h'}}},
+  max:{label:'最高速度',val:c=>({v:(c.st.max*3.6).toFixed(1),u:'km/h'})},
+  alt:{label:()=>SET.geoid?'高度(補正済み)':'GPS高度',val:c=>({v:c.fix&&c.fix.alt!=null&&c.age<=10?String(Math.round(c.fix.alt)):'—',u:'m'})},
+  asc:{label:'獲得標高(参考)',val:c=>({v:String(Math.round(c.st.ascent)),u:'m'})},
+  clock:{label:'時刻',val:c=>{const d=new Date(c.now);return{v:String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')}}},
+  remain:{label:'ルート残り',val:c=>({v:R.route&&R.routeState?C.km(Math.max(0,R.routeCalc.total-R.routeState.along)):'—',u:'km'})},
+  offroute:{label:'ルートからの距離',val:c=>({v:R.route&&R.routeState?String(Math.round(R.routeState.d)):'—',u:'m'})},
+  routepct:{label:'ルート進捗',val:c=>({v:R.route&&R.routeState&&R.routeCalc.total>0?String(Math.min(100,Math.round(R.routeState.along/R.routeCalc.total*100))):'—',u:'%'})},
+  acc:{label:'GPS精度',val:c=>({v:c.fix?'±'+Math.round(c.fix.acc):'—',u:'m'})},
+  marks:{label:'記録した地点',val:c=>({v:String(c.ride&&c.ride.marks?c.ride.marks.length:0),u:'件'})},
+};
+const SIZES={L:'大',M:'中',S:'小'};
+const DEFAULT_LAYOUT={pages:[
+  {cells:[{f:'speed',s:'L'},{f:'dist',s:'S'},{f:'moving',s:'S'},{f:'avg',s:'S'},{f:'max',s:'S'},{f:'alt',s:'S'},{f:'asc',s:'S'},{f:'elapsed',s:'S'},{f:'clock',s:'S'}]},
+  {cells:[{f:'speed',s:'M'},{f:'remain',s:'M'},{f:'offroute',s:'S'},{f:'routepct',s:'S'},{f:'dist',s:'S'},{f:'elapsed',s:'S'}]},
+  {cells:[{f:'dist',s:'L'},{f:'moving',s:'M'},{f:'asc',s:'M'},{f:'clock',s:'S'},{f:'acc',s:'S'}]}]};
+let LAYOUT=(()=>{try{const l=JSON.parse(localStorage.getItem('rm-layout')||'null');if(l&&Array.isArray(l.pages)&&l.pages.length)return sanitizeLayout(l)}catch(e){}return JSON.parse(JSON.stringify(DEFAULT_LAYOUT))})();
+function sanitizeLayout(l){return{pages:l.pages.slice(0,8).map(p=>({cells:(Array.isArray(p.cells)?p.cells:[]).filter(c=>FIELDS[c.f]&&SIZES[c.s]).slice(0,16)}))}}
+function saveLayout(){try{localStorage.setItem('rm-layout',JSON.stringify(LAYOUT))}catch(e){}}
+let curPage=0,editing=false;
+function labelOf(f){const l=FIELDS[f].label;return typeof l==='function'?l():l}
+function renderPages(){const box=$('#pages');curPage=Math.min(curPage,LAYOUT.pages.length-1);
+  box.innerHTML=LAYOUT.pages.map((p,pi)=>{let col=0;const cells=p.cells.map((c,ci)=>{let cls=c.s;if(c.s==='S'){if(col===0)cls+=' left';col=1-col}else col=0;return `<div class="cell ${cls}" data-p="${pi}" data-c="${ci}" data-f="${c.f}"><div class="v"></div><div class="lbl">${esc(labelOf(c.f))}</div></div>`}).join('');
+    return `<div class="page"><div class="pgrid">${cells||'<div class="cell M"><div class="lbl" style="padding:24px 0">項目がありません。「＋項目を追加」で追加してください</div></div>'}${editing?`<button class="addcell" data-add="${pi}">＋項目を追加</button>`:''}</div></div>`}).join('');
+  $('#dots').innerHTML=LAYOUT.pages.length>1?LAYOUT.pages.map((_,i)=>`<i class="${i===curPage?'on':''}"></i>`).join(''):'';
+  $('#tab-meter').classList.toggle('editing',editing);$('#editbar').hidden=!editing;$('#ed-delpage').disabled=LAYOUT.pages.length<=1;
+  requestAnimationFrame(()=>{box.scrollLeft=curPage*box.clientWidth});fitCache.clear();schedule()}
+$('#pages').addEventListener('scroll',()=>{const b=$('#pages');const i=Math.round(b.scrollLeft/Math.max(1,b.clientWidth));if(i!==curPage){curPage=i;document.querySelectorAll('#dots i').forEach((d,k)=>d.className=k===i?'on':'')}},{passive:true});
+window.addEventListener('resize',()=>{fitCache.clear();const b=$('#pages');b.scrollLeft=curPage*b.clientWidth;schedule()});
+// 文字数とマスの幅から、はみ出さない最大の文字サイズを決める（コンデンス数字の幅 ≒ 0.5em）
+const fitCache=new Map();const MAXFS={L:200,M:110,S:60};
+function fitSize(el,size,len){const w=el.clientWidth-(size==='S'?20:8);len=Math.max(len,3.5);const k=size+'|'+len+'|'+w;if(fitCache.has(k))return fitCache.get(k);const fs=Math.max(18,Math.min(MAXFS[size],w/(len*0.5)));fitCache.set(k,fs);return fs}
+function updateFields(c){document.querySelectorAll('#pages .cell[data-f]').forEach(el=>{const f=FIELDS[el.dataset.f];if(!f)return;const r=f.val(c);const size=el.classList.contains('L')?'L':el.classList.contains('M')?'M':'S';const len=r.v.length+(r.u?r.u.length*0.4+0.3:0);const fs=fitSize(el,size,len);const html=esc(r.v)+(r.u?`<small>${esc(r.u)}</small>`:'');const v=el.firstElementChild;if(v.innerHTML!==html)v.innerHTML=html;const px=fs.toFixed(0)+'px';if(v.style.fontSize!==px)v.style.fontSize=px})}
+function startEdit(){editing=true;document.querySelector('nav [data-tab="meter"]').click();renderPages()}
+$('#s-layout').onclick=startEdit;
+$('#ed-done').onclick=()=>{editing=false;saveLayout();renderPages();toast('レイアウトを保存しました')};
+$('#ed-addpage').onclick=()=>{LAYOUT.pages.push({cells:[{f:'speed',s:'L'},{f:'dist',s:'S'},{f:'moving',s:'S'}]});curPage=LAYOUT.pages.length-1;saveLayout();renderPages()};
+$('#ed-delpage').onclick=()=>{if(LAYOUT.pages.length<=1)return;sheet(`<h3>${curPage+1}枚目の画面を削除しますか？</h3><div class="row" style="margin-top:14px"><button class="btn" id="sh-no">戻る</button><button class="btn stop" id="sh-yes">削除</button></div>`,sh=>{sh.querySelector('#sh-no').onclick=closeSheet;sh.querySelector('#sh-yes').onclick=()=>{LAYOUT.pages.splice(curPage,1);curPage=Math.max(0,curPage-1);saveLayout();closeSheet();renderPages()}})};
+$('#ed-reset').onclick=()=>sheet(`<h3>レイアウトを初期状態に戻しますか？</h3><div class="row" style="margin-top:14px"><button class="btn" id="sh-no">戻る</button><button class="btn stop" id="sh-yes">戻す</button></div>`,sh=>{sh.querySelector('#sh-no').onclick=closeSheet;sh.querySelector('#sh-yes').onclick=()=>{LAYOUT=JSON.parse(JSON.stringify(DEFAULT_LAYOUT));curPage=0;saveLayout();closeSheet();renderPages()}});
+$('#pages').addEventListener('click',e=>{if(!editing)return;const add=e.target.closest('[data-add]');if(add){const p=LAYOUT.pages[+add.dataset.add];if(p.cells.length>=16){toast('1画面に置ける項目は16個までです');return}p.cells.push({f:'dist',s:'S'});saveLayout();renderPages();cellSheet(+add.dataset.add,p.cells.length-1,true);return}
+  const cell=e.target.closest('.cell[data-f]');if(cell)cellSheet(+cell.dataset.p,+cell.dataset.c,false)});
+function cellSheet(pi,ci,isNew){const p=LAYOUT.pages[pi],c=p.cells[ci];const draft={...c};
+  const draw=sh=>{sh.innerHTML=`<h3>${isNew?'項目を追加':'項目を変更'}</h3><h4>表示する項目</h4><div class="choice" id="cs-f">${Object.keys(FIELDS).map(k=>`<button data-f="${k}" aria-pressed="${draft.f===k}">${esc(labelOf(k))}</button>`).join('')}</div>
+    <h4>大きさ</h4><div class="choice" id="cs-s">${Object.entries(SIZES).map(([k,v])=>`<button data-s="${k}" aria-pressed="${draft.s===k}">${v}${k==='S'?'(2列)':'(1列)'}</button>`).join('')}</div>
+    <h4>並び順</h4><div class="choice"><button id="cs-up"${ci===0?' disabled':''}>↑ 前へ</button><button id="cs-down"${ci===p.cells.length-1?' disabled':''}>↓ 後ろへ</button></div>
+    <div class="row" style="margin-top:18px"><button class="btn stop" id="cs-del" style="flex:0 0 auto;padding:0 14px">削除</button><button class="btn" id="cs-cancel">${isNew?'追加しない':'やめる'}</button><button class="btn go" id="cs-ok">決定</button></div>`;
+    sh.querySelector('#cs-f').onclick=e=>{const b=e.target.closest('[data-f]');if(b){draft.f=b.dataset.f;draw(sh)}};
+    sh.querySelector('#cs-s').onclick=e=>{const b=e.target.closest('[data-s]');if(b){draft.s=b.dataset.s;draw(sh)}};
+    const move=d=>{const j=ci+d;if(j<0||j>=p.cells.length)return;p.cells[ci]=draft;[p.cells[ci],p.cells[j]]=[p.cells[j],p.cells[ci]];ci=j;saveLayout();renderPages();draw(sh)};
+    sh.querySelector('#cs-up').onclick=()=>move(-1);sh.querySelector('#cs-down').onclick=()=>move(1);
+    sh.querySelector('#cs-del').onclick=()=>{p.cells.splice(ci,1);saveLayout();closeSheet();renderPages()};
+    sh.querySelector('#cs-cancel').onclick=()=>{if(isNew){p.cells.splice(ci,1);saveLayout();renderPages()}closeSheet()};
+    sh.querySelector('#cs-ok').onclick=()=>{p.cells[ci]=draft;saveLayout();closeSheet();renderPages()}};
+  sheet('',draw)}
+
 /* ---------- render ---------- */
 let pending=false;function schedule(){if(!pending){pending=true;requestAnimationFrame(()=>{pending=false;render()})}}
 function setV(id,html){const el=document.getElementById(id);if(el.innerHTML!==html)el.innerHTML=html}
@@ -212,18 +285,10 @@ function render(){const fix=R.fix;const now=Date.now();const ride=R.ride;const s
   const rs=$('#st-rec');if(!ride){rs.textContent='待機中';rs.className='chip'}else if(ride.status==='rec'){rs.textContent='● 記録中';rs.className='chip rec'}else{rs.textContent='一時停止';rs.className='chip'}
   // speed
   let v=0;if(fix&&age<=10){v=fix.speed!=null?fix.speed:(R.rec?R.rec.lastSpeed:0)}if(v<C.MOVE_V)v=0;
-  setV('v-speed',(v*3.6).toFixed(1));
-  setV('v-dist',C.km(st.dist)+'<small>km</small>');
-  setV('v-moving',C.hms(st.moving));
-  setV('v-avg',(st.moving>0?st.dist/st.moving*3.6:0).toFixed(1)+'<small>km/h</small>');
-  setV('v-max',(st.max*3.6).toFixed(1)+'<small>km/h</small>');
-  setV('v-alt',(fix&&fix.alt!=null?Math.round(fix.alt):'—')+'<small>m</small>');
-  setV('v-asc',Math.round(st.ascent)+'<small>m</small>');
-  setV('v-elapsed',C.hms(ride?(now-ride.start)/1000:0));
-  const d=new Date();setV('v-clock',String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'));
+  updateFields({fix,age,ride,st,now,v});
   const gn=$('#gapnote');if(ride&&ride.gaps){gn.hidden=false;gn.textContent=`記録の途切れ: ${ride.gaps}回(途切れた区間は直線でつないでいます)`}else gn.hidden=true;
   // route
-  const rb=$('#routebox');if(R.route){rb.hidden=false;$('#v-routename').textContent=R.route.name;const s=R.routeState;setV('v-remain',s?C.km(Math.max(0,R.routeCalc.total-s.along))+' km':'— km');setV('v-off',s?'ルートから '+Math.round(s.d)+' m':'—')}else rb.hidden=true;
+
   const oc=$('#offcourse');if(R.route&&R.off.alerted&&R.routeState){oc.hidden=false;oc.textContent=`コースを外れています(${Math.round(R.routeState.d)} m)`}else oc.hidden=true;
   renderControls();
   if(R.tab==='map')updateMap()}
@@ -284,7 +349,7 @@ $('#rides').onclick=async e=>{const b=e.target.closest('[data-act]');if(!b)retur
 (async function boot(){try{await DB.open()}catch(e){toast('端末内の保存領域を開けませんでした。記録は保存されません',8000)}
   try{const route=await DB.get('kv','route');if(route)setRoute(route)}catch(e){}
   try{const open=(await DB.all('rides')).find(r=>r.status==='rec'||r.status==='paused');if(open){open.status='paused';R.ride=open;R.rec=C.newRecorder(open);C.pause(R.rec);toast('前回の走行を一時停止の状態で復元しました。「再開」で続きから記録します',6000)}}catch(e){}
-  startWatch();render();
+  renderPages();startWatch();render();
   if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{})})();
 })();
 </script>
