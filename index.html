@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0B0F0D">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>自転車旅メーター</title>
+<link rel="stylesheet" href="leaflet/leaflet.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap">
+<style>
+/* Layout: one-screen instrument panel; bottom tab bar (計測 / 地図 / 記録). High contrast for sunlight. */
+:root{
+  --bg:#F4F6F2; --panel:#FFFFFF; --ink:#0D120F; --muted:#56625A; --line:#CDD5CC;
+  --route:#2440C8; --rec:#D2401E; --ok:#1F7A45; --warn:#B26A00;
+  --f-num:"Barlow Condensed","Roboto Condensed","Arial Narrow",sans-serif;
+  --f-body:"Zen Kaku Gothic New","Noto Sans JP","Hiragino Kaku Gothic ProN",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0B0F0D; --panel:#141A16; --ink:#EAF0EA; --muted:#8F9C93; --line:#29332C;
+  --route:#8FA2FF; --rec:#FF6A47; --ok:#62CF8C; --warn:#F2B44C; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;display:flex;flex-direction:column;
+  padding-top:env(safe-area-inset-top,0px);-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--route);outline-offset:2px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);min-height:44px}
+.chip{font-size:12px;border:1px solid var(--line);border-radius:99px;padding:2px 10px;white-space:nowrap}
+.chip.good{border-color:var(--ok);color:var(--ok)}.chip.bad{border-color:var(--warn);color:var(--warn)}
+.chip.rec{background:var(--rec);border-color:var(--rec);color:#fff}
+main{flex:1;min-height:0;position:relative}
+.tab{position:absolute;inset:0;overflow:auto;padding:12px}
+.tab[hidden]{display:none}
+#tab-map{padding:0}
+#map{position:absolute;inset:0}
+/* instrument grid */
+.speed{display:flex;flex-direction:column;align-items:center;padding:6px 0 10px;border-bottom:2px solid var(--ink)}
+.speed .v{font-family:var(--f-num);font-weight:700;font-size:clamp(96px,32vw,180px);line-height:.9;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.lbl{font-size:12px;color:var(--muted);letter-spacing:.08em}
+.grid{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line)}
+.cell{padding:8px 10px;border-bottom:1px solid var(--line);min-width:0}
+.cell:nth-child(odd){border-right:1px solid var(--line)}
+.cell .v{font-family:var(--f-num);font-weight:700;font-size:clamp(34px,11vw,56px);line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cell .v small{font-size:.42em;font-weight:500;color:var(--muted);margin-left:2px}
+.route-box{margin-top:10px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--panel);display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.offcourse{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 52px);z-index:1000;background:var(--rec);color:#fff;font-weight:700;padding:10px 12px;border-radius:8px;text-align:center;font-size:17px}
+.note{font-size:12px;color:var(--muted);margin:8px 0 0;line-height:1.6}
+/* controls */
+.controls{display:flex;gap:8px;padding:8px 12px;border-top:1px solid var(--line);background:var(--bg)}
+.btn{flex:1;min-height:52px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:700;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn.go{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.stop{background:var(--rec);border-color:var(--rec);color:#fff}
+.btn.small{flex:0 0 auto;min-height:36px;padding:0 12px;font-size:14px;font-weight:400}
+.btn:disabled{opacity:.45}
+nav{display:flex;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);background:var(--panel)}
+nav button{flex:1;border:0;background:none;padding:10px 0;font-size:13px;color:var(--muted);cursor:pointer}
+nav button[aria-selected="true"]{color:var(--ink);font-weight:700;box-shadow:inset 0 3px 0 var(--route)}
+/* logs */
+.ride{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:10px}
+.ride h3{margin:0 0 2px;font-size:16px}
+.ride .meta{font-size:13px;color:var(--muted)}
+.row{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.empty{border:1px dashed var(--line);border-radius:8px;padding:20px;text-align:center;color:var(--muted)}
+h2{font-size:17px;margin:4px 0 10px}
+.set{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.set input[type=number]{width:90px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgb(0 0 0 / .5);z-index:2000;display:flex;align-items:flex-end}
+.sheet{background:var(--panel);width:100%;border-radius:14px 14px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px))}
+.sheet h3{margin:0 0 8px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:3000;max-width:calc(100% - 32px);font-size:14px}
+.leaflet-container{background:var(--bg)}
+</style>
+</head>
+<body>
+<header>
+  <span id="st-rec" class="chip">待機中</span>
+  <span id="st-gps" class="chip">GPS 未取得</span>
+</header>
+<div id="offcourse" class="offcourse" hidden></div>
+<main>
+  <section class="tab" id="tab-meter">
+    <div class="speed"><span class="v" id="v-speed">0.0</span><span class="lbl">速度 km/h</span></div>
+    <div class="grid">
+      <div class="cell"><div class="v num" id="v-dist">0.00<small>km</small></div><div class="lbl">距離</div></div>
+      <div class="cell"><div class="v num" id="v-moving">0:00:00</div><div class="lbl">走行時間</div></div>
+      <div class="cell"><div class="v num" id="v-avg">0.0<small>km/h</small></div><div class="lbl">平均速度(走行中)</div></div>
+      <div class="cell"><div class="v num" id="v-max">0.0<small>km/h</small></div><div class="lbl">最高速度</div></div>
+      <div class="cell"><div class="v num" id="v-alt">—<small>m</small></div><div class="lbl" id="l-alt">GPS高度</div></div>
+      <div class="cell"><div class="v num" id="v-asc">0<small>m</small></div><div class="lbl">獲得標高(参考)</div></div>
+      <div class="cell"><div class="v num" id="v-elapsed">0:00:00</div><div class="lbl">経過時間</div></div>
+      <div class="cell"><div class="v num" id="v-clock">--:--</div><div class="lbl">時刻</div></div>
+    </div>
+    <div class="route-box" id="routebox" hidden>
+      <div><div class="lbl">ルート残り</div><div class="num" style="font-size:28px;font-weight:700" id="v-remain">— km</div></div>
+      <div style="text-align:right"><div class="lbl" id="v-routename"></div><div class="num" id="v-off" style="font-size:20px">—</div></div>
+    </div>
+    <p class="note" id="gapnote" hidden></p>
+  </section>
+  <section class="tab" id="tab-map" hidden><div id="map"></div></section>
+  <section class="tab" id="tab-log" hidden>
+    <h2>走行記録</h2>
+    <div id="rides"></div>
+    <h2 style="margin-top:20px">ルート</h2>
+    <div class="ride"><div class="meta" id="route-info">ルート未読み込み</div>
+      <div class="row"><label class="btn small" style="cursor:pointer">GPXを読み込む<input type="file" id="route-file" accept=".gpx,application/gpx+xml,application/xml,text/xml" hidden></label><button class="btn small" id="route-clear">解除</button></div></div>
+    <h2 style="margin-top:20px">設定</h2>
+    <div class="set"><span>画面を点けたままにする<br><span class="note">画面が消えると記録が途切れやすくなります</span></span><input type="checkbox" id="s-wake"></div>
+    <div class="set"><span>コースアウト警告の距離 (m)</span><input type="number" id="s-off" min="20" max="500" step="10"></div>
+    <div class="set"><span>高度の補正値 (m)<br><span class="note">GPS高度は楕円体高です。標高に近づけたい場合は、その地域のジオイド高を負の値で入力します</span></span><input type="number" id="s-geoid" min="-100" max="100" step="1"></div>
+    <div class="set"><span>シミュレーション走行<br><span class="note">室内で画面と記録を試すための架空の走行です</span></span><button class="btn small" id="sim-btn">開始</button></div>
+  </section>
+</main>
+<div class="controls" id="controls"></div>
+<nav role="tablist">
+  <button role="tab" data-tab="meter" aria-selected="true">計測</button>
+  <button role="tab" data-tab="map" aria-selected="false">地図</button>
+  <button role="tab" data-tab="log" aria-selected="false">記録・設定</button>
+</nav>
+<input type="file" id="photo-in" accept="image/*" capture="environment" hidden>
+<div id="scrim" class="scrim" hidden><div class="sheet" id="sheet"></div></div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="leaflet/leaflet.js"></script>
+<script src="core.js"></script>
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const C=window.RideCore;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(m,ms=3000){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,ms)}
+
+/* ---------- settings ---------- */
+const SET=Object.assign({wake:true,off:50,geoid:0},(()=>{try{return JSON.parse(localStorage.getItem('rm-set')||'{}')}catch(e){return{}}})());
+function saveSet(){try{localStorage.setItem('rm-set',JSON.stringify(SET))}catch(e){}}
+$('#s-wake').checked=SET.wake;$('#s-off').value=SET.off;$('#s-geoid').value=SET.geoid;
+$('#s-wake').onchange=e=>{SET.wake=e.target.checked;saveSet();wake()};
+$('#s-off').onchange=e=>{SET.off=Math.max(20,Math.min(500,+e.target.value||50));saveSet()};
+$('#s-geoid').onchange=e=>{SET.geoid=Math.max(-100,Math.min(100,+e.target.value||0));saveSet();$('#l-alt').textContent=SET.geoid?'高度(補正済み)':'GPS高度'};
+$('#l-alt').textContent=SET.geoid?'高度(補正済み)':'GPS高度';
+
+/* ---------- IndexedDB ---------- */
+const DB={db:null,
+  open(){return new Promise((res,rej)=>{const r=indexedDB.open('ride-meter',1);r.onupgradeneeded=()=>{const d=r.result;d.createObjectStore('rides',{keyPath:'id'});d.createObjectStore('photos',{keyPath:'id'});d.createObjectStore('kv')};r.onsuccess=()=>{DB.db=r.result;res()};r.onerror=()=>rej(r.error)})},
+  req(store,mode,f){return new Promise((res,rej)=>{const t=DB.db.transaction(store,mode);const r=f(t.objectStore(store));t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error)})},
+  put(s,v,k){return DB.req(s,'readwrite',o=>k===undefined?o.put(v):o.put(v,k))},
+  get(s,k){return DB.req(s,'readonly',o=>o.get(k))},
+  all(s){return DB.req(s,'readonly',o=>o.getAll())},
+  del(s,k){return DB.req(s,'readwrite',o=>o.delete(k))}};
+
+/* ---------- state ---------- */
+const R={ride:null,rec:null,fix:null,lastFixAt:0,watch:null,sim:null,route:null,routeCalc:null,off:{count:0,alerted:false},dirty:false,view:null,wl:null,tab:'meter',hiddenAt:null};
+
+/* ---------- GPS ---------- */
+function startWatch(){if(R.watch!=null||R.sim)return;if(!('geolocation' in navigator)){$('#st-gps').textContent='GPS非対応';return}
+  R.watch=navigator.geolocation.watchPosition(onPos,e=>{const m={1:'位置情報が許可されていません',2:'位置を取得できません',3:'GPS応答待ち'}[e.code]||'GPSエラー';$('#st-gps').textContent=m;$('#st-gps').className='chip bad'},{enableHighAccuracy:true,maximumAge:0,timeout:20000})}
+function stopWatch(){if(R.watch!=null){navigator.geolocation.clearWatch(R.watch);R.watch=null}}
+function onPos(p){const c=p.coords;const fix={lat:c.latitude,lon:c.longitude,acc:c.accuracy,alt:c.altitude==null?null:c.altitude+SET.geoid,speed:(c.speed!=null&&isFinite(c.speed)&&c.speed>=0)?c.speed:null,t:p.timestamp||Date.now()};R.fix=fix;R.lastFixAt=Date.now();
+  if(R.ride&&R.ride.status==='rec'){const r=C.addFix(R.rec,fix);if(r.added){R.ride.segs=R.rec.segs;R.ride.stats=R.rec.stats;R.ride.gaps=R.rec.gaps;R.dirty=true}}
+  if(R.route)checkCourse(fix);
+  schedule()}
+
+/* ---------- course ---------- */
+function checkCourse(fix){if(fix.acc>40)return;const n=C.nearestOnRoute(R.routeCalc,fix.lat,fix.lon);R.routeState=n;const off=n.d>SET.off;
+  if(off){R.off.count++;if(R.off.count>=3&&!R.off.alerted){R.off.alerted=true;try{navigator.vibrate&&navigator.vibrate([400,150,400,150,400])}catch(e){}}}
+  else{R.off.count=0;R.off.alerted=false}}
+
+/* ---------- ride control ---------- */
+function newRide(){const now=Date.now();const id='r'+now;return{id,name:C.fmtDate(now)+' の走行',status:'rec',start:now,end:null,segs:[[]],stats:C.emptyStats(),gaps:0,marks:[]}}
+async function startRide(){R.ride=newRide();R.rec=C.newRecorder(R.ride);await save(true);wake();render()}
+async function pauseRide(){R.ride.status='paused';C.pause(R.rec);R.ride.segs=R.rec.segs;await save(true);render()}
+async function resumeRide(){R.ride.status='rec';C.resume(R.rec);R.ride.segs=R.rec.segs;await save(true);wake();render()}
+async function finishRide(){R.ride.status='done';R.ride.end=Date.now();R.ride.segs=R.ride.segs.filter(s=>s.length>1);await save(true);R.ride=null;R.rec=null;releaseWake();render();renderLogs();toast('記録を保存しました')}
+async function save(force){if(!R.ride)return;if(!force&&!R.dirty)return;R.dirty=false;try{await DB.put('rides',JSON.parse(JSON.stringify(R.ride)))}catch(e){toast('記録の保存に失敗しました: '+e.message,5000)}}
+setInterval(()=>save(false),10000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'){R.hiddenAt=Date.now();save(true)}else{if(R.hiddenAt&&R.ride&&R.ride.status==='rec'&&Date.now()-R.hiddenAt>30000)toast('画面オフ中は記録が途切れた可能性があります。途切れた区間は直線でつないで距離に含めます',5000);R.hiddenAt=null;wake()}});
+window.addEventListener('pagehide',()=>save(true));
+
+/* ---------- wake lock ---------- */
+async function wake(){if(!SET.wake||!R.ride||R.ride.status!=='rec'){releaseWake();return}if(!('wakeLock' in navigator)||R.wl)return;try{R.wl=await navigator.wakeLock.request('screen');R.wl.addEventListener('release',()=>R.wl=null)}catch(e){}}
+function releaseWake(){if(R.wl){R.wl.release().catch(()=>{});R.wl=null}}
+
+/* ---------- photos / marks ---------- */
+$('#photo-in').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f||!R.ride)return;const fix=R.fix;try{const blob=await C.thumb(f,960);const id='p'+Date.now();await DB.put('photos',{id,rideId:R.ride.id,blob,t:Date.now()});addMark('写真',id,fix);toast('写真と地点を記録しました')}catch(er){toast('写真を保存できませんでした: '+er.message,5000)}};
+function addMark(kind,photoId,fix){fix=fix||R.fix;if(!fix){toast('GPSの位置がまだ取れていません');return}R.ride.marks.push({t:Date.now(),lat:+fix.lat.toFixed(6),lon:+fix.lon.toFixed(6),kind,photoId:photoId||null});R.dirty=true;save(true);schedule()}
+
+/* ---------- route ---------- */
+$('#route-file').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const r=C.parseGPX(await f.text());const route={name:r.name||f.name.replace(/\.gpx$/i,''),pts:r.pts};await DB.put('kv',route,'route');setRoute(route);toast('ルートを読み込みました')}catch(er){toast(er.message,5000)}};
+$('#route-clear').onclick=async()=>{await DB.del('kv','route');setRoute(null)};
+function setRoute(route){R.route=route;R.routeCalc=route?C.prepRoute(route.pts):null;R.routeState=null;R.off={count:0,alerted:false};$('#route-info').textContent=route?`${route.name}: ${C.km(R.routeCalc.total)} km`:'ルート未読み込み';if(mapReady)drawRoute();schedule()}
+
+/* ---------- simulation ---------- */
+$('#sim-btn').onclick=()=>{if(R.sim){clearInterval(R.sim.iv);R.sim=null;$('#sim-btn').textContent='開始';startWatch();toast('シミュレーションを止めました');return}stopWatch();const gen=C.simulator(R.fix);R.sim={iv:setInterval(()=>onPos(gen()),1000)};$('#sim-btn').textContent='停止';toast('シミュレーション走行中(架空のデータ)')};
+
+/* ---------- render ---------- */
+let pending=false;function schedule(){if(!pending){pending=true;requestAnimationFrame(()=>{pending=false;render()})}}
+function setV(id,html){const el=document.getElementById(id);if(el.innerHTML!==html)el.innerHTML=html}
+function render(){const fix=R.fix;const now=Date.now();const ride=R.ride;const st=ride?ride.stats:C.emptyStats();
+  // gps chip
+  const age=(now-R.lastFixAt)/1000;const g=$('#st-gps');
+  if(R.sim){g.textContent='シミュレーション';g.className='chip bad'}
+  else if(!fix){}
+  else if(age>10){g.textContent=`GPS 応答なし ${Math.round(age)}秒`;g.className='chip bad'}
+  else{g.textContent=`GPS ±${Math.round(fix.acc)}m`;g.className='chip '+(fix.acc<=C.MAX_ACC?'good':'bad')}
+  const rs=$('#st-rec');if(!ride){rs.textContent='待機中';rs.className='chip'}else if(ride.status==='rec'){rs.textContent='● 記録中';rs.className='chip rec'}else{rs.textContent='一時停止';rs.className='chip'}
+  // speed
+  let v=0;if(fix&&age<=10){v=fix.speed!=null?fix.speed:(R.rec?R.rec.lastSpeed:0)}if(v<C.MOVE_V)v=0;
+  setV('v-speed',(v*3.6).toFixed(1));
+  setV('v-dist',C.km(st.dist)+'<small>km</small>');
+  setV('v-moving',C.hms(st.moving));
+  setV('v-avg',(st.moving>0?st.dist/st.moving*3.6:0).toFixed(1)+'<small>km/h</small>');
+  setV('v-max',(st.max*3.6).toFixed(1)+'<small>km/h</small>');
+  setV('v-alt',(fix&&fix.alt!=null?Math.round(fix.alt):'—')+'<small>m</small>');
+  setV('v-asc',Math.round(st.ascent)+'<small>m</small>');
+  setV('v-elapsed',C.hms(ride?(now-ride.start)/1000:0));
+  const d=new Date();setV('v-clock',String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'));
+  const gn=$('#gapnote');if(ride&&ride.gaps){gn.hidden=false;gn.textContent=`記録の途切れ: ${ride.gaps}回(途切れた区間は直線でつないでいます)`}else gn.hidden=true;
+  // route
+  const rb=$('#routebox');if(R.route){rb.hidden=false;$('#v-routename').textContent=R.route.name;const s=R.routeState;setV('v-remain',s?C.km(Math.max(0,R.routeCalc.total-s.along))+' km':'— km');setV('v-off',s?'ルートから '+Math.round(s.d)+' m':'—')}else rb.hidden=true;
+  const oc=$('#offcourse');if(R.route&&R.off.alerted&&R.routeState){oc.hidden=false;oc.textContent=`コースを外れています(${Math.round(R.routeState.d)} m)`}else oc.hidden=true;
+  renderControls();
+  if(R.tab==='map')updateMap()}
+let lastCtl='';
+function renderControls(){const r=R.ride;let h;
+  if(!r)h=`<button class="btn go" data-act="start">▶ スタート</button>`;
+  else if(r.status==='rec')h=`<button class="btn" data-act="pause">❚❚ 一時停止</button><button class="btn" data-act="photo">写真</button><button class="btn" data-act="mark">地点</button>`;
+  else h=`<button class="btn go" data-act="resume">▶ 再開</button><button class="btn stop" data-act="finish">■ 終了</button>`;
+  if(h!==lastCtl){$('#controls').innerHTML=h;lastCtl=h}}
+setInterval(schedule,1000);
+
+$('#controls').onclick=e=>{const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act;
+  if(a==='start')startRide();else if(a==='pause')pauseRide();else if(a==='resume')resumeRide();
+  else if(a==='photo')$('#photo-in').click();else if(a==='mark')addMark('地点');
+  else if(a==='finish')sheet(`<h3>走行を終了しますか？</h3><p class="note">記録は「記録・設定」に保存され、GPXで書き出せます。</p><div class="row" style="margin-top:14px"><button class="btn" id="sh-no">戻る</button><button class="btn stop" id="sh-yes">終了して保存</button></div>`,s=>{s.querySelector('#sh-no').onclick=closeSheet;s.querySelector('#sh-yes').onclick=()=>{closeSheet();finishRide()}})};
+
+/* ---------- sheet ---------- */
+function sheet(html,mount){$('#sheet').innerHTML=html;$('#scrim').hidden=false;mount&&mount($('#sheet'))}
+function closeSheet(){$('#scrim').hidden=true;$('#sheet').innerHTML=''}
+$('#scrim').onclick=e=>{if(e.target.id==='scrim')closeSheet()};
+
+/* ---------- tabs ---------- */
+document.querySelector('nav').onclick=e=>{const b=e.target.closest('[data-tab]');if(!b)return;R.tab=b.dataset.tab;document.querySelectorAll('nav button').forEach(x=>x.setAttribute('aria-selected',x===b?'true':'false'));for(const t of['meter','map','log'])$('#tab-'+t).hidden=t!==R.tab;if(R.tab==='map'){initMap();setTimeout(()=>{map.invalidateSize();updateMap(true)},50)}if(R.tab==='log')renderLogs()};
+
+/* ---------- map ---------- */
+let map=null,mapReady=false,L_track=null,L_route=null,L_pos=null,L_acc=null,L_marks=null,follow=true,lastMapUpd=0;
+function initMap(){if(mapReady||!window.L)return;map=L.map('map',{zoomControl:true}).setView(R.fix?[R.fix.lat,R.fix.lon]:[35.70,139.56],15);
+  const gsi=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',{maxZoom:18,attribution:'<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>'});
+  const osm=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'});
+  gsi.addTo(map);L.control.layers({'地理院 標準':gsi,'OpenStreetMap':osm}).addTo(map);
+  L_route=L.polyline([],{color:getCSS('--route'),weight:6,opacity:.45}).addTo(map);
+  L_track=L.polyline([],{color:getCSS('--rec'),weight:4}).addTo(map);
+  L_marks=L.layerGroup().addTo(map);
+  L_acc=L.circle([0,0],{radius:1,weight:1,color:getCSS('--route'),fillOpacity:.1});
+  L_pos=L.circleMarker([0,0],{radius:8,weight:3,color:'#fff',fillColor:getCSS('--route'),fillOpacity:1});
+  map.on('dragstart',()=>{follow=false;followBtn.style.display='block'});
+  const followBtn=L.DomUtil.create('button','');followBtn.textContent='現在地へ';followBtn.style.cssText='position:absolute;right:10px;bottom:24px;z-index:1000;padding:10px 14px;border-radius:8px;border:1px solid #999;background:#fff;color:#111;font-weight:700;display:none';document.getElementById('tab-map').appendChild(followBtn);followBtn.onclick=()=>{follow=true;R.view=null;followBtn.style.display='none';updateMap(true)};
+  R.followBtn=followBtn;mapReady=true;drawRoute()}
+function getCSS(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()||'#2440C8'}
+function drawRoute(){if(!mapReady)return;L_route.setLatLngs(R.route?R.route.pts.map(p=>[p[0],p[1]]):[])}
+function updateMap(force){if(!mapReady)return;const now=Date.now();if(!force&&now-lastMapUpd<2000)return;lastMapUpd=now;
+  const ride=R.view||R.ride;L_track.setLatLngs(ride?ride.segs.filter(s=>s.length).map(s=>s.map(p=>[p[0],p[1]])):[]);
+  L_marks.clearLayers();if(ride)for(const m of ride.marks||[])L.circleMarker([m.lat,m.lon],{radius:6,weight:2,color:'#fff',fillColor:m.kind==='写真'?'#111':getCSS('--warn'),fillOpacity:1}).bindTooltip(m.kind+' '+C.hm(m.t)).addTo(L_marks);
+  if(R.view){if(force){const b=L_track.getBounds();if(b.isValid())map.fitBounds(b,{padding:[30,30]})}return}
+  const f=R.fix;if(f){L_pos.setLatLng([f.lat,f.lon]).addTo(map);L_acc.setLatLng([f.lat,f.lon]).setRadius(f.acc).addTo(map);if(follow)map.setView([f.lat,f.lon],force?Math.max(map.getZoom(),15):map.getZoom(),{animate:false})}}
+
+/* ---------- logs ---------- */
+async function renderLogs(){let rides=[];try{rides=(await DB.all('rides')).filter(r=>r.status==='done').sort((a,b)=>b.start-a.start)}catch(e){}
+  $('#rides').innerHTML=rides.length?rides.map(r=>`<div class="ride" data-id="${esc(r.id)}"><h3>${esc(r.name)}</h3><div class="meta num">${C.km(r.stats.dist)} km ・ 走行 ${C.hms(r.stats.moving)} ・ ↑${Math.round(r.stats.ascent)} m${r.marks&&r.marks.length?` ・ 地点${r.marks.length}`:''}${r.gaps?` ・ 途切れ${r.gaps}回`:''}</div><div class="row"><button class="btn small" data-act="gpx">GPXを保存</button><button class="btn small" data-act="share">共有</button><button class="btn small" data-act="view">地図で見る</button><button class="btn small" data-act="del">削除</button></div></div>`).join(''):`<div class="empty">まだ走行記録がありません。「計測」でスタートすると、ここに残ります。</div>`}
+$('#rides').onclick=async e=>{const b=e.target.closest('[data-act]');if(!b)return;const id=b.closest('.ride').dataset.id;const r=await DB.get('rides',id);if(!r)return;const a=b.dataset.act;
+  if(a==='gpx'||a==='share'){const gpx=C.toGPX(r);const name='ride-'+C.fileStamp(r.start)+'.gpx';
+    if(a==='share'){const file=new File([gpx],name,{type:'application/gpx+xml'});if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:r.name})}catch(er){}}else toast('この端末では共有できません。「GPXを保存」を使ってください')}
+    else{const u=URL.createObjectURL(new Blob([gpx],{type:'application/gpx+xml'}));const l=document.createElement('a');l.href=u;l.download=name;document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),5000)}}
+  else if(a==='view'){R.view=r;document.querySelector('nav [data-tab="map"]').click();follow=false;if(R.followBtn)R.followBtn.style.display='block'}
+  else if(a==='del')sheet(`<h3>「${esc(r.name)}」を削除しますか？</h3><p class="note">この操作は取り消せません。</p><div class="row" style="margin-top:14px"><button class="btn" id="sh-no">戻る</button><button class="btn stop" id="sh-yes">削除</button></div>`,s=>{s.querySelector('#sh-no').onclick=closeSheet;s.querySelector('#sh-yes').onclick=async()=>{closeSheet();await DB.del('rides',id);for(const m of r.marks||[])if(m.photoId)await DB.del('photos',m.photoId);renderLogs()}})};
+
+/* ---------- boot ---------- */
+(async function boot(){try{await DB.open()}catch(e){toast('端末内の保存領域を開けませんでした。記録は保存されません',8000)}
+  try{const route=await DB.get('kv','route');if(route)setRoute(route)}catch(e){}
+  try{const open=(await DB.all('rides')).find(r=>r.status==='rec'||r.status==='paused');if(open){open.status='paused';R.ride=open;R.rec=C.newRecorder(open);C.pause(R.rec);toast('前回の走行を一時停止の状態で復元しました。「再開」で続きから記録します',6000)}}catch(e){}
+  startWatch();render();
+  if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{})})();
+})();
+</script>
+</body>
+</html>
