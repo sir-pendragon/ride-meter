@@ -62,7 +62,7 @@ a{color:var(--acc)}
 <section id="s-cl"><h2>通行止めの確認</h2>
  <p class="hint" style="margin:0 0 6px">通行止めの自動取得はまだできません。公式の情報で確認し、見つけた地点を地図で長押し→「通行止めにする」で登録すると、その道路を避けて再計算します。</p>
  <ul class="cl" id="cl"></ul>
- <div class="row" style="margin-top:8px"><a class="btn sm" href="https://www.jartic.or.jp/" target="_blank" rel="noopener">日本道路交通情報センター ↗</a><a class="btn sm" href="https://www.mlit.go.jp/road/" target="_blank" rel="noopener">国土交通省 道路 ↗</a><a class="btn sm" id="gsrch" href="#" target="_blank" rel="noopener">この周辺の通行止めを検索 ↗</a></div>
+ <div class="row" style="margin-top:8px"><a class="btn sm" id="official" href="https://www.road-info-prvs.mlit.go.jp/roadinfo/content.php?mode=pc&lang=jp&area=00&page=10&table=0&zoom=11&legned=1" target="_blank" rel="noopener">国交省の通行規制マップ(この周辺)を開く ↗</a><a class="btn sm" href="https://www.jartic.or.jp/" target="_blank" rel="noopener">日本道路交通情報センター ↗</a><a class="btn sm" href="https://www.mlit.go.jp/road/" target="_blank" rel="noopener">国土交通省 道路 ↗</a><a class="btn sm" id="gsrch" href="#" target="_blank" rel="noopener">この周辺の通行止めを検索 ↗</a></div>
 </section>
 <p class="hint" style="margin-top:14px">地図: 国土地理院タイル / © OpenStreetMap contributors。ルート計算: Valhalla(公開サーバー・OpenStreetMapデータ)。標高: 国土地理院 標高タイル(DEM10B)。場所検索: Nominatim。獲得標高・舗装率は推定値です。実際の道路状況・通行止め・冬期閉鎖は必ず公式情報で確認してください。</p>
 </main>
@@ -208,6 +208,8 @@ $('#gpx').onclick=()=>{const c=st.sel;if(!c)return;const D=c.D,z=c.m&&c.m.z;let 
   const u=URL.createObjectURL(new Blob([g],{type:'application/gpx+xml'}));const a=document.createElement('a');a.href=u;a.download='route.gpx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),30000)};
 $('#go').onclick=compute;
 
+$('#official').addEventListener('click',()=>{let la,lo;if(st.sel&&st.sel.pts){const bb=L.polyline(st.sel.pts).getBounds().getCenter();la=bb.lat;lo=bb.lng}else if(st.points.length){la=st.points[0].lat;lo=st.points[0].lon}else{const c=map.getCenter();la=c.lat;lo=c.lng}
+  $('#official').href='https://www.road-info-prvs.mlit.go.jp/roadinfo/content.php?mode=pc&lang=jp&area=00&page=10&table=0&zoom=11&legned=1&ido='+la.toFixed(5)+'&keido='+lo.toFixed(5)});
 listPts();listCl();if(st.points.length){const b=L.latLngBounds(st.points.map(p=>[p.lat,p.lon]).concat(st.closures.map(p=>[p.lat,p.lon])));map.fitBounds(b,{padding:[40,40],maxZoom:13})}
 window.__rt={st,compute,metrics,densify,elevations,zigzag};
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
