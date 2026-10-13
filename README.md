@@ -40,3 +40,9 @@ Pixel(Android)のChromeで使う、サイクルコンピューターの試作版
 - 地理院タイル（国土地理院）https://maps.gsi.go.jp/development/ichiran.html
 - © OpenStreetMap contributors
 - Leaflet 1.9.4（BSD-2-Clause、`leaflet/LICENSE`）
+
+## 自転車旅ノート(`note/`)
+旅の記録ノート。`https://<ユーザー名>.github.io/ride-meter/note/` で開き、Chromeのメニュー →「ホーム画面に追加」でアプリのように起動できます。
+- 記録(軌跡・キャンプ場)は **この端末のブラウザ内(IndexedDB)にだけ保存** され、どこにも送信されません。
+- 一覧画面の「全データを書き出す」「ファイルから読み込む」でバックアップ・端末移行ができます。旅1件だけの書き出し(家族への共有用)は旅の画面から。
+- Chromeの「サイトデータを削除」で消えるので、ときどき書き出してください。
