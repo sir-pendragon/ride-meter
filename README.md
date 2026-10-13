@@ -1,4 +1,8 @@
-# 自転車旅メーター（Web試作版）
+# 自転車旅メーター（Web試作版）と自転車旅ノート
+
+- 自転車旅メーター: `meter/`
+- 自転車旅ノート: `note/`
+(2つのアプリが別のアイコンでホーム画面に入るよう、置き場所を分けています)
 
 Pixel(Android)のChromeで使う、サイクルコンピューターの試作版です。
 
@@ -17,7 +21,7 @@ Pixel(Android)のChromeで使う、サイクルコンピューターの試作版
 2. 「Add file → Upload files」で、このフォルダの中身をすべてアップロード
    （`index.html` `core.js` `sw.js` `manifest.webmanifest` `icon-192.png` `icon-512.png` `leaflet/` フォルダ）。
 3. Settings → Pages → Branch を `main` / `(root)` にして Save。
-4. 数分後に表示される `https://<ユーザー名>.github.io/ride-meter/` を Pixel の Chrome で開く。
+4. 数分後に表示される `https://<ユーザー名>.github.io/ride-meter/meter/` を Pixel の Chrome で開く。
 5. 位置情報を「許可」。Chromeのメニュー →「ホーム画面に追加」でアプリのように起動できます。
 
 ※ GPSはHTTPSのページでしか使えないため、PCのファイルを直接開く方法では動きません。
