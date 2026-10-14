@@ -9,9 +9,11 @@
       { id: 'sai-kawagoe', name: '埼玉県 川越農林振興センター', url: 'https://www.pref.saitama.lg.jp/b0902/forestry/road-closed.html', kind: 'table', closedTable: true },
       { id: 'sai-yorii', name: '埼玉県 寄居林業事務所', url: 'https://www.pref.saitama.lg.jp/b0923/tuukoudome.html', kind: 'table' },
     ],
+    19: [{ id: 'yamanashi', name: '山梨県 県営林道通行規制情報', url: 'https://www.pref.yamanashi.jp/rindoujyouhou/list.php', kind: 'yamanashi' }],
     13: [{ id: 'tokyo', name: '東京都 森林事務所', url: 'https://forestry-office.metro.tokyo.lg.jp/about/rin/rin_kisei/index.html', kind: 'tokyo' }],
   };
   const UNSUPPORTED = {};
+  const PREF_NAMES = { 11: '埼玉県', 13: '東京都', 19: '山梨県', 9: '栃木県(矢板のみ)' };
   const PDFJS = ['https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'];
   const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
   const PARSER_VER = 'p5'; // 解析プログラムを変えたら上げる(保存済みの解析結果を使い回さないため)
@@ -60,7 +62,38 @@
     try { const r = await viaRelay(url, asBuffer); return { data: r.body, meta: r.meta }; } catch (e) { throw e; }
   };
 
+  // 山梨県: 一覧(1回)→「規制中・規制予定」の県営林道だけ詳細ページを取得(同時に3件まで)。市町村営は詳細に規制の内容がないため一覧の情報だけ使う
+  async function fetchYamanashi(src) {
+    const list = await fc().load({
+      key: src.url, ver: PARSER_VER, label: src.name + '(一覧)', fetcher: relayFetcher(src.url, false),
+      parse: async (body) => { const rows = ClosureYamanashi.parseList(new DOMParser().parseFromString(body, 'text/html'), src.url); if (rows.length < 20) throw perr('山梨県の一覧を読み取れませんでした(ページの構造が変わった可能性)'); return rows; },
+    });
+    const flagged = list.records.filter((x) => x.kisei || x.yotei);
+    const out = []; const fails = [];
+    for (const x of flagged.filter((y) => !/^県営/.test(y.mgmt))) {
+      out.push({ route: ClosureYamanashi.routeName(x.name), municipality: null, typeText: x.mgmt + ' 規制' + (x.kisei ? '中' : '予定'), section: '', period: null, reason: null, status: '不明', scope: 'unknown',
+        note: x.mgmt + 'の林道のため、規制の内容は各市町村に問い合わせが必要(県のページに内容の記載なし)', bicycle: null, rid: 'L' + x.url, sourceUrl: x.url, officialUpdated: null, fetchedAt: new Date().toISOString(), sourceName: src.name, basis: '県公式ページの一覧', stale: list.stale || undefined });
+    }
+    const todo = flagged.filter((y) => /^県営/.test(y.mgmt)); const today = new Date();
+    const worker = async () => {
+      while (todo.length) {
+        const x = todo.shift();
+        try {
+          const r = await fc().load({
+            key: x.url, ver: PARSER_VER, label: src.name + ' ' + x.name, fetcher: relayFetcher(x.url, false),
+            parse: async (body, meta) => ClosureYamanashi.parseDetail(new DOMParser().parseFromString(body, 'text/html'), x.url, meta.fetchedAt || new Date().toISOString(), { today }),
+          });
+          out.push(...r.records.filter((y) => !y.skip).map((y) => ({ ...y, sourceName: src.name, stale: r.stale || undefined })));
+        } catch (e) { fails.push(x.name); }
+      }
+    };
+    await Promise.all(Array.from({ length: 3 }, worker));
+    if (fails.length) out.failed = fails;
+    return { records: tag({ records: out, stale: false }), failed: fails, total: flagged.length };
+  }
+
   async function fetchSource(src) {
+    if (src.kind === 'yamanashi') { const r = await fetchYamanashi(src); if (r.failed.length) src._partial = `詳細ページ${r.failed.length}/${r.total}件を取得できませんでした(${r.failed.slice(0, 3).join('・')}${r.failed.length > 3 ? ' ほか' : ''})`; else src._partial = null; return r.records; }
     if (src.kind === 'table') {
       const r = await fc().load({
         key: src.url, ver: PARSER_VER, label: src.name, fetcher: relayFetcher(src.url, false),
@@ -139,10 +172,10 @@
       if (!srcs) continue;
       for (const s of srcs) {
         say(`${s.name} を取得中…`);
-        try { results.push(...(await fetchSource(s))); } catch (e) { fails.push(`${s.name}: ${e.message}`); }
+        try { results.push(...(await fetchSource(s))); if (s._partial) fails.push(`${s.name}: ${s._partial}`); } catch (e) { fails.push(`${s.name}: ${e.message}`); }
       }
     }
-    const unk = results.filter((r) => r.status === '不明'); if (unk.length) notes.push(`種類を分類できなかった行が${unk.length}件あります(${unk.slice(0, 3).map((r) => r.route).join('・')}${unk.length > 3 ? ' ほか' : ''})。公式ページで確認してください`);
+    const unk = results.filter((r) => r.status === '不明'); if (unk.length) notes.push(`規制の内容を判定できなかった行が${unk.length}件あります(通行止めとは扱いません。${unk.slice(0, 3).map((r) => r.route).join('・')}${unk.length > 3 ? ' ほか' : ''})。公式ページで確認してください`);
     // 規制のあるものだけを位置付けの対象にする(「特になし」等は位置を付けない)
     const targets = results.filter((r) => r.status === '通行止め' || r.status === '一部規制');
     let located = [];
@@ -170,7 +203,7 @@
     return { near, total: results.length, regulated: targets.length, outside, fails, notes };
   }
 
-  const keyOf = (r) => r.sourceName + '|' + r.route + '|' + (r.municipality || '') + '|' + (r.section || '');
+  const keyOf = (r) => r.sourceName + '|' + r.route + '|' + (r.municipality || '') + '|' + (r.section || '') + (r.rid ? '|' + r.rid : '');
   const COL = { confirmed: '#B3261E', est: '#C25A12', unk: '#6B6B6B' };
   function densify(line, step) { const out = [line[0]]; for (let i = 1; i < line.length; i++) { const d = hav(line[i - 1], line[i]); const n = Math.max(1, Math.ceil(d / step)); for (let k = 1; k <= n; k++) out.push([line[i - 1][0] + (line[i][0] - line[i - 1][0]) * k / n, line[i - 1][1] + (line[i][1] - line[i - 1][1]) * k / n]); } return out; }
   const lenOfLines = (ls) => ls.reduce((t, l) => { for (let i = 1; i < l.length; i++) t += hav(l[i - 1], l[i]); return t; }, 0);
@@ -260,7 +293,7 @@
     async function fetchNow2(auto) {
       const pts = ctx.getPoints(); if (!pts.length) { setStatus('先に出発地と目的地を入れてください'); return null; }
       setStatus('通る県を調べています…'); const codes = await ctx.getPrefCodes(); const known = codes.filter((k) => SOURCES[k]);
-      if (!known.length) { setStatus('通過する県の自動取得にはまだ対応していません(対応: 埼玉県・東京都)'); return null; }
+      if (!known.length) { setStatus('通過する県の自動取得にはまだ対応していません(対応: '+Object.keys(SOURCES).map((k)=>PREF_NAMES[k]||k).join('・')+')'); return null; }
       const m = 0.08; const bbox = [Math.min(...pts.map((p) => p.lat)) - m, Math.min(...pts.map((p) => p.lon)) - m, Math.max(...pts.map((p) => p.lat)) + m, Math.max(...pts.map((p) => p.lon)) + m].map((v) => +v.toFixed(4));
       const sig = bbox.join(',') + '|' + known.join(',');
       if (auto && lastAuto && lastAuto.sig === sig && Date.now() - lastAuto.t < 600000) { setStatus('直前に取得済みのため再取得しません(10分以内)'); return null; }
