@@ -25,10 +25,10 @@ ul.pts li:first-child,ul.cl li:first-child,ul.sr li:first-child{border-top:0}
 .badge{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--acc);color:#fff;font-size:12px;font-weight:700;flex:none}
 .grow{flex:1;min-width:0}.nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cards{display:grid;gap:10px}
-.card{border:2px solid var(--line);border-radius:10px;padding:10px;cursor:pointer}.card.sel{border-color:var(--acc)}
+.card{border:2px solid var(--line);border-radius:10px;padding:6px 8px;cursor:pointer}.card.sel{border-color:var(--acc)}
 .card .t{display:flex;align-items:center;gap:8px;font-weight:700}.sw{width:22px;height:5px;border-radius:3px;display:inline-block}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px 10px;margin-top:6px}
-.stats b{font-size:17px;font-variant-numeric:tabular-nums}.stats span{display:block;font-size:12px;color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:2px 8px;margin-top:2px}
+.stats b{font-size:15px;line-height:1.25;font-variant-numeric:tabular-nums}.stats span{display:block;font-size:11px;line-height:1.2;color:var(--muted)}
 table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}th,td{text-align:right;padding:5px 6px;border-top:1px solid var(--line)}th:first-child,td:first-child{text-align:left}tr.cand{cursor:pointer}tr.cand.sel{background:color-mix(in srgb,var(--acc) 14%,transparent)}
 #prof svg{width:100%;height:auto;display:block;touch-action:none}
 .pin{width:26px;height:26px;border-radius:50%;background:var(--acc);color:#fff;font:700 12px/26px system-ui;text-align:center;border:2px solid #fff;box-shadow:0 1px 4px #0006}
@@ -53,7 +53,7 @@ a{color:var(--acc)}
  <div class="bar" id="bar" hidden><i></i></div><p class="hint" id="st"></p>
 </section>
 <div id="map" style="margin:0 0 12px;border-radius:10px;overflow:hidden"></div>
-<section id="s-res" hidden><h2>③ 結果</h2><div class="cards" id="cards"></div><p class="hint" id="gap-note" style="color:#B58900"></p>
+<section id="s-res" hidden style="padding:8px 12px"><h2 style="margin:0 0 4px">③ 結果</h2><div class="cards" id="cards"></div><p class="hint" id="gap-note" style="color:#B58900"></p>
  </section>
 <section id="s-prof" hidden>
  <h3 style="margin-top:0">標高プロファイル<span class="hint" id="pn"></span></h3><div id="prof"></div><p class="hint" id="pr"></p>
@@ -224,7 +224,7 @@ $('#geo').onclick=()=>{if(!navigator.geolocation){return}navigator.geolocation.g
 /* ---------- 結果の表示 ---------- */
 const NAMES={min:'最小獲得標高',max:'最大獲得標高'};
 const f1=v=>v==null?'—':v.toFixed(1),pc=v=>v==null?'—':Math.round(v*100)+'%';
-function statsHTML(c){const m=c.m||{};return `<div class="stats"><div><b>${(c.len/1000).toFixed(1)} km</b><span>距離</span></div><div><b>${m.gain==null?'—':'↑'+m.gain+' m'}</b><span>獲得標高</span></div><div><b>${m.gain==null?'—':f1(m.avgAll*100)+'%'}</b><span>平均勾配(獲得÷距離)</span></div><div><b>${m.gain==null?'—':f1(m.avgClimb*100)+'%'}</b><span>登坂区間の平均勾配</span></div><div><b>${m.gain==null?'—':f1(m.maxGrade*100)+'%'}</b><span>最大勾配(100m区間)</span></div><div><b>${c.sfDone?pc(c.paved):'調べ中…'}</b><span>舗装率(推定)</span></div></div>`}
+function statsHTML(c){const m=c.m||{};return `<div class="stats"><div><b>${(c.len/1000).toFixed(1)} km</b><span>距離</span></div><div><b>${m.gain==null?'—':'↑'+m.gain+' m'}</b><span>獲得標高</span></div><div><b>${m.gain==null?'—':f1(m.avgAll*100)+'%'}</b><span>平均勾配</span></div><div><b>${m.gain==null?'—':f1(m.avgClimb*100)+'%'}</b><span>登坂勾配</span></div><div><b>${m.gain==null?'—':f1(m.maxGrade*100)+'%'}</b><span>最大勾配(100m)</span></div><div><b>${c.sfDone?pc(c.paved):'調べ中…'}</b><span>舗装率(推定)</span></div></div>`}
 function render(noFit){renderClFound();$('#s-res').hidden=$('#s-prof').hidden=false;const cards=$('#cards');cards.innerHTML='';const obj=objective();
   const c=st.sel;const d=document.createElement('div');d.className='card sel';
   if(!c||!c.m||c.gain==null){d.innerHTML=`<div class="t"><i class="sw" style="background:${HEX[obj]}"></i>${NAMES[obj]}</div><p class="hint" style="margin:4px 0 0">獲得標高を計算できませんでした(標高データが取れませんでした)。</p>`;cards.appendChild(d)}
