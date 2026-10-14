@@ -10,10 +10,11 @@ h1{font-size:20px;margin:0 0 4px}p.s{color:var(--mut);margin:0 0 12px;font-size:
 td:first-child{white-space:nowrap;font-weight:600}a{color:var(--a);word-break:break-all}
 .tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;white-space:nowrap}.tag.ok{background:var(--okbg);color:var(--ok)}.tag.inv{background:var(--invbg);color:var(--inv)}.tag.none{background:var(--nobg);color:var(--no)}
 tr.mrow>td{padding:4px 8px;white-space:normal;font-weight:400}details.pf{border:1px solid var(--line);border-radius:8px;background:var(--bg)}details.pf>summary{cursor:pointer;padding:10px 12px;font-weight:600;font-size:15px}details.pf>summary .c{font-weight:400;color:var(--mut);font-size:13px;margin-left:8px}details.pf .w{padding:0 8px 8px}.tag.un{background:var(--nobg);color:var(--no)}
+table.m>thead>tr>th{font-size:15px}table.m>tbody>tr>td{font-size:17px;padding:10px 8px}table.m>tbody>tr>td:first-child{font-size:21px}table.m>tbody>tr>td .tag{font-size:14px;padding:2px 10px}table.m>tbody>tr.mrow>td{font-size:13px;padding:4px 8px}details.pf>summary{font-size:13px}
 </style></head><body>
 <h1>通行止め情報の取得元(都道府県別)</h1>
 <p class="s">ルート画面が自動取得している公式ページの一覧です。関東1都6県と福島県は、県の行の下の「市町村の公式ページ」をクリックすると市町村の一覧が開きます(台帳は調査途中。「未確認」は、まだ確認できていない、または探していないという意味で、規制ページが無いという意味でも、通行止めが無いことの保証でもありません。市町村ページの内容を自動で読むのは「自動取得中」の市町村のみで、他はリンクだけを示します)。確認日 2026-10-14。「未調査」は、まだ公式ページを探していない県です。ここに無い県の通行止めは、アプリには反映されません。</p>
-<div class="w"><table><thead><tr><th>都道府県</th><th>状態</th><th>該当ページ</th><th>URL</th><th>備考</th></tr></thead><tbody>
+<div class="w"><table class="m"><thead><tr><th>都道府県</th><th>状態</th><th>該当ページ</th><th>URL</th><th>備考</th></tr></thead><tbody>
 <tr><td>北海道</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
 <tr class="ok"><td>青森県</td><td><span class="tag ok">自動取得中(国道・県道のみ)</span></td><td>青森県管理道路 通行規制情報</td><td><a href="https://www.koutsu-aomori.com/tukodome_map/" target="_blank" rel="noopener">https://www.koutsu-aomori.com/tukodome_map/</a><br>データ: <a href="https://www.koutsu-aomori.com/tukodome_map/data/traffic_regulation.json5" target="_blank" rel="noopener">https://www.koutsu-aomori.com/tukodome_map/data/traffic_regulation.json5</a></td><td>林道の記載は現在なし。載ったら同じ一覧から読む。公式の代表地点(座標)と延長から位置を推定</td></tr>
 <tr><td>岩手県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
