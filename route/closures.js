@@ -29,42 +29,66 @@
     const base = relayUrl();
     if (!base) throw new Error('中継のURLが未設定です');
     const r = await fetch(base + '/?url=' + encodeURIComponent(url));
-    if (!r.ok) { let m = ''; try { m = (await r.json()).error; } catch (e) {} throw new Error('中継から取得できません(' + r.status + (m ? ' ' + m : '') + ')'); }
-    const meta = { fetchedAt: r.headers.get('X-Fetched-At'), lastModified: r.headers.get('X-Upstream-Last-Modified'), upstream: r.headers.get('X-Upstream-Status') };
-    if (meta.upstream && meta.upstream !== '200') throw new Error('公式ページが応答しません(' + meta.upstream + ')');
+    if (!r.ok) { let m = ''; try { m = (await r.json()).error; } catch (e) {} const e = new Error('中継から取得できません(' + r.status + (m ? ' ' + m : '') + ')'); e.status = r.status === 403 || r.status === 429 || r.status >= 500 ? r.status : undefined; throw e; }
+    const meta = { fetchedAt: r.headers.get('X-Fetched-At'), lastModified: r.headers.get('X-Upstream-Last-Modified'), etag: r.headers.get('X-Upstream-Etag'), upstream: r.headers.get('X-Upstream-Status') };
+    if (meta.upstream && meta.upstream !== '200') { const e = new Error('公式ページが応答しません(' + meta.upstream + ')'); e.status = +meta.upstream; throw e; }
     return { body: asBuffer ? await r.arrayBuffer() : await r.text(), meta };
   }
   function loadScript(src) { return new Promise((res, rej) => { if (document.querySelector('script[src="' + src + '"]')) return res(); const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('読み込めません: ' + src)); document.head.appendChild(s); }); }
 
+  const fc = () => (fc._i = fc._i || root.FetchCore.create());
+  const perr = (m) => { const e = new Error(m); e.kind = 'parse'; return e; };
+  const relayFetcher = (url, asBuffer) => async () => {
+    try { const r = await viaRelay(url, asBuffer); return { data: r.body, meta: r.meta }; } catch (e) { throw e; }
+  };
+
   async function fetchSource(src) {
-    const { body, meta } = await viaRelay(src.url, false);
-    const doc = new DOMParser().parseFromString(body, 'text/html');
     if (src.kind === 'table') {
-      const recs = ClosureParse.parseClosureTables(doc, src.url, meta.fetchedAt || new Date().toISOString());
-      if (!recs.length) throw new Error('表を読み取れませんでした(ページの構造が変わった可能性)');
-      return recs.map((r) => ({ ...r, sourceName: src.name }));
+      const r = await fc().load({
+        key: src.url, label: src.name, fetcher: relayFetcher(src.url, false),
+        parse: async (body, meta) => {
+          const doc = new DOMParser().parseFromString(body, 'text/html');
+          const recs = ClosureParse.parseClosureTables(doc, src.url, meta.fetchedAt || new Date().toISOString());
+          if (!recs.length) throw perr('表を読み取れませんでした(ページの構造が変わった可能性)');
+          return recs.map((x) => ({ ...x, sourceName: src.name }));
+        },
+      });
+      return tag(r);
     }
-    // 東京都: ページ内のPDFを取得して文字を取り出す
-    const a = doc.querySelector('a[href$=".pdf"]');
-    if (!a) throw new Error('PDFのリンクが見つかりません(ページの構造が変わった可能性)');
-    const pdfUrl = new URL(a.getAttribute('href'), src.url).href;
-    const pdf = await viaRelay(pdfUrl, true);
-    await loadScript(PDFJS[0]);
-    root.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS[1];
-    const d = await root.pdfjsLib.getDocument({ data: pdf.body }).promise;
-    const pages = [];
-    for (let i = 1; i <= d.numPages; i++) { const tc = await (await d.getPage(i)).getTextContent(); pages.push(tc.items.map((t) => ({ s: t.str, x: Math.round(t.transform[4]), y: Math.round(t.transform[5]), h: Math.round(t.height) })).filter((t) => t.s.trim())); }
-    const recs = TokyoPdfParse.parseTokyoPages(pages, pdfUrl, pdf.meta.fetchedAt || new Date().toISOString());
-    if (!recs.length) throw new Error('PDFの表を読み取れませんでした(形式が変わった可能性)');
-    // 東京都の表記を共通の形に: 通行止め→全線扱いにはしない(区間の記載は原文のまま)
-    return recs.map((r) => ({
-      route: r.route, municipality: r.municipality, typeText: r.statusText, section: r.reasonOrSection || '', period: r.period, reason: null,
-      status: r.status === '通行止め' ? '通行止め' : r.status === '通行規制' ? '一部規制' : r.status,
-      scope: r.status === '通行止め' && /起点|地点|先|より/.test(r.statusText) && !/起点に柵有|起終点に柵有/.test(r.statusText) ? 'partial' : r.status === '通行止め' ? 'whole' : 'unknown',
-      note: r.status === '通行規制' ? '東京都の定義: 通行は可能だが林業関係者以外の車両の乗り入れを規制(自転車の扱いは記載なし)' : null,
-      bicycle: null, sourceUrl: pdfUrl, officialUpdated: r.officialUpdated ? `${r.officialUpdated.month}月${r.officialUpdated.day}日更新(年の記載なし)` : null, fetchedAt: r.fetchedAt, sourceName: src.name,
-    }));
+    // 東京都: ページ内のPDFリンクを見つけ、PDFを取得して文字を取り出す
+    const pg = await fc().load({
+      key: src.url, label: src.name + '(ページ)', fetcher: relayFetcher(src.url, false),
+      parse: async (body) => {
+        const a = new DOMParser().parseFromString(body, 'text/html').querySelector('a[href$=".pdf"]');
+        if (!a) throw perr('PDFのリンクが見つかりません(ページの構造が変わった可能性)');
+        return [{ pdfUrl: new URL(a.getAttribute('href'), src.url).href }];
+      },
+    });
+    const pdfUrl = pg.records[0].pdfUrl;
+    const r = await fc().load({
+      key: pdfUrl, label: src.name + '(PDF)', fetcher: relayFetcher(pdfUrl, true),
+      parse: async (buf, meta) => {
+        await loadScript(PDFJS[0]);
+        root.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS[1];
+        const d = await root.pdfjsLib.getDocument({ data: buf.slice(0) }).promise;
+        const pages = [];
+        for (let i = 1; i <= d.numPages; i++) { const tc = await (await d.getPage(i)).getTextContent(); pages.push(tc.items.map((t) => ({ s: t.str, x: Math.round(t.transform[4]), y: Math.round(t.transform[5]), h: Math.round(t.height) })).filter((t) => t.s.trim())); }
+        const recs = TokyoPdfParse.parseTokyoPages(pages, pdfUrl, meta.fetchedAt || new Date().toISOString());
+        if (!recs.length) throw perr('PDFの表を読み取れませんでした(形式が変わった可能性)');
+        // 東京都の表記を共通の形に: 区間の記載は原文のまま
+        return recs.map((x) => ({
+          route: x.route, municipality: x.municipality, typeText: x.statusText, section: x.reasonOrSection || '', period: x.period, reason: null,
+          status: x.status === '通行止め' ? '通行止め' : x.status === '通行規制' ? '一部規制' : x.status,
+          scope: x.status === '通行止め' && /起点|地点|先|より/.test(x.statusText) && !/起点に柵有|起終点に柵有/.test(x.statusText) ? 'partial' : x.status === '通行止め' ? 'whole' : 'unknown',
+          note: x.status === '通行規制' ? '東京都の定義: 通行は可能だが林業関係者以外の車両の乗り入れを規制(自転車の扱いは記載なし)' : null,
+          bicycle: null, sourceUrl: pdfUrl, officialUpdated: x.officialUpdated ? `${x.officialUpdated.month}月${x.officialUpdated.day}日更新(年の記載なし)` : null, fetchedAt: x.fetchedAt, sourceName: src.name,
+        }));
+      },
+    });
+    return tag(r);
   }
+  // 情報期限切れ(取得に失敗して前回の内容を使う場合)を各レコードに付ける
+  function tag(r) { return r.records.map((x) => (r.stale ? { ...x, stale: true, staleNote: r.error } : x)); }
 
   async function overpass(q) {
     let err;

@@ -68,11 +68,13 @@ export default {
       'X-Upstream-Status': String(r.status),
       'X-Fetched-At': new Date().toISOString(),
       'X-Fetch-Ms': String(Date.now() - t0),
-      'Access-Control-Expose-Headers': 'X-Upstream-Status, X-Fetched-At, X-Upstream-Last-Modified, X-Fetch-Ms',
+      'Access-Control-Expose-Headers': 'X-Upstream-Status, X-Fetched-At, X-Upstream-Last-Modified, X-Upstream-Etag, X-Fetch-Ms',
       ...cors(origin),
     };
     const lm = r.headers.get('Last-Modified');
     if (lm) headers['X-Upstream-Last-Modified'] = lm;
+    const et = r.headers.get('ETag');
+    if (et) headers['X-Upstream-Etag'] = et;
     return new Response(body, { status: 200, headers });
   },
 };
