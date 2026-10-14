@@ -66,7 +66,7 @@ a{color:var(--acc)}
 </section>
 <section id="s-auto" hidden><h2>ルート周辺の規制(自動取得)</h2>
  <p class="hint" id="ac-st" hidden></p><ul class="sr" id="ac-list"></ul><div id="ac-gap"></div><div id="ac-munis"></div>
- <h3 id="ac-conf-h" style="margin-top:12px" hidden>「避ける」を確定した規制</h3><ul class="cl" id="ac-conf"></ul>
+ <h3 id="ac-conf-h" style="margin-top:12px" hidden>自動で避ける規制</h3><ul class="cl" id="ac-conf"></ul>
 </section>
 <p class="hint" style="margin-top:14px">地図: 国土地理院タイル / © OpenStreetMap contributors。ルート計算: Valhalla(公開サーバー・OpenStreetMapデータ)。標高: 国土地理院 標高タイル(DEM10B)。場所検索: Nominatim。獲得標高・舗装率は推定値です。実際の道路状況・通行止め・冬期閉鎖は必ず公式情報で確認してください。</p>
 <script>(function(){var s=document.getElementById("s-auto");if(!s)return;function f(){var l=document.getElementById("ac-list"),c=document.getElementById("ac-conf"),m=document.getElementById("ac-munis");s.hidden=!(l.children.length||c.children.length||m.textContent.trim())}new MutationObserver(f).observe(s,{childList:true,subtree:true,characterData:true});f()})();</script>
@@ -152,7 +152,7 @@ async function compute(){if(busy)return;if(!compute._r)Closures.resetBoost();nor
   if(!raw.length)throw firstErr||new Error('ルートが見つかりませんでした');
   setProg(0.4,'通行止め情報の取得を待っています');await closureP;
     const seen=new Map();for(const r of raw){const k=sig(r.pts);if(!seen.has(k))seen.set(k,r)}const cs=[...seen.values()];
-    {const hh=cs.flatMap(c=>Closures.hits(c.pts));if(hh.length&&(compute._r||0)<2){compute._r=(compute._r||0)+1;setProg(null,`「避ける」を確定した規制を通るため、除外を追加して再計算します(${compute._r}/2)`);Closures.addBoost(hh);busy=false;return compute()}}
+    {const hh=cs.flatMap(c=>Closures.hits(c.pts));if(hh.length&&(compute._r||0)<2){compute._r=(compute._r||0)+1;setProg(null,`自動で避ける規制を通るため、除外を追加して再計算します(${compute._r}/2)`);Closures.addBoost(hh);busy=false;return compute()}}
     let done=0;await Promise.all(cs.map(async c=>{const D=densify(c.pts,25);c.D=D;c.len=D.total;const z=await elevations(D);c.m=metrics(D,z);c.sf=null;c.paved=null;c.sfDone=false;c.gain=c.m.gain;c.closed=nearClosure(c.pts);c.hitsAuto=Closures.hits(c.pts);c.unkAuto=Closures.warnings(c.pts);done++;setProg(0.5+0.5*done/cs.length,`標高を調べています ${done}/${cs.length}`)}));
     st.cands=cs;compute._r=0;choose();setProg(null,'');render();{const gn=document.getElementById('gap-note');if(gn)gn.textContent=Closures.gapText()}ensureSurface(st.sel)}
   catch(e){setProg(null,'計算できませんでした: '+(e&&e.message||e)+(e&&e.code===171?'(地点が道路から遠すぎます)':''));}
@@ -189,7 +189,7 @@ function renderClFound(){const box=document.getElementById('cl-found');if(!box)r
     else box.innerHTML='<p style="margin:0"><b>未調査</b></p><p class="hint" style="margin:6px 0 0">このルートの規制は取得できていません(通る県の自動取得に未対応、または取得に失敗しました)。「通行規制なし」とは言えません。下の「通過する県の規制情報」で確認してください。</p>';
     return}
   const li=(badge,col,t,sub,url)=>`<li style="display:block"><span class="badge" style="background:${col};width:auto;border-radius:12px;padding:0 8px">${esc(badge)}</span> <b>${esc(t)}</b><div class="hint" style="white-space:normal">${sub}${url?` <a href="${esc(url)}" target="_blank" rel="noopener">公式ページ ↗</a>`:''}</div></li>`;
-  box.innerHTML='<ul class="sr">'+hs.map(x=>li('避ける確定','#B3261E',x.route,'「避ける」を確定した規制を、このルートが通ります(避けるルートが見つかっていません)。','')).join('')
+  box.innerHTML='<ul class="sr">'+hs.map(x=>li('避ける確定','#B3261E',x.route,'自動で避ける規制を、このルートが通ります(避けるルートが見つかっていません)。','')).join('')
     +ws.map(x=>li(x.status,x.status==='通行止め'?'#B3261E':'#B58900',x.route+(x.municipality?'('+x.municipality+')':''),[x.kind==='candidate'?'位置は推定(地図で確認して「避ける」を押すと迂回します)':'区間を特定できていません(通れるとは判断しません)',x.section?'区間: '+esc(x.section):'',x.period?'期間: '+esc(x.period):'',x.sourceName?esc(x.sourceName):''].filter(Boolean).join(' ・ '),x.sourceUrl)).join('')+'</ul>';
 }
 function clearResults(){renderClFound();st.cands=[];st.best=st.sel=null;$('#s-res').hidden=$('#s-prof').hidden=true;gRt.clearLayers()}
@@ -231,7 +231,7 @@ function statsHTML(c){const m=c.m||{};return `<div class="stats"><div><b>${(c.le
 function render(noFit){renderClFound();$('#s-res').hidden=$('#s-prof').hidden=false;const cards=$('#cards');cards.innerHTML='';const obj=objective();
   const c=st.sel;const d=document.createElement('div');d.className='card sel';
   if(!c||!c.m||c.gain==null){d.innerHTML=`<div class="t"><i class="sw" style="background:${HEX[obj]}"></i>${NAMES[obj]}</div><p class="hint" style="margin:4px 0 0">獲得標高を計算できませんでした(標高データが取れませんでした)。</p>`;cards.appendChild(d)}
-  else{const isBest=c===st.best;d.innerHTML=`<div class="t"><i class="sw" style="background:${HEX[obj]}"></i>${isBest?NAMES[obj]:'選んだ候補 #'+(st.cands.indexOf(c)+1)}${isBest?'':' <span class="hint">('+NAMES[obj]+'ではありません)</span>'}</div>${statsHTML(c)}${c.closed&&c.closed.length?`<p class="warn" style="margin:6px 0 0">⚠ 登録した通行止め地点(${c.closed.length}件)の近くを通ります</p>`:''}${c.hitsAuto&&c.hitsAuto.length?`<p class="warn" style="margin:6px 0 0">⚠ 「避ける」を確定した規制(${c.hitsAuto.map(h=>esc(h.route)).join('・')})を通ります。避けるルートが見つかりませんでした</p>`:''}`;cards.appendChild(d)}
+  else{const isBest=c===st.best;d.innerHTML=`<div class="t"><i class="sw" style="background:${HEX[obj]}"></i>${isBest?NAMES[obj]:'選んだ候補 #'+(st.cands.indexOf(c)+1)}${isBest?'':' <span class="hint">('+NAMES[obj]+'ではありません)</span>'}</div>${statsHTML(c)}${c.closed&&c.closed.length?`<p class="warn" style="margin:6px 0 0">⚠ 登録した通行止め地点(${c.closed.length}件)の近くを通ります</p>`:''}${c.hitsAuto&&c.hitsAuto.length?`<p class="warn" style="margin:6px 0 0">⚠ 自動で避ける規制(${c.hitsAuto.map(h=>esc(h.route)).join('・')})を通ります。避けるルートが見つかりませんでした</p>`:''}`;cards.appendChild(d)}
   drawRoutes(!noFit);drawProfile();updatePrefs()}
 function drawRoutes(fit){gRt.clearLayers();const sel=st.sel;if(!sel)return;L.polyline(sel.pts,{color:HEX[objective()],weight:7,opacity:1}).addTo(gRt);
   if(fit){map.fitBounds(L.polyline(sel.pts).getBounds(),{padding:[30,30]})}}

@@ -520,6 +520,7 @@
       const li = document.createElement('li'); li.className = 'ac';
       const lvl = r.position.level; const e = ctx.esc;
       const badge = `<span class="badge" style="background:${r.status === '通行止め' ? '#B3261E' : '#B58900'};width:auto;border-radius:12px;padding:0 8px">${e(r.status)}</span>`;
+      const isAuto = autoAvoid().some((c) => c.key === keyOf(r));
       const multi = r.usable && r.usable.length > 1;
       const row = (k, v) => v ? `<dt>${k}</dt><dd>${v}</dd>` : '';
       const rows = [
@@ -533,10 +534,10 @@
         row('AI(参考)', r.ai ? `<b>${e(r.ai.state)}</b>${r.ai.aiStatus ? ' ・ AI: ' + e(r.ai.aiStatus) : ''}${r.ai.quote ? ' ・ 引用「' + e(r.ai.quote) + '」' : ''}` : ''),
         row('出典', `<a href="${e(r.sourceUrl)}" target="_blank" rel="noopener">${e(r.sourceName)}</a> ・ 公式の更新 ${e(r.officialUpdated || '不明')} ・ 取得 ${e((r.fetchedAt || '').slice(0, 16).replace('T', ' '))}`),
       ].join('');
-      const cands = multi ? '<div class="hint" style="margin-top:4px">候補:</div>' + r.usable.map((u, k) => `<div class="ac-c"><span class="hint">${e(candLabel(r, u, k))}${u.muni ? ' ・' + e(u.muni) : ''}</span><span class="ac-b"><button class="btn sm" data-a="show" data-i="${i}" data-c="${k}">地図で見る</button>${isC ? '' : `<button class="btn sm pri" data-a="avoid" data-i="${i}" data-c="${k}">この案で避ける</button>`}</span></div>`).join('') : '';
+      const cands = multi ? '<div class="hint" style="margin-top:4px">候補:</div>' + r.usable.map((u, k) => `<div class="ac-c"><span class="hint">${e(candLabel(r, u, k))}${u.muni ? ' ・' + e(u.muni) : ''}</span><span class="ac-b"><button class="btn sm" data-a="show" data-i="${i}" data-c="${k}">地図で見る</button></span></div>`).join('') : '';
       const btns = multi ? `<button class="btn sm" data-a="show" data-i="${i}">全候補を見る</button>${isC ? `<button class="btn sm" data-a="unavoid" data-i="${i}">避けるを解除</button>` : ''}`
         : `<button class="btn sm" data-a="show" data-i="${i}">地図で見る</button>` + (isC ? `<button class="btn sm" data-a="unavoid" data-i="${i}">避けるを解除</button>` : '');
-      li.innerHTML = `<div class="ac-h">${badge}<b>${e(r.route)}</b><span class="hint">${e(r.municipality || '')}</span></div><dl class="ac-d">${rows}</dl>${cands}<div class="ac-b">${btns}</div>`;
+      li.innerHTML = `<div class="ac-h">${badge}${isAuto ? '<span class="badge" style="background:#1B6E3A;width:auto;border-radius:12px;padding:0 8px">自動で避ける</span>' : ''}<b>${e(r.route)}</b><span class="hint">${e(r.municipality || '')}</span></div><dl class="ac-d">${rows}</dl>${cands}<div class="ac-b">${btns}</div>`;
       ul.appendChild(li);
     }
     if (!found.length) ul.innerHTML = '<li class="hint">この範囲で位置が見つかった規制はありませんでした(位置が分からない規制は地図に出しません)</li>';
@@ -599,10 +600,15 @@
 
   // ---- ルート計算との連携 ----
   // Valhallaの除外地点は最大50個。確定した区間に沿って等間隔に置く(検証で見つかった交差点は優先して追加)
+  // 自動で避ける対象(確実なものだけ): 公式が「通行止め」で、地図上の位置を1つに特定できたもの。
+  //   全線規制は同名の道の全体、区間規制は確度「高」の区間だけ。位置が推定・不明のものは避けず、警告として出す。
+  const autoAvoid = () => found.filter((r) => r.status === '通行止め' && r.selected && (r.scope === 'whole' || r.selected.confidence === '高') && !confirmed.some((c) => c.key === keyOf(r)))
+    .map((r) => ({ key: keyOf(r), route: r.route, auto: true, lines: r.scope === 'whole' ? (r.selected.ways || []).map((w) => w.pts) : [r.selected.pts] })).filter((c) => c.lines.length && c.lines.every((l) => l && l.length > 1));
+  const avoidAll = () => confirmed.concat(autoAvoid());
   function samplePoints(budget) {
     const out = boost.slice(0, budget);
-    const rest = budget - out.length; if (rest <= 0 || !confirmed.length) return out;
-    const lines = confirmed.flatMap((c) => c.lines);
+    const rest = budget - out.length; const av = avoidAll(); if (rest <= 0 || !av.length) return out;
+    const lines = av.flatMap((c) => c.lines);
     const total = lenOfLines(lines); const step = Math.max(80, total / rest);
     for (const l of lines) {
       let acc = step / 2; let any = false;
@@ -619,7 +625,7 @@
   }
   function hits(routePts) {
     const res = []; if (!routePts || routePts.length < 2) return res; const rd = densify(routePts, 25);
-    for (const c of confirmed) {
+    for (const c of avoidAll()) {
       const near = c.lines.flatMap((l) => nearLine(rd, densify(l, 25), 30));
       if (near.length) res.push({ route: c.route, points: near });
     }
@@ -631,7 +637,7 @@
   function warnings(routePts) {
     const res = []; if (!routePts || routePts.length < 2) return res; const rd = densify(routePts, 25);
     for (const r of found) {
-      if (confirmed.some((c) => c.key === keyOf(r))) continue;
+      if (avoidAll().some((c) => c.key === keyOf(r))) continue;
       const kind = (r.selected || (r.usable && r.usable.length)) ? 'candidate' : 'unknown';
       const near = (r.ways || []).flatMap((w) => nearLine(rd, densify(w.pts, 25), 30));
       if (near.length) res.push({ route: r.route, status: r.status, kind, municipality: r.municipality || null, section: r.section || null, period: r.period || null, sourceName: r.sourceName || null, sourceUrl: r.sourceUrl || null });
@@ -640,8 +646,8 @@
   }
   function addBoost(h) { for (const x of h) for (const p of x.points.filter((_, i) => i % 2 === 0)) if (!boost.some((b) => hav([b.lat, b.lon], [p.lat, p.lon]) < 25)) boost.push(p); }
   function resetBoost() { boost = []; }
-  function active() { return confirmed.length > 0; }
+  function active() { return avoidAll().length > 0; }
   const exportGeoJSON = () => toGeoJSON();
 
-  root.Closures = { init, hasRelay: () => !!relayUrl(), revGeo, rgSave, muniRaw: getMuniRaw, gapText, lastRun: () => lastRun, autoFetch: (ms) => (autoFn ? autoFn(ms) : Promise.resolve(null)), samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _test: { avoid: (i) => avoid(found[i]) }, _internal: { run, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
+  root.Closures = { init, hasRelay: () => !!relayUrl(), revGeo, rgSave, muniRaw: getMuniRaw, gapText, lastRun: () => lastRun, autoFetch: (ms) => (autoFn ? autoFn(ms) : Promise.resolve(null)), samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _test: { avoid: (i) => avoid(found[i]), setFound: (f) => { found = f; }, autoAvoid }, _internal: { run, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
 })(typeof globalThis !== "undefined" ? globalThis : self);
