@@ -42,10 +42,10 @@ a{color:var(--acc)}
 <header class="top"><h1>自転車ルート予想</h1><span class="pill">試作版</span></header>
 <main>
 <section id="s-pts"><h2>① 地点(スタート・経由・ゴール)</h2>
- <div class="row"><input type="text" id="q" class="grow" placeholder="場所名で検索(例: 薬研野営場 / 道の駅 よこはま)"><button class="btn" id="qgo">検索</button><button class="btn" id="geo">現在地をスタートに</button></div>
+ <div class="row"><input type="text" id="q" class="grow" placeholder="場所名で検索(例: 薬研野営場 / 道の駅 よこはま)"><button class="btn" id="qgo">検索</button></div>
+ <div class="row" style="margin-top:6px"><button class="btn sm" id="swap">スタート↔ゴールを入れ替え</button><button class="btn sm" id="clr">地点をすべて消す</button></div>
  <ul class="sr" id="sr"></ul>
  <ul class="pts" id="pts"></ul>
- <div class="row" style="margin-top:8px"><button class="btn sm" id="swap">スタート↔ゴールを入れ替え</button><button class="btn sm" id="clr">地点をすべて消す</button></div>
 </section>
 <section id="s-opt"><h2>② ルートを計算</h2>
  <div class="row"><label>獲得標高 <select id="obj"><option value="min" selected>最小獲得標高</option><option value="max">最大獲得標高</option></select></label><button class="btn pri" id="go">ルートを計算</button></div>
@@ -220,7 +220,6 @@ async function search(){const q=$('#q').value.trim();if(!q)return;const ul=$('#s
   for(const x of ps){const li=document.createElement('li');li.innerHTML=`<div class="grow"><div class="nm">${esc(x.name)}${x.kind&&!x.name.endsWith(x.kind)?` <span class="hint">・${esc(x.kind)}</span>`:''}</div><div class="hint nm">${esc(x.addr)}</div></div><button class="btn sm" data-k="s">スタート</button><button class="btn sm" data-k="v">経由</button><button class="btn sm" data-k="g">ゴール</button>`;li.dataset.lat=x.lat;li.dataset.lon=x.lon;li.dataset.nm=x.name;ul.appendChild(li)}}catch(e){ul.innerHTML='<li class="warn">検索できませんでした(通信状態を確認してください)</li>'}}
 $('#qgo').onclick=search;$('#q').addEventListener('keydown',e=>{if(e.key==='Enter')search()});
 $('#sr').onclick=e=>{const b=e.target.closest('button[data-k]');if(!b)return;const li=b.closest('li');const lat=+li.dataset.lat,lon=+li.dataset.lon,nm=li.dataset.nm;const k=b.dataset.k;if(k==='s')setStart(lat,lon,nm);else if(k==='g')setGoal(lat,lon,nm);else addPoint('v',lat,lon,nm);map.setView([lat,lon],Math.max(map.getZoom(),12));$('#sr').innerHTML=''};
-$('#geo').onclick=()=>{if(!navigator.geolocation){return}navigator.geolocation.getCurrentPosition(p=>{setStart(p.coords.latitude,p.coords.longitude,'現在地');map.setView([p.coords.latitude,p.coords.longitude],13)},()=>{$('#st').textContent='現在地を取得できませんでした(位置情報の許可を確認してください)'},{enableHighAccuracy:true,timeout:15000})};
 
 /* ---------- 結果の表示 ---------- */
 const NAMES={min:'最小獲得標高',max:'最大獲得標高'};
