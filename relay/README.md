@@ -23,6 +23,7 @@
 
 ## 追加: 山梨県の取得と、Geminiによる二重チェック(任意)
 
+- 許可ドメインに `www.pref.tochigi.lg.jp`(栃木県 矢板森林管理事務所)を追加しました。**中継のコード(worker.js)を貼り替えて Deploy し直してください。**
 - 許可ドメインに `www.pref.yamanashi.jp` を追加しました。**中継のコード(worker.js)を貼り替えて Deploy し直してください。**
 - Geminiの二重チェックを使う場合:
   1. Google AI Studio で APIキーを作る(請求先を登録していないプロジェクトで。無料枠のみで動かすため)。

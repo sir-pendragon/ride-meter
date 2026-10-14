@@ -8,11 +8,12 @@
 (function (root) {
   const HEAD = {
     route: /路線名/,
-    muni: /市町村|所在地/,
+    muni: /市町村|所在地|路線位置/,
     type: /制限.*種類|規制.*種類/,
     section: /区間|位置/,
     period: /期間/,
     reason: /事由|理由|状況/,
+    measure: /対象.*措置|措置/,
   };
   const clean = (s) =>
     (s || '')
@@ -29,7 +30,7 @@
     if (/全面通行止|全面通行禁止|全面閉鎖|全線.*(通行止|通行禁止|閉鎖)|(通行止|通行禁止|閉鎖).*全線/.test(t)) return { status: '通行止め', scope: 'whole' };
     if (/車両通行止/.test(t)) return { status: '通行止め', scope: /全線/.test(t) ? 'whole' : 'unknown', note: '「車両」に自転車が含まれるかは記載なし' };
     if (/一部区間|一部制限|一部/.test(t)) return { status: '一部規制', scope: 'partial' };
-    if (/全線/.test(clean(section)) && /通行止/.test(t)) return { status: '通行止め', scope: 'whole' };
+    if (/全線|全区間/.test(clean(section)) && /通行止/.test(t)) return { status: '通行止め', scope: 'whole' };
     if (/通行止|通行禁止|閉鎖|立入禁止/.test(t)) return { status: '通行止め', scope: 'unknown' };
     return { status: '不明', scope: 'unknown' };
   }
@@ -37,7 +38,14 @@
   function parseClosureTables(doc, sourceUrl, fetchedAt, opts = {}) {
     const out = [];
     const m = (doc.body.textContent || '').match(/掲載日[：:]\s*(\d{4})年(\d{1,2})月(\d{1,2})日/);
-    const updated = m ? `${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}` : null;
+    let updated = m ? `${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}` : null;
+    // 「掲載日」が無いページは、本文中の「令和○年○月○日現在」のうち最も古い日付を基準日とする(古い方=控えめ)
+    if (!updated) {
+      const ds = [...(doc.body.textContent || '').matchAll(/令和\s*(\d{1,2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日\s*現在/g)].map((x) => `${2018 + +x[1]}-${String(x[2]).padStart(2, '0')}-${String(x[3]).padStart(2, '0')}`).sort();
+      if (ds.length) updated = ds[0];
+    }
+    // セル内の改行(<br>)を区切りにしたいページ用(opts.brSep)
+    const cellText = (c) => { if (!opts.brSep) return clean(c.textContent); const k = c.cloneNode(true); k.querySelectorAll('br').forEach((b) => b.replaceWith('／')); return clean(k.textContent).replace(/／\s*／/g, '／').replace(/^／|／$/g, ''); };
     for (const table of doc.querySelectorAll('table')) {
       const rows = [...table.rows];
       if (rows.length < 2) continue;
@@ -47,8 +55,8 @@
       if (col.route == null || (col.section == null && col.type == null)) continue;
       for (const tr of rows.slice(1)) {
         const cells = [...tr.cells];
-        const g = (k) => (col[k] == null || !cells[col[k]] ? '' : clean(cells[col[k]].textContent));
-        const route = g('route');
+        const g = (k) => (col[k] == null || !cells[col[k]] ? '' : cellText(cells[col[k]]));
+        const route = g('route').replace(/^[（(]\s*\d{1,3}\s*[）)]\s*/, '');
         if (!route) continue;
         const a = cells[col.route] && cells[col.route].querySelector('a[href]');
         const c = classify(g('type') || (opts.closedTable ? '通行止め' : ''), g('section'));
@@ -57,11 +65,11 @@
           municipality: g('muni') || null,
           typeText: g('type'),
           section: g('section'),
-          period: (g('period') || '').replace(/(?<=[^\x00-\x7f])\s+(?=[^\x00-\x7f])/g, '') || null,
+          period: ((g('period') || '').replace(/(?<=[^\x00-\x7f])\s+(?=[^\x00-\x7f])/g, '').replace(/^[-－ー‐−]+$/, '')) || null,
           reason: g('reason') || null,
           status: c.status,
           scope: c.scope,
-          note: c.note || null,
+          note: [c.note, g('measure') ? '措置: ' + g('measure') : ''].filter(Boolean).join(' / ') || null,
           bicycle: null,
           detailPdf: a ? new URL(a.getAttribute('href'), sourceUrl).href : null,
           sourceUrl,
