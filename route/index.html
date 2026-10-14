@@ -285,23 +285,28 @@ async function exploreRun(cs){const mode=objective(),log=st.xlog={mode,on:EXPLOR
 
 /* 快適・絶景の表示 */
 const pc1=v=>v==null?'—':Math.round(v*100)+'%';
+const bullets=a=>a.length?`<ul class="hint" style="margin:8px 0 0;padding-left:20px;font-size:13px;line-height:1.7">${a.map(t=>`<li>${t}</li>`).join('')}</ul>`:'';
 function cmfHTML(c){const m=c.cmf;if(!m||m.excluded)return '';const g=m.g||{},vd=m.vd,av=m.avail||{};const st1=g.steep?g.steep:null,km=v=>(v/1000).toFixed(1)+' km';
   let h=`<div class="stats" style="margin-top:6px"><div><b>${m.S==null?'—':Math.round(m.S*100)+' 点'}</b><span>快適スコア</span></div><div><b>${pc1(m.Q)}</b><span>静かさ(推定)</span></div><div><b>${pc1(m.H)}</b><span>激坂の少なさ</span></div><div><b>${vd?pc1(m.V):'—'}</b><span>景観(推定)</span></div></div>`;
-  const hint=t=>`<p class="hint" style="margin:2px 0 0;font-size:11px">${t}</p>`,warn=t=>`<p class="warn" style="margin:4px 0 0;font-size:12px">⚠ ${t}</p>`;
-  h+=hint('配分: 静かさ45% / 激坂35% / 景観20%'+((av.q===false||av.h===false||av.v===false)?'。評価できなかった指標は除き、残りの重みを合わせて比べています':''));
-  if(st1)h+=hint(`9%以上の登り ${km(st1.t1+st1.t2+st1.t4)}(うち12%以上 ${km(st1.t2+st1.t4)}、15%以上 ${km(st1.t4)})。100m・200mの区間の平均勾配で評価。下りは評価しません`);
+  /* 説明は、短い箇条書き・13pxで(以前は11pxの長い文章で、読みにくかった) */
+  const warn=t=>`<p class="warn" style="margin:6px 0 0;font-size:14px">⚠ ${t}</p>`,notes=[];
+  notes.push('配分: 静かさ45%・激坂35%・景観20%'+((av.q===false||av.h===false||av.v===false)?'<br>(評価できなかった指標は除いて比べています)':''));
+  if(st1)notes.push(`9%以上の登り: ${km(st1.t1+st1.t2+st1.t4)}<br>(12%以上 ${km(st1.t2+st1.t4)}・15%以上 ${km(st1.t4)}。下りは対象外)`);
+  if(g.anom>0)notes.push(`標高の誤りの可能性がある急な区間: ${g.anom}か所(評価には含めています)`);
+  if(m.Q!=null)notes.push(`静かさ: 道路種別・車線数・速度制限からの推定です(交通量の実測ではありません)。不明な区間 ${Math.round((m.unk||0)*100)}%`);else notes.push('静かさは、道路の属性を取得できなかったため評価していません');
+  if(vd)notes.push(`景観: 展望地${vd.counts.viewpoint}・山頂${vd.counts.peak}・峠${vd.counts.pass}${vd.waterShare!=null?'、水域に沿う区間 '+Math.round(vd.waterShare*100)+'%':'(範囲が広いため水域は未評価)'}<br>(森林・山並みは評価していません)`);else notes.push('景観は、データを取得できなかったため評価していません');
+  h+=bullets(notes);
   if(g.n15>0)h+=warn(`15%以上の登りが${g.n15}区間(計${Math.round(g.m15)}m)あります。ルートからは除外していません`);
-  if(g.anom>0)h+=hint(`※標高の誤りの可能性がある急な区間が${g.anom}区間あります(橋・トンネルと確認できないため、評価には含めています)`);
-  if(m.Q!=null)h+=hint(`静かさは、交通量の実測ではなく、道路種別・車線数・速度制限などからの推定です(不明な区間 ${Math.round((m.unk||0)*100)}%は静かとは数えていません)`);else h+=hint('静かさは、道路の属性を取得できなかったため評価していません');
   if(m.walkM>0)h+=warn(`自転車で走れない可能性のある区間(押し歩き・階段・フェリー)が約${Math.round(m.walkM)}mあります`);
-  if(vd)h+=hint(`景観(推定): 展望地${vd.counts.viewpoint}・山頂${vd.counts.peak}・峠${vd.counts.pass}${vd.waterShare!=null?'、川・湖・海岸に沿う区間 '+Math.round(vd.waterShare*100)+'%':'(範囲が広いため、水域は未評価)'}。森林・山並みは評価していません`);else h+=hint('景観は、データを取得できなかったため評価していません');
   for(const e of (st.cmfErr||[]))h+=warn(esc(e));return h}
-function noteHTML(c){let h='';const hint=t=>`<p class="hint" style="margin:2px 0 0;font-size:11px">${t}</p>`;
-  if(c.auto&&c.propObj)h+=hint(`※追加探索の候補です(自動で足した経由地${c.propObj.via.length}点・除外点${c.propObj.excl.length}点)`);
-  const len0=compute._len0||st.minLen;if(objective()!=='max'&&len0&&c.len>len0*1.5)h+=`<p class="warn" style="margin:4px 0 0;font-size:12px">⚠ 通行止めを避けるため、最短(${(len0/1000).toFixed(1)} km)の1.5倍を超えています(${(c.len/1000).toFixed(1)} km)。通行止めの回避を優先しました</p>`;
-  if(objective()==='cmf'||st.cands.some(x=>x.auto))h+=hint('取得できた候補の中で条件を満たす最良のルートです。最適解を保証するものではありません');
-  if(st.xlog&&st.xlog.routes)h+=hint(`追加探索: ${st.xlog.routes}回(経由地の確認 ${st.xlog.locate}回)`);
-  else if(st.xlog&&st.xlog.note&&/取得できません|確認できなかった|時間/.test(st.xlog.note))h+=`<p class="warn" style="margin:4px 0 0;font-size:12px">⚠ 追加探索は行っていません: ${esc(st.xlog.note)}。基本の候補から選んでいます</p>`;return h}
+function noteHTML(c){let h='';const n=[],warnP=t=>`<p class="warn" style="margin:6px 0 0;font-size:14px">⚠ ${t}</p>`;
+  if(c.auto&&c.propObj)n.push(`追加探索の候補です(自動の経由地${c.propObj.via.length}点・除外点${c.propObj.excl.length}点)`);
+  if(objective()==='cmf'||st.cands.some(x=>x.auto))n.push('取得できた候補の中の最良です。最適解を保証するものではありません');
+  if(st.xlog&&st.xlog.routes)n.push(`追加探索: ${st.xlog.routes}回(経由地の確認 ${st.xlog.locate}回)`);
+  h+=bullets(n);
+  const len0=compute._len0||st.minLen;if(objective()!=='max'&&len0&&c.len>len0*1.5)h+=warnP(`通行止めを避けるため、最短(${(len0/1000).toFixed(1)} km)の1.5倍を超えています(${(c.len/1000).toFixed(1)} km)。通行止めの回避を優先しました`);
+  if(!(st.xlog&&st.xlog.routes)&&st.xlog&&st.xlog.note&&/取得できません|確認できなかった|時間/.test(st.xlog.note))h+=warnP(`追加探索は行っていません: ${esc(st.xlog.note)}。基本の候補から選んでいます`);
+  return h}
 
 /* ---------- 地図 ---------- */
 const map=L.map('map',{zoomControl:true}).setView([36.5,138],5);
