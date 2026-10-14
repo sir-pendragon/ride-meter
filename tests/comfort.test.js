@@ -79,19 +79,56 @@ D = mkD(1000); const zq = mkZ(D, s => s <= 400 ? 0 : s >= 600 ? 40 : 0 + 999); c
 ok(near(cz.z[D.s.indexOf(500)], 20, 1e-6), '急な登りのトンネルは、入口と出口の標高を結ぶ直線(平均勾配)になる');
 ok(C.correctZ(D, zq, []).changed === 0 && C.correctZ(D, zq, null).changed === 0, '範囲なしなら変更なし');
 
+/* 橋・トンネルの位置合わせ(照合結果の形状の座標) と 1画素の拡張 */
+D = mkD(1000);
+const M = 90110;
+const at = (m, dn = 0) => [35.9 + dn / 111195, 139 + m / M];
+let ar = C.alignedRanges(D, [{ bridge: true, _p0: at(400), _p1: at(600) }, { length: 0.1 }, { tunnel: true, _p0: at(700, 5), _p1: at(820, -5) }]);
+ok(ar && ar.length === 2 && near(ar[0].a, 400, 1) && near(ar[0].b, 600, 1) && near(ar[1].a, 700, 1) && near(ar[1].b, 820, 1), '形状の座標から、ルート上の距離に正確に直す');
+ok(C.alignedRanges(D, [{ bridge: true, _p0: at(400, 100), _p1: at(600) }], 30) === null, 'ルートから30m以上離れたら null(比例配分に戻る)');
+ok(C.alignedRanges(D, [{ bridge: true }]) === null, '座標がない構造物があれば null');
+ok(JSON.stringify(C.alignedRanges(D, [{ length: 1 }])) === '[]', '構造物がなければ空');
+ar = C.alignedRanges(D, [{ bridge: true, _p0: at(300), _p1: at(400) }, { bridge: true, _p0: at(400), _p1: at(450) }]); ok(ar.length === 1 && near(ar[0].b, 450, 1), '続く構造物は1つにまとめる');
+// 同じ場所を2度通る(往復)ルートでも、進む順に対応させる
+const Dback = (() => { const la = [], lo = [], s = []; for (let d = 0; d <= 2000; d += 25) { const x = d <= 1000 ? d : 2000 - d; la.push(35.9); lo.push(139 + x / M); s.push(d); } return { la, lo, s, total: 2000 }; })();
+ar = C.alignedRanges(Dback, [{ bridge: true, _p0: at(400), _p1: at(500) }, { bridge: true, _p0: at(300), _p1: at(200) }]);
+ok(ar && ar.length === 2 && near(ar[0].a, 400, 1) && near(ar[0].b, 500, 1) && near(ar[1].a, 1700, 1) && near(ar[1].b, 1800, 1), '往復ルート: 2回目の通過を、2つ目の構造物に対応させる');
+let pr = C.padRanges([{ a: 100, b: 200 }, { a: 220, b: 300 }, { a: 990, b: 1000 }], 15.5, 1000);
+ok(pr.length === 2 && near(pr[0].a, 84.5) && near(pr[0].b, 315.5) && near(pr[1].a, 974.5) && pr[1].b === 1000, '両端を1画素(15.5m)広げ、重なれば結合、ルートの外には出ない');
+// 短い橋: 端の画素に谷の標高が混ざると、拡張なしでは偽の急勾配が残り、1画素の拡張で消える(実測: 38mの橋で38%)
+D = mkD(1000); const zb = mkZ(D, () => 100); for (let i = 0; i < D.s.length; i++) { if (D.s[i] === 475) zb[i] = 100 - 25; if (D.s[i] === 500) zb[i] = 100 - 40; if (D.s[i] === 525) zb[i] = 100 - 25; }
+const r38 = [{ a: 490, b: 510 }];
+ok(C.gradeProfile(D, C.correctZ(D, zb, r38).z).n15 >= 1, '拡張なし: 橋の外側の谷の画素で、偽の急勾配が残る');
+ok(C.gradeProfile(D, C.correctZ(D, zb, C.padRanges(r38, 15.5, 1000)).z).n15 === 0, '1画素の拡張で消える');
+ok(C.correctZ(D, zb, C.padRanges(r38, 15.5, 1000)).z.every((v, i) => (D.s[i] < 474.5 || D.s[i] > 525.5) ? v === zb[i] : true), '拡張した範囲の外は変えない');
 /* 景観 */
 D = mkD(2000);
 const P = (t, lo) => ({ t, lat: 35.9, lon: lo });
+// 連続値・距離の重み・長さで正規化(以前は3か所・水域30%で頭打ち → 実ルートで全候補1.0になった)
+const pt = (dens) => 1 - Math.exp(-dens / 0.5), wt = (w) => 1 - Math.exp(-w / 0.35);
 let v = C.scenicScore(D, { points: [P('viewpoint', 139.0050), P('peak', 139.0100), P('pass', 139.0150)], lines: [] });
 ok(v.points === 3 && v.counts.viewpoint === 1 && v.counts.peak === 1 && v.counts.pass === 1, '近い展望地・山頂・峠を数える');
-ok(v.waterShare === 0 && !v.partial && near(v.V, 0.2), '水域なし: V = 0.4×n/(n+3)、3地点で頭打ちにしない');
+ok(v.waterShare === 0 && !v.partial && near(v.V, 0.4 * pt(3 / 2), 1e-6), '水域なし: V = 0.4×(1-exp(-密度/0.5))。2kmに3か所(ルート上)');
+ok(v.V < 0.4, '点の項は頭打ちにならない(1未満)');
 v = C.scenicScore(D, { points: [{ t: 'viewpoint', lat: 35.95, lon: 139.0 }], lines: [] }); ok(v.points === 0, '遠い展望地(300m超)は数えない');
-// 川に沿う: ルートの南60m
+// 距離の重み: ルートから約200m(100m以内=1、300mで0 → 約0.5)
+v = C.scenicScore(D, { points: [{ t: 'viewpoint', lat: 35.9 + 200 / 111195, lon: 139.005 }], lines: [] });
+ok(v.points === 1 && near(v.density, 0.5 / 2, 0.01), '200m先の展望地は重み約0.5');
+// 長さで正規化: 同じ3か所でも、長いルートは密度が下がる
+const v4 = C.scenicScore(mkD(4000), { points: [P('viewpoint', 139.0050), P('peak', 139.0100), P('pass', 139.0150)], lines: [] });
+ok(v4.V < C.scenicScore(D, { points: [P('viewpoint', 139.0050), P('peak', 139.0100), P('pass', 139.0150)], lines: [] }).V, '長いルートほど、同じ数の展望地の評価は下がる');
+// 点が多いほど高い(以前は3か所以上で同点)
+const many = (k) => C.scenicScore(D, { points: Array.from({ length: k }, (_, i) => P('viewpoint', 139.001 + i * 0.001)), lines: [] }).V;
+ok(many(6) > many(3) && many(12) > many(6) && many(12) < 0.4, '展望地が多いほど高く、頭打ちしない');
+// 川に沿う: ルートの南60m(50m以内=1、200mで0 → 重み 140/150)
 const river = [[35.9 - 0.00054, 139.0], [35.9 - 0.00054, 139.0 + 2000 / 90110]];
-v = C.scenicScore(D, { points: [], lines: [river] }); ok(v.waterShare > 0.95 && near(v.V, 0.6, 1e-6), '川に沿う100m以内: 割合約100% → V=0.6');
+v = C.scenicScore(D, { points: [], lines: [river] });
+ok(v.waterShare > 0.95 && near(v.waterW, 140 / 150, 0.02) && near(v.V, 0.6 * wt(v.waterW), 1e-3), '川に沿う60m: 重み約0.93、V=0.6×(1-exp(-w/0.35))');
+const river30 = [[35.9 - 0.00027, 139.0], [35.9 - 0.00027, 139.0 + 2000 / 90110]], river150 = [[35.9 - 0.00135, 139.0], [35.9 - 0.00135, 139.0 + 2000 / 90110]];
+ok(C.scenicScore(D, { points: [], lines: [river30] }).V > C.scenicScore(D, { points: [], lines: [river] }).V && C.scenicScore(D, { points: [], lines: [river] }).V > C.scenicScore(D, { points: [], lines: [river150] }).V, '水域が近いほど高い(以前は100m以内なら同点)');
 const far = [[35.9 - 0.003, 139.0], [35.9 - 0.003, 139.0 + 2000 / 90110]];
-v = C.scenicScore(D, { points: [], lines: [far] }); ok(v.waterShare === 0, '100mより遠い水域は数えない');
-v = C.scenicScore(D, { points: [P('viewpoint', 139.005)], lines: null }); ok(v.partial === true && v.waterShare === null && near(v.V, 1 / 4), '水域データなし: 展望地等だけで評価し、partialと明示');
+v = C.scenicScore(D, { points: [], lines: [far] }); ok(v.waterShare === 0 && v.waterW === 0 && v.V === 0, '200mより遠い水域は数えない');
+v = C.scenicScore(D, { points: [P('viewpoint', 139.005)], lines: null }); ok(v.partial === true && v.waterShare === null && near(v.V, pt(1 / 2), 1e-6), '水域データなし: 展望地等だけで評価し、partialと明示');
 ok(C.scenicScore(D, null) === null, '景観データが取れないときは null(0として扱わない)');
 
 /* 総合スコア */

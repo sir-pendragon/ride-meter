@@ -201,7 +201,7 @@ function choose(){const cs=st.cands;const base=cs.filter(c=>!c.auto);const minLe
   const withG=ok.filter(c=>c.gain!=null);st.best=withG.length?withG.reduce((a,b)=>((mx?b.gain>a.gain:b.gain<a.gain)||(b.gain===a.gain&&b.len<a.len))?b:a):null;
   st.sel=st.best||ok[0]}
 /* 自転車ルート: OSMに「自転車ルート(route=bicycle)」として登録された道を取得し、各候補がその道に沿う割合を出す(登録の有無であり、走行量ではない) */
-const CYC_EP=['https://overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter'];
+const CYC_EP=['https://overpass-api.de/api/interpreter'];
 async function cycWays(bb){const g=0.05,b=[Math.floor(bb[0]/g)*g,Math.floor(bb[1]/g)*g,Math.ceil(bb[2]/g)*g,Math.ceil(bb[3]/g)*g].map(v=>+v.toFixed(2));
   const q=`[out:json][timeout:25];relation["route"="bicycle"](${b.join(',')});way(r);out geom qt;`;
   return overpassJ(q,b.join(','),els=>{const ways=[];for(const e of els){let seg=[];const flush=()=>{if(seg.length>1)ways.push(seg);seg=[]};for(const p of e.geometry||[]){if(p&&Number.isFinite(p.lat)&&Number.isFinite(p.lon))seg.push([+p.lat.toFixed(5),+p.lon.toFixed(5)]);else flush()}flush()}return ways},{cache:'rt-cyc',prefix:'cyc/',field:'w'})}
@@ -218,7 +218,7 @@ async function ensureSurface(c){if(!c||c.sfDone||c._sf)return;c._sf=true;const s
 /* ---------- 候補の共通評価・快適スコア・共通探索 ---------- */
 async function evalCand(c){const D=densify(c.pts,25);c.D=D;c.len=D.total;const z=await elevations(D);c.zraw=z;c.m=metrics(D,z);c.sf=null;c.paved=null;c.sfDone=false;c.gain=c.m.gain;c.closed=nearClosure(c.pts);c.hitsAuto=Closures.hits(c.pts);c.unkAuto=Closures.warnings(c.pts)}
 /* 橋・トンネルの辺だけ、両端の標高を直線で結び直す。ほかの区間(実在する激坂を含む)は変えない。辺の位置が合わない(25%以上ずれる)ときは何もしない */
-function fixStruct(c){if(!c.edges||!c.zraw||c.fixDone)return false;c.fixDone=true;const sp=Comfort.edgeSpans(c.edges,c.len);if(!sp.ok)return false;c.spans=sp.spans;const rg=Comfort.structureRanges(sp.spans);if(!rg.length)return false;const m=metrics(c.D,c.zraw,rg);if(!(m.fixed>0))return false;c.m=m;c.gain=m.gain;return true}
+function fixStruct(c){if(!c.edges||!c.zraw||c.fixDone)return false;c.fixDone=true;const sp=Comfort.edgeSpans(c.edges,c.len);if(!sp.ok)return false;c.spans=sp.spans;const rg=Comfort.structureRanges(sp.spans);c.fixInfo={source:rg.length?'shape':'未確認',padM:0,spans:rg.length,structureM:Math.round(rg.reduce((n,r)=>n+r.b-r.a,0))};if(!rg.length)return false;const m=metrics(c.D,c.zraw,rg);if(!(m.fixed>0))return false;c.m=m;c.gain=m.gain;return true}
 function cmfEval(c,feat){const cm={};fixStruct(c);if(c.edges){const a=Comfort.analyzeEdges(c.edges,c.len);if(a){cm.Q=a.Q;cm.unk=a.unknownRatio;cm.walkM=a.walkM}if(c.spans)cm.spans=c.spans}
   if(c.m&&c.m.z){const g=Comfort.gradeProfile(c.D,c.m.z);cm.H=g.H;cm.g={steep:g.steepM,n15:g.n15,m15:g.m15,anom:g.anomalies}}
   if(feat){const v=Comfort.scenicScore(c.D,feat);if(v){cm.V=v.V;cm.vd=v}}
@@ -267,7 +267,7 @@ async function exploreRun(cs){const mode=objective(),log=st.xlog={mode,on:EXPLOR
        属性の取得は、結果の表示(舗装率)にも使うので、選ばれる候補では追加の問い合わせにならない */
     if(mode==='min'||mode==='max'){setProg(0.92,'道路の属性を調べています');if(!best.edges)best.edges=await attrsOf(best);fixStruct(best);best=pickB(rank())||best}
     const ctx={mode,best,userPts,minLen,passes:null,ways:null,feat:null};
-    if(mode==='max'){setProg(0.93,'峠のデータを調べています');try{ctx.passes=await passData(userPts,t0+Explore.CFG.timeMs)}catch(e){log.note='峠のデータを取得できませんでした(追加探索なし)'}}
+    if(mode==='max'){setProg(0.93,'峠のデータを調べています');try{ctx.passes=await passData(userPts,t0+Explore.CFG.timeMs)}catch(e){log.note='峠のデータを取得できませんでした。追加探索は行っていません(基本ルートを表示しています)'}}
     else if(mode==='cyc')ctx.ways=st.cycWaysList||null;else if(mode==='cmf')ctx.feat=st.feat||null;
     if(bud.timeUp()||compute._slow){log.note=log.note||'探索時間の上限に達したため、追加探索なし';return}let fams=Explore.families(ctx);if(!fams.length){log.note=log.note||'改善の余地がないため、追加探索なし';return}
     const vp=Explore.viaPoints(fams);if(vp.length){setProg(0.94,'経由地の候補が、自転車で通れる道か確認しています');const okSet=await locateOK(vp);log.locate++;fams=Explore.filterVerified(fams,q=>okSet.has(ptKey(q)));if(!fams.length){log.note='経由地の候補は、自転車で通れる道に載ると確認できなかったため使いません';return}}

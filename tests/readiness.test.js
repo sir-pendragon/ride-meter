@@ -35,7 +35,7 @@ async function run(){
   vm.runInContext(html.slice(html.indexOf('const CYC_EP='),html.indexOf('async function cycWays(')),ctx);
   vm.runInContext(html.slice(html.indexOf('async function overpassJ('),html.indexOf('\nfunction gridBB')),ctx);
   await assert.rejects(vm.runInContext("overpassJ('q','bad',e=>e)",ctx));
-  ok(store.size===0&&calls.length===2,'Overpass実行時エラーは空キャッシュを作らない');
+  ok(store.size===0&&calls.length===1,'Overpass実行時エラーは空キャッシュを作らない');
   calls=[];ctx.fetch=async u=>{calls.push(u);return new Response('busy',{status:429});};
   await assert.rejects(vm.runInContext("overpassJ('q','rate',e=>e)",ctx));
   ok(calls.length===1,'429を予備エンドポイントで再試行しない');
