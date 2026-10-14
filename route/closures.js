@@ -29,6 +29,7 @@
   const PREF_ALL = ['北海道','青森県','岩手県','宮城県','秋田県','山形県','福島県','茨城県','栃木県','群馬県','埼玉県','千葉県','東京都','神奈川県','新潟県','富山県','石川県','福井県','山梨県','長野県','岐阜県','静岡県','愛知県','三重県','滋賀県','京都府','大阪府','兵庫県','奈良県','和歌山県','鳥取県','島根県','岡山県','広島県','山口県','徳島県','香川県','愛媛県','高知県','福岡県','佐賀県','長崎県','熊本県','大分県','宮崎県','鹿児島県','沖縄県'];
   const prefName = (k) => PREF_ALL[k - 1] || ('県コード' + k);
   let lastGaps = null;
+  let lastRun = null; // 直近のルート調査(取得が最後まで終わったときだけ入る)
   const PREF_NAMES = { 2: '青森県(国道・県道のみ)', 7: '福島県(国道・県道のみ)', 10: '群馬県(国道・県道のみ)', 20: '長野県(松本市・安曇野市・伊那市のみ)', 11: '埼玉県', 13: '東京都', 14: '神奈川県(県営林道)', 19: '山梨県', 9: '栃木県(矢板のみ)' };
   const PDFJS = ['https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'];
   const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
@@ -536,10 +537,11 @@
       if (!known.length) { buildGaps(null, codes); renderGaps(); setStatus('通過する県の自動取得にはまだ対応していません(対応: '+Object.keys(SOURCES).map((k)=>PREF_NAMES[k]||k).join('・')+')'); return null; }
       const m = 0.08; const bbox = [Math.min(...pts.map((p) => p.lat)) - m, Math.min(...pts.map((p) => p.lon)) - m, Math.max(...pts.map((p) => p.lat)) + m, Math.max(...pts.map((p) => p.lon)) + m].map((v) => +v.toFixed(4));
       const sig = bbox.join(',') + '|' + known.join(',') + '|' + (muniKeys ? [...muniKeys].sort().join(',') : '-');
+      if (!(lastAuto && lastAuto.sig === sig)) lastRun = null; // 別のルートの調査結果を使い回さない
       if (auto && lastAuto && lastAuto.sig === sig && Date.now() - lastAuto.t < 600000) { setStatus('直前に取得済みのため再取得しません(10分以内)'); return null; }
       $('#ac-go').disabled = true;
       try {
-        const res = await run(bbox, known, setStatus, muniKeys); renderList(res); buildGaps(res, codes); renderGaps(); lastAuto = { sig, t: Date.now() };
+        const res = await run(bbox, known, setStatus, muniKeys); lastRun = { fails: res.fails.slice(), unsupported: codes.filter((k) => !SOURCES[k]).map(prefName) }; renderList(res); buildGaps(res, codes); renderGaps(); lastAuto = { sig, t: Date.now() };
         const log = root.FetchCore ? fc().getLog().slice(-6).map((l) => `${l.label}:${l.result}`).join(' / ') : '';
         setStatus(`取得: 規制あり ${res.regulated}路線(全${res.total}行)のうち、この範囲でOSMに同名の道がある ${res.near.length}路線を表示。範囲外/道が見つからない ${res.outside}路線は表示しません。` + (res.fails.length ? ' 失敗: ' + res.fails.join(' / ') : '') + (res.notes.length ? ' 未対応・注意: ' + res.notes.join(' / ') : '') + (log ? ' 〔取得状況 ' + log + '〕' : ''));
       } catch (e) { buildGaps({ gaps: { unjudged: [], notFound: [], noPos: [], fails: ['取得できませんでした: ' + e.message], sources: {} } }, codes); renderGaps(); setStatus('取得できませんでした: ' + e.message); }
@@ -595,7 +597,7 @@
       if (confirmed.some((c) => c.key === keyOf(r))) continue;
       const kind = (r.selected || (r.usable && r.usable.length)) ? 'candidate' : 'unknown';
       const near = (r.ways || []).flatMap((w) => nearLine(rd, densify(w.pts, 25), 30));
-      if (near.length) res.push({ route: r.route, status: r.status, kind });
+      if (near.length) res.push({ route: r.route, status: r.status, kind, municipality: r.municipality || null, section: r.section || null, period: r.period || null, sourceName: r.sourceName || null, sourceUrl: r.sourceUrl || null });
     }
     return res;
   }
@@ -604,5 +606,5 @@
   function active() { return confirmed.length > 0; }
   const exportGeoJSON = () => toGeoJSON();
 
-  root.Closures = { init, gapText, autoFetch: (ms) => (autoFn ? autoFn(ms) : Promise.resolve(null)), samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _internal: { run, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
+  root.Closures = { init, gapText, lastRun: () => lastRun, autoFetch: (ms) => (autoFn ? autoFn(ms) : Promise.resolve(null)), samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _internal: { run, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
 })(typeof globalThis !== "undefined" ? globalThis : self);

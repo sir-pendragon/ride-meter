@@ -64,6 +64,7 @@ def run(honor):
         print('status:',pg.inner_text('#ac-st')[:300])
         print('GAP:',pg.inner_text('#ac-gap').replace('\n',' / ')[:700]);print('NOTE:',pg.inner_text('#gap-note')[:300])
         print('list:',pg.inner_text('#ac-list').replace('\n',' / ')[:600])
+        cf=pg.inner_text('#cl-found');print('通行止めの確認(避ける前):',cf.replace('\n',' / ')[:200]);assert '嵯峨塩' in cf and ('位置は推定' in cf or '区間を特定' in cf),cf
         pg.click('#ac-list button[data-a=avoid]');time.sleep(0.5)
         print('confirmed:',pg.inner_text('#ac-conf').replace('\n',' / ')[:200])
         n0=len(reqs)
@@ -73,6 +74,8 @@ def run(honor):
         print('exclude counts per request:',sorted(set(exs)))
         print('cards warn:',pg.evaluate("[...document.querySelectorAll('#cards .warn')].map(e=>e.textContent)"))
         print('status line:',pg.inner_text('#st')[:200])
+        print('通行止めの確認:',pg.inner_text('#cl-found').replace('\n',' / ')[:400])
+        assert pg.evaluate("!document.querySelector('#s-cl a')"),'外部リンクは出さない'
         print('errors:',errs);b.close()
 for honor in (True,False):
     print('=== 除外を守るサーバー' if honor else '=== 除外を無視するサーバー');run(honor)
