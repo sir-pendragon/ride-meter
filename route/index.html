@@ -105,7 +105,9 @@ function densify(pts,step){const la=[],lo=[],s=[];let acc=0;la.push(pts[0][0]);l
 
 /* ---------- 標高(国土地理院 DEM10B タイル) ---------- */
 const tiles=new Map();
-async function getTile(x,y){const k=x+'/'+y;if(!tiles.has(k))tiles.set(k,fetch(`https://cyberjapandata.gsi.go.jp/xyz/dem/${DEM_Z}/${x}/${y}.txt`).then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{const a=new Float32Array(65536);let i=0;for(const row of t.split('\n')){if(!row)continue;for(const v of row.split(',')){if(i<65536)a[i++]=v==='e'?NaN:+v}}return a}).catch(()=>null));return tiles.get(k)}
+/* 標高タイルは変わらないので、端末のCache APIに最大150枚まで保存し、同じ地域の再計算では通信しない */
+async function demText(url){let c=null;try{c=await caches.open('rt-dem');const m=await c.match(url);if(m)return await m.text()}catch(e){c=null}const r=await fetch(url);if(!r.ok)throw 0;if(c){try{await c.put(url,r.clone());const ks=await c.keys();for(let i=0;i<ks.length-150;i++)await c.delete(ks[i])}catch(e){}}return r.text()}
+async function getTile(x,y){const k=x+'/'+y;if(!tiles.has(k))tiles.set(k,demText(`https://cyberjapandata.gsi.go.jp/xyz/dem/${DEM_Z}/${x}/${y}.txt`).then(t=>{const a=new Float32Array(65536);let i=0;for(const row of t.split('\n')){if(!row)continue;for(const v of row.split(',')){if(i<65536)a[i++]=v==='e'?NaN:+v}}return a}).catch(()=>null));return tiles.get(k)}
 const tfx=(la,lo)=>{const n=2**DEM_Z,sn=Math.sin(la*rad);return[(lo+180)/360*n,(0.5-Math.log((1+sn)/(1-sn))/(4*Math.PI))*n]};
 async function elevations(D){const keys=new Map();const idx=[];for(let i=0;i<D.la.length;i++){const[fx,fy]=tfx(D.la[i],D.lo[i]);const x=Math.floor(fx),y=Math.floor(fy);idx.push([x,y,Math.min(255,Math.floor((fx-x)*256)),Math.min(255,Math.floor((fy-y)*256))]);keys.set(x+'/'+y,[x,y])}
   const arr=[...keys.values()];let i=0;await Promise.all(Array.from({length:6},async()=>{while(i<arr.length){const[x,y]=arr[i++];await getTile(x,y)}}));
@@ -249,8 +251,8 @@ const PREF=['北海道','青森県','岩手県','宮城県','秋田県','山形�
 const PREF_URL={13:'https://forestry-office.metro.tokyo.lg.jp/about/rin/rin_kisei/index.html',11:'https://www.pref.saitama.lg.jp/b0902/forestry/road-closed.html'};
 let PREF_USER={};try{PREF_USER=JSON.parse(localStorage.getItem('rt-prefurl')||'{}')||{}}catch(e){}
 const geoCache=new Map();
-async function prefAt(la,lo){const k=la.toFixed(2)+','+lo.toFixed(2);if(geoCache.has(k))return geoCache.get(k);let code=null;try{const r=await fetch(`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${la}&lon=${lo}`);const j=await r.json();const m=j&&j.results&&j.results.muniCd;if(m)code=parseInt(String(m).slice(0,2),10)}catch(e){}geoCache.set(k,code);return code}
-async function detectPrefs(pts){if(!pts||!pts.length)return[];const idx=[0];let acc=0,next=5000;for(let i=1;i<pts.length;i++){acc+=hav(pts[i-1],pts[i]);if(acc>=next){idx.push(i);next+=5000}}if(idx[idx.length-1]!==pts.length-1)idx.push(pts.length-1);const out=[];for(const i of idx){const c=await prefAt(pts[i][0],pts[i][1]);if(c&&c>=1&&c<=47&&!out.includes(c))out.push(c);await sleep(60)}return out}
+async function prefAt(la,lo){const k=la.toFixed(2)+','+lo.toFixed(2);if(geoCache.has(k))return geoCache.get(k);let code=null;try{const m=await Closures.revGeo(la,lo);if(m)code=parseInt(String(m).slice(0,2),10)}catch(e){}geoCache.set(k,code);return code}
+async function detectPrefs(pts){if(!pts||!pts.length)return[];const idx=[0];let acc=0,next=5000;for(let i=1;i<pts.length;i++){acc+=hav(pts[i-1],pts[i]);if(acc>=next){idx.push(i);next+=5000}}if(idx[idx.length-1]!==pts.length-1)idx.push(pts.length-1);const out=[];for(const i of idx){const c=await prefAt(pts[i][0],pts[i][1]);if(c&&c>=1&&c<=47&&!out.includes(c))out.push(c);await sleep(60)}try{Closures.rgSave()}catch(e){}return out}
 let prefSeq=0;
 async function updatePrefs(){}
 

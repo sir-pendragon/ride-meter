@@ -141,7 +141,7 @@
           else {
             const doc = new DOMParser().parseFromString(body, 'text/html');
             if (!doc.querySelector('table') || !/規制路線/.test(body)) throw perr('表を読み取れませんでした(ページの構造が変わった可能性)');
-            recs = ClosureRoad.parseGunma(doc, src.url, at); rawText[src.url] = (doc.body.textContent || '').replace(/\s+/g, ' ').slice(0, 39000);
+            recs = ClosureRoad.parseGunma(doc, src.url, at); rawText[src.url] = pageText(doc);
           }
           return recs.map((x) => ({ ...x, sourceName: src.name }));
         },
@@ -168,7 +168,7 @@
           const recs = src.kind === 'kofu' ? ClosureCity.parseKofu(doc, pageUrl, at) : ClosureCity[src.parse](doc, pageUrl, at);
           const has = src.kind === 'kofu' ? /路線名/.test(body) && /通行規制/.test(body) : src.parse === 'parseMatsumoto' ? /規制内容/.test(body) : src.parse === 'parseAzumino' ? /規制等/.test(body) : /南アルプス林道/.test(body);
           if (!has) throw perr('ページの構造を読み取れませんでした(ページが変わった可能性)');
-          rawText[pageUrl] = (doc.body.textContent || '').replace(/\s+/g, ' ').slice(0, 39000);
+          rawText[pageUrl] = pageText(doc);
           return recs.map((x) => ({ ...x, sourceName: src.name }));
         },
       });
@@ -181,7 +181,7 @@
           const doc = new DOMParser().parseFromString(body, 'text/html');
           const recs = ClosureKanagawa.parseKanagawa(doc, src.url, meta.fetchedAt || new Date().toISOString());
           if (!recs.length) throw perr('表を読み取れませんでした(ページの構造が変わった可能性)');
-          rawText[src.url] = (doc.body.textContent || '').replace(/\s+/g, ' ').slice(0, 39000);
+          rawText[src.url] = pageText(doc);
           return recs.map((x) => ({ ...x, sourceName: src.name }));
         },
       });
@@ -235,6 +235,13 @@
   // 情報期限切れ(取得に失敗して前回の内容を使う場合)を各レコードに付ける
   function tag(r) { return r.records.map((x) => (r.stale ? { ...x, stale: true, staleNote: r.error } : x)); }
 
+  // Geminiに送る本文: 規制の情報を含まない部分(スクリプト・メニュー・フッター・フォーム等)を除いて、トークンを減らす
+  function pageText(doc) {
+    const b = doc.body ? doc.body.cloneNode(true) : null; if (!b) return '';
+    for (const e of Array.from(b.querySelectorAll('script,style,noscript,svg,nav,footer,form,iframe'))) e.remove();
+    return (b.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 39000);
+  }
+
   async function overpass(q) {
     let err;
     for (const h of OVERPASS) {
@@ -243,17 +250,53 @@
     throw err;
   }
 
-  // 国土地理院の逆ジオコーダで市町村名を調べる(失敗したら null を返し、候補は除外しない)
+  // ---- 市町村の表(コード→県名・市町村名)と、逆ジオコーダ(地点→市町村コード)。1回の計算の中で共有し、端末に保存する ----
+  // 表: 端末保存(90日) → 同じサイトの静的データ(data/muni-table.json) → 国土地理院 muni.js の順に使う
+  const LS_MT = 'rt-munitbl', LS_RG = 'rt-rg', RG_MAX = 4000;
+  const lsj = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } };
+  let muniRawP = null;
+  function getMuniRaw() {
+    if (muniRawP) return muniRawP;
+    const p = (async () => {
+      const c = lsj(LS_MT, null);
+      if (c && c.t && Object.keys(c.t).length && Date.now() - c.at < 90 * 864e5) return c.t;
+      let t = null;
+      try { const r = await fetch('../data/muni-table.json'); if (r.ok) { const j = await r.json(); if (j && j.t && Object.keys(j.t).length >= 1000) t = j.t; } } catch (e) { /* 静的データが無ければ国土地理院から取る */ }
+      if (!t) {
+        const txt = await (await fetch('https://maps.gsi.go.jp/js/muni.js')).text(); t = {};
+        for (const m of txt.matchAll(/MUNI_ARRAY\["(\d+)"\]\s*=\s*'([^']*)'/g)) { const a = m[2].split(','); t[m[1].padStart(5, '0')] = [a[1], a[3]]; }
+        if (!Object.keys(t).length) throw new Error('市町村の表を読めませんでした');
+      }
+      try { localStorage.setItem(LS_MT, JSON.stringify({ at: Date.now(), t })); } catch (e) {}
+      return t;
+    })();
+    muniRawP = p; p.catch(() => { if (muniRawP === p) muniRawP = null; });
+    return p;
+  }
+  // 逆ジオコーダ: 同じ地点(小数5桁≒1m)は端末に保存した結果を使う。取得できなかった地点は保存しない
+  let rg = null, rgDirty = false;
+  const rgKey = (la, lo) => Number(la).toFixed(5) + ',' + Number(lo).toFixed(5);
+  async function revGeo(la, lo) {
+    if (!rg) rg = new Map(Object.entries(lsj(LS_RG, {})));
+    const k = rgKey(la, lo); if (rg.has(k)) return rg.get(k);
+    try { const j = await (await fetch(`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${la}&lon=${lo}`)).json(); const cd = j.results && j.results.muniCd; if (cd) { const v = String(cd).padStart(5, '0'); rg.set(k, v); rgDirty = true; return v; } } catch (e) { /* 判定できない地点は null */ }
+    return null;
+  }
+  function rgSave() {
+    if (!rg || !rgDirty) return; rgDirty = false;
+    while (rg.size > RG_MAX) rg.delete(rg.keys().next().value);
+    try { localStorage.setItem(LS_RG, JSON.stringify(Object.fromEntries(rg))); } catch (e) {}
+  }
+  // 候補の市町村名を調べる(失敗したら null を返し、候補は除外しない)
   async function muniResolver(centers) {
     const cache = new Map(); const kk = (p) => p[0].toFixed(5) + ',' + p[1].toFixed(5);
-    let table = null;
-    try { const t = await (await fetch('https://maps.gsi.go.jp/js/muni.js')).text(); table = {}; for (const m of t.matchAll(/MUNI_ARRAY\["(\d+)"\]\s*=\s*'([^']*)'/g)) table[m[1]] = m[2].split(',')[3]; } catch (e) { table = null; }
+    let table = null; try { table = await getMuniRaw(); } catch (e) { table = null; }
     if (table) {
       const uniq = []; for (const c of centers) if (!cache.has(kk(c))) { cache.set(kk(c), null); uniq.push(c); }
       // 同時に10件ずつ、最大240地点まで(国土地理院の逆ジオコーダ。超えた分は判定せず、除外もしない)
       const todo = uniq.slice(0, 240);
-      const worker = async () => { while (todo.length) { const c = todo.shift(); try { const j = await (await fetch(`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${c[0]}&lon=${c[1]}`)).json(); const cd = j.results && j.results.muniCd; cache.set(kk(c), (cd && table[String(cd).padStart(5, '0')]) || null); } catch (e) { /* 判定できない候補は除外しない */ } } };
-      await Promise.all(Array.from({ length: 10 }, worker));
+      const worker = async () => { while (todo.length) { const c = todo.shift(); const cd = await revGeo(c[0], c[1]); const v = cd && table[cd]; cache.set(kk(c), (v && v[1]) || null); } };
+      await Promise.all(Array.from({ length: 10 }, worker)); rgSave();
     }
     return (lat, lon) => cache.get(kk([lat, lon])) || null;
   }
@@ -262,7 +305,6 @@
   const LS_AI = 'rt-ai', LS_AICACHE = 'rt-aicache', AI_VER = 'a1';
   const aiEnabled = () => !!relayUrl(); // 常に併用する(キーが中継に無いときは、その旨を1回だけ表示して以後の呼び出しを止める)
   let aiBlocked = false;
-  const lsj = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } };
   async function aiCall(text) {
     const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 40000);
     try {
@@ -282,9 +324,11 @@
       let ent = cache[meta.key];
       if (!(ent && ent.hash === hash && ent.ver === AI_VER)) {
         if (!meta.text) { res.note = `${src.name}: ページ本文が手元にないため、今回はAIチェックを行いません(ページが変わった時に実施)`; return res; }
+        if (meta.text.length < 20) { res.note = `${src.name}: ページ本文がほとんど無いため、AIチェックを行いません`; return res; }
         const items = await aiCall(meta.text);
         const v = AiCheck.verifyItems(items, meta.text);
         ent = { hash, ver: AI_VER, at: new Date().toISOString(), items: v.kept, rejected: v.rejected }; cache[meta.key] = ent;
+        for (const k of Object.keys(cache)) { const t = Date.parse(cache[k] && cache[k].at); if (!Number.isFinite(t) || Date.now() - t > 120 * 864e5) delete cache[k]; } // 120日より古い判定結果は消す
         try { localStorage.setItem(LS_AICACHE, JSON.stringify(cache)); } catch (e) {}
       }
       const cmp = AiCheck.compare(records, ent.items);
@@ -297,16 +341,9 @@
 
 
   // ルートが通る市町村("県名|市町村名")を国土地理院の逆ジオコーダで調べる。判定できなければ null(絞り込みはしない)
-  let muniTable = null;
-  async function loadMuniTable() {
-    if (muniTable) return muniTable;
-    const t = await (await fetch('https://maps.gsi.go.jp/js/muni.js')).text(); const tb = {};
-    for (const m of t.matchAll(/MUNI_ARRAY\["(\d+)"\]\s*=\s*'([^']*)'/g)) { const a = m[2].split(','); tb[m[1].padStart(5, '0')] = a[1] + '|' + a[3]; }
-    return (muniTable = tb);
-  }
   async function routeMunis(pts, say) {
     if (!pts || !pts.length) return null;
-    let tb; try { tb = await loadMuniTable(); } catch (e) { return null; }
+    let tb; try { tb = await getMuniRaw(); } catch (e) { return null; }
     // 約1.5kmごと(最大200地点)+出発地・経由地・到着地。間隔より短い区間だけ通る市町村は拾えないことがある
     const hav = (a, b) => { const R = 6371000, r = Math.PI / 180, dl = (b[0] - a[0]) * r, dn = (b[1] - a[1]) * r; const x = Math.sin(dl / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dn / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); };
     let total = 0; for (let i = 1; i < pts.length; i++) total += hav(pts[i - 1], pts[i]);
@@ -314,8 +351,8 @@
     for (let i = 1; i < pts.length; i++) { acc += hav(pts[i - 1], pts[i]); if (acc >= next) { sample.push(pts[i]); next += step; } }
     sample.push(pts[pts.length - 1]);
     const keys = new Set(); let ok = 0; const todo = sample.slice(); if (say) say('通る市町村を調べています…');
-    const worker = async () => { while (todo.length) { const c = todo.shift(); try { const j = await (await fetch(`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${c[0]}&lon=${c[1]}`)).json(); const cd = j.results && j.results.muniCd; const v = cd && tb[String(cd).padStart(5, '0')]; if (v) { ok++; const [pf, nm] = v.split('|'); keys.add(pf + '|' + root.MuniRegistry.normName(nm)); } } catch (e) { /* 判定できない地点は無視 */ } } };
-    await Promise.all(Array.from({ length: 8 }, worker));
+    const worker = async () => { while (todo.length) { const c = todo.shift(); const cd = await revGeo(c[0], c[1]); const v = cd && tb[cd]; if (v) { ok++; keys.add(v[0] + '|' + root.MuniRegistry.normName(v[1])); } } };
+    await Promise.all(Array.from({ length: 8 }, worker)); rgSave();
     return ok >= Math.ceil(sample.length * 0.8) ? keys : null; // 8割未満しか判定できなければ、絞り込みに使わない
   }
 
@@ -611,5 +648,5 @@
   function active() { return confirmed.length > 0; }
   const exportGeoJSON = () => toGeoJSON();
 
-  root.Closures = { init, gapText, lastRun: () => lastRun, autoFetch: (ms) => (autoFn ? autoFn(ms) : Promise.resolve(null)), samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _internal: { run, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
+  root.Closures = { init, revGeo, rgSave, muniRaw: getMuniRaw, gapText, lastRun: () => lastRun, autoFetch: (ms) => (autoFn ? autoFn(ms) : Promise.resolve(null)), samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _internal: { run, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
 })(typeof globalThis !== "undefined" ? globalThis : self);
