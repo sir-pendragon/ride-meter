@@ -2,6 +2,8 @@
 
 検証日: 2026-10-15（日本時間）。本番へのマージ・公開は未実施。
 
+PRは未作成。GitHub接続ツールの作成操作が403（Resource not accessible by integration）で拒否され、ログイン済みブラウザーの代替操作も比較ページでタイムアウトした。ブランチと証跡はpush済み。[PR原稿と作成リンク](pull-request-proposal.md)を保存した。残作業にはPR作成も含む。
+
 ## GitHubの確認結果
 
 - 作業ブランチ: `codex/route-v57-production-readiness`
@@ -27,7 +29,7 @@
 - 引継ぎ時のNode単体テスト18ファイルは全成功。Pythonは制限下のローカルHTTP通信が拒否される1件を、許可された環境で再実行して成功。
 - 未移植の既存E2Eは23ファイル中8成功。残りは固定パス、文字コード、ローカル接続拒否等。アプリの成功率を表す数字ではない。[開始時証跡](validation/route-v57-baseline-e2e.json)
 - 統合版のNode 19ファイル＋Python 2ファイルは全成功。[単体テスト証跡](validation/route-v57-unit-tests.json)
-- 最終E2E結果は [証跡](validation/route-v57-e2e-tests.json) に記録。4モード、通行止め、自動経由地、Google Mapsの模擬表示、Leaflet、保存・復元、GPXのXML・座標・標高、API上限、429/503/504、Overpass無応答を含む。
+- 統合版のE2E全25ファイルは成功。[証跡](validation/route-v57-e2e-tests.json)に記録。4モード、通行止め、自動経由地、Google Mapsの模擬表示、Leaflet、保存・復元、GPXのXML・座標・標高、API上限、429/503/504、Overpass無応答を含む。
 - Service Workerは実Chromium＋ローカルサーバーでインストール・更新を検証し、他アプリとAPIキャッシュの維持を確認。Google Maps自体の実API・実課金キーの検証はしていない。
 
 再実行例: `python tests/run-suite.py`、`python tests/run-suite.py --e2e --jobs 2`。E2EはPlaywright/Chromiumが必要。実API診断は自動テストに含めない。
