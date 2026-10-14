@@ -224,7 +224,7 @@ $('#geo').onclick=()=>{if(!navigator.geolocation){return}navigator.geolocation.g
 /* ---------- 結果の表示 ---------- */
 const NAMES={min:'最小獲得標高',max:'最大獲得標高'};
 const f1=v=>v==null?'—':v.toFixed(1),pc=v=>v==null?'—':Math.round(v*100)+'%';
-function statsHTML(c){const m=c.m||{};return `<div class="stats"><div><b>${(c.len/1000).toFixed(1)} km</b><span>距離</span></div><div><b>${m.gain==null?'—':'↑'+m.gain+' m'}</b><span>獲得標高</span></div><div><b>${m.gain==null?'—':f1(m.avgAll*100)+'%'}</b><span>平均勾配</span></div><div><b>${m.gain==null?'—':f1(m.avgClimb*100)+'%'}</b><span>登坂勾配</span></div><div><b>${m.gain==null?'—':f1(m.maxGrade*100)+'%'}</b><span>最大勾配(100m)</span></div><div><b>${c.sfDone?pc(c.paved):'調べ中…'}</b><span>舗装率(推定)</span></div></div>`}
+function statsHTML(c){const m=c.m||{};return `<div class="stats"><div><b>${(c.len/1000).toFixed(1)} km</b><span>距離</span></div><div><b>${m.gain==null?'—':'↑'+m.gain+' m'}</b><span>獲得標高</span></div><div><b>${m.gain==null?'—':f1(m.avgClimb*100)+'%'}</b><span>登りの平均勾配</span></div><div><b>${m.gain==null?'—':f1(m.maxGrade*100)+'%'}</b><span>最大勾配(100m)</span></div><div><b>${c.sfDone?pc(c.paved):'調べ中…'}</b><span>舗装率(推定)</span></div></div>`}
 function render(noFit){renderClFound();$('#s-res').hidden=$('#s-prof').hidden=false;const cards=$('#cards');cards.innerHTML='';const obj=objective();
   const c=st.sel;const d=document.createElement('div');d.className='card sel';
   if(!c||!c.m||c.gain==null){d.innerHTML=`<div class="t"><i class="sw" style="background:${HEX[obj]}"></i>${NAMES[obj]}</div><p class="hint" style="margin:4px 0 0">獲得標高を計算できませんでした(標高データが取れませんでした)。</p>`;cards.appendChild(d)}
