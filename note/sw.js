@@ -1,5 +1,5 @@
 // 自転車旅ノート service worker: 本体を端末に保存し、圏外でも起動できるようにする。
-const CACHE = 'tabi-note-v1';
+const CACHE = 'tabi-note-v2';
 const SHELL = ['./', 'index.html', 'store.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {

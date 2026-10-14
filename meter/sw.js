@@ -1,6 +1,6 @@
 // 自転車旅メーター service worker: アプリ本体を端末に保存し、電波がなくても起動できるようにする。
 // 地図タイルは保存しません（電波がない場所では地図の背景は表示されません）。
-const CACHE = 'ride-meter-v1';
+const CACHE = 'ride-meter-v2';
 const SHELL = ['./', 'index.html', 'core.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png',
   'leaflet/leaflet.js', 'leaflet/leaflet.css', 'leaflet/images/layers.png', 'leaflet/images/layers-2x.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
