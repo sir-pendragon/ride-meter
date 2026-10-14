@@ -8,7 +8,7 @@
   "kind": "news_item_only",
   "covers_forest_road": "unknown",
   "updated_hint": "2026-07-30",
-  "notes": "Per-incident city-road notice; no consolidated list found. Hub: /category/bunya/doro/ and /soshiki/douro/"
+  "notes": "Hubs /soshiki/douro/ and /soshiki/douro/more.html opened: only 2 items (滝沢峠 2026-07-30 lifted; 大戸町 市道幹II-16 2023 lifted). No list, no 林道/湖南/河東 items found."
  },
  {
   "pref": "福島県",
@@ -30,7 +30,7 @@
   "kind": "other",
   "covers_forest_road": "unknown",
   "updated_hint": "2024-01-23",
-  "notes": "No local list; page just points to 福島県通行規制情報."
+  "notes": "No local road list; page just points to pref. Related (opened): https://www.vill.kitashiobara.fukushima.jp/site/kanko/1288.html 探勝路通行止め (trails, updated 2026-08-20; 小野川林道 trail 通行可)."
  },
  {
   "pref": "福島県",
@@ -41,7 +41,7 @@
   "kind": null,
   "covers_forest_road": "unknown",
   "updated_hint": null,
-  "notes": "Searched town.inawashiro.fukushima.jp x2: only snow/ordinance pages, no closure page."
+  "notes": "Focus pass: ~6 more searches (domain + open web) incl. 道路/林道/冬期閉鎖/磐梯山/湖畔: still no closure page. Opened 農林課 /soshiki/6/ (林道 permit/repair items only, no closures). Call 農林課/建設課."
  },
  {
   "pref": "福島県",
@@ -52,7 +52,7 @@
   "kind": null,
   "covers_forest_road": "unknown",
   "updated_hint": null,
-  "notes": "Candidate https://www.town.bandai.fukushima.jp/soshiki/soumu/chodo_r70205.html (町道の通行止めについて, ~2025-02 snow) but fetch returned the top page, could not confirm."
+  "notes": "Candidate https://www.town.bandai.fukushima.jp/soshiki/soumu/chodo_r70205.html (町道の通行止めについて, ~2025-02 snow) still redirects to top page when fetched; /life/1/10/40/ opened: no closure items. Unconfirmed."
  },
  {
   "pref": "福島県",
@@ -195,7 +195,7 @@
   "kind": "news_item_only",
   "covers_forest_road": true,
   "updated_hint": "2022-08-09",
-  "notes": "STALE-ish single forest-road item. Better candidates (not opened): /kurashi_tetsuduki/kensetsu_kaihatsu/douro/ , .../douro/page011479.html (県道岳温泉大玉線冬季全面通行止め), /kinkyu/."
+  "notes": "Candidates /kurashi_tetsuduki/kensetsu_kaihatsu/douro/ and .../page011479.html (県道岳温泉大玉線冬季全面通行止め) failed to fetch twice; unconfirmed. STALE-ish 2022 item recorded."
  },
  {
   "pref": "福島県",
@@ -217,7 +217,7 @@
   "kind": "other",
   "covers_forest_road": true,
   "updated_hint": null,
-  "notes": "Only says forest roads are not plowed/unusable in snow; gate-key permit. No closure list."
+  "notes": "Only says forest roads not plowed in snow. Related: 湖南町 page https://www.city.koriyama.lg.jp/soshiki/144/3084.html (opened) notes 風の高原 entrance winter closure ~12/1-4/27; no closure list found."
  },
  {
   "pref": "福島県",
@@ -591,7 +591,7 @@
   "kind": null,
   "covers_forest_road": "unknown",
   "updated_hint": null,
-  "notes": "Searched vill.tenei.fukushima.jp x1: permit pages only."
+  "notes": "Focus pass: 2 more searches on vill.tenei.fukushima.jp: only permit/disaster/access pages; no closure page."
  },
  {
   "pref": "福島県",
