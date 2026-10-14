@@ -1,10 +1,12 @@
+from http_test_server import TestServer
+from pathlib import Path
 # ルートが通る市町村の判定 → 台帳のリンク表示 / 取得先の絞り込み(通る市町村だけ取得)
 import json,sys,time,threading,http.server,socketserver,functools
 from playwright.sync_api import sync_playwright
-ROOT='/home/claude/ride-meter'
+ROOT=str(Path(__file__).resolve().parents[2])
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self,*a):pass
-srv=socketserver.TCPServer(('127.0.0.1',0),functools.partial(Q,directory=ROOT));srv.allow_reuse_address=True
+srv=TestServer(('127.0.0.1',0),functools.partial(Q,directory=ROOT));srv.allow_reuse_address=True
 threading.Thread(target=srv.serve_forever,daemon=True).start()
 MUNI='MUNI_ARRAY["14151"] = \'14,神奈川県,ｻｶﾞﾐﾊﾗ,相模原市　緑区\';\nMUNI_ARRAY["14364"] = \'14,神奈川県,ﾔﾏｷﾀ,山北町\';\nMUNI_ARRAY["20202"] = \'20,長野県,ﾏﾂﾓﾄ,松本市\';\nMUNI_ARRAY["14201"] = \'14,神奈川県,ﾖｺｽｶ,横須賀市\';'
 def scenario(points,codes_by_lat,expect_in,expect_not_in,relay_expect,relay_not):

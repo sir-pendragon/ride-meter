@@ -1,10 +1,11 @@
+from http_test_server import TestServer
 """ブラウザのサイトデータ(localStorage)が消えても、IndexedDB の複製 / config.js の予備からキーが戻ることを確認する。"""
 import threading,http.server,socketserver,functools,os
 from playwright.sync_api import sync_playwright
 ROOT=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..','route')
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self,*a):pass
-srv=socketserver.TCPServer(('127.0.0.1',0),functools.partial(Q,directory=ROOT));srv.allow_reuse_address=True
+srv=TestServer(('127.0.0.1',0),functools.partial(Q,directory=ROOT));srv.allow_reuse_address=True
 threading.Thread(target=srv.serve_forever,daemon=True).start()
 FAKE=open(os.path.join(os.path.dirname(__file__),'fake-google-maps.js')).read()
 URL='http://127.0.0.1:%d/index.html'%srv.server_address[1]

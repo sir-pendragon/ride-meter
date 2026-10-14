@@ -80,9 +80,13 @@ def trench(la,lo):   # ルート中央の約200mだけ、DEMが谷底(−60m)を
 def edgesBridge(pts):
     L=plen(pts)/1000;a=L*0.5-0.1;
     return [{'length':a,'road_class':'residential','use':'road','travel_mode':'bicycle'},{'length':0.2,'road_class':'residential','use':'road','travel_mode':'bicycle','bridge':True},{'length':L-a-0.2,'road_class':'residential','use':'road','travel_mode':'bicycle'}]
+
+def bridgeRoute(body):
+    delta=(G[1]-S[1])*100/plen([S,G])
+    return [S,(S[0],midlon-delta),(S[0],midlon+delta),G]
 env=Env(route=direct,edges=edgesOf(),elev=trench)
 r,pg,b=run(env,'cmf');Hno=r['cands'][0]['cmf']['H'];gno=r['cands'][0]['gain'];n15no=r['cands'][0]['cmf']['g']['n15'];close(b)
-env=Env(route=direct,edges=edgesBridge,elev=trench)
+env=Env(route=bridgeRoute,edges=edgesBridge,elev=trench)
 r,pg,b=run(env,'cmf');Hb=r['cands'][0]['cmf']['H'];gb=r['cands'][0]['gain'];close(b)
 print('bridge: H without flag %.2f gain %s n15 %s / with bridge flag H %.2f gain %s'%(Hno,gno,n15no,Hb,gb))
 ok(Hno<0.9 and n15no>=1,'橋と確認できないときは、谷底の標高による急勾配がペナルティになる(実在の激坂と区別できないため消さない)')
@@ -91,7 +95,7 @@ ok(Hb>0.99 and gb<gno,'橋と確認できた区間だけ標高を補正すると
 def ramp(la,lo):   # 西側の約400mに実在する16%の登り(橋ではない)
     x=(lo-S[1])*90110
     return 200.0+max(0,min(400,x-300))*0.16 if x<700 else 264.0
-env=Env(route=direct,edges=edgesBridge,elev=lambda la,lo: ramp(la,lo) if lo<midlon-0.002 else (140.0 if abs(lo-midlon)<0.001 and abs(la-35.9)<0.0008 else 264.0))
+env=Env(route=bridgeRoute,edges=edgesBridge,elev=lambda la,lo: ramp(la,lo) if lo<midlon-0.002 else (140.0 if abs(lo-midlon)<0.001 and abs(la-35.9)<0.0008 else 264.0))
 r,pg,b=run(env,'cmf');g=r['cands'][0]['cmf']['g']
 ok(g['n15']>=1 and g['m15']>=300,('橋を補正しても、実在する15%以上の登りは残る',g))
 ok('15%以上の登りが' in r['text'] and '除外していません' in r['text'],'15%以上は警告のみ(除外しない)');close(b)

@@ -1,7 +1,8 @@
+from pathlib import Path
 # 神奈川県 県営林道ページ(2026-10-14に確認した構造)の読み取りを確認する
 import json
 from playwright.sync_api import sync_playwright
-R='/home/claude/ride-meter/'
+R=str(Path(__file__).resolve().parents[2]) + '/'
 with sync_playwright() as p:
     b=p.chromium.launch();pg=b.new_page();pg.set_content('<html></html>');pg.add_script_tag(path=R+'route/parse-kanagawa.js')
     h=open(R+'tests/data/kanagawa-keneirin.html',encoding='utf-8').read()

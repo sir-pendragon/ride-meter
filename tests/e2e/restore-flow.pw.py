@@ -1,8 +1,9 @@
+from http_test_server import TestServer
 """計算したルートの復元: 画面が読み込み直されても、同じ地点なら結果が戻る。地点が違えば戻らない。"""
 import json,threading,http.server,socketserver,functools,os
 from playwright.sync_api import sync_playwright
 ROOT=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..','route')
-srv=socketserver.TCPServer(('127.0.0.1',0),functools.partial(type('Q',(http.server.SimpleHTTPRequestHandler,),{'log_message':lambda *a:None}),directory=ROOT));srv.allow_reuse_address=True
+srv=TestServer(('127.0.0.1',0),functools.partial(type('Q',(http.server.SimpleHTTPRequestHandler,),{'log_message':lambda *a:None}),directory=ROOT));srv.allow_reuse_address=True
 threading.Thread(target=srv.serve_forever,daemon=True).start()
 DEM='\n'.join(','.join(str(100+i%7) for i in range(256)) for _ in range(256))
 n=0

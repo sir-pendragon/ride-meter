@@ -1,7 +1,8 @@
+from pathlib import Path
 # 山梨県の実ページの構造(2026-10-14にブラウザで確認したHTML)で、一覧・詳細の読み取りを確認する
 import json,sys
 from playwright.sync_api import sync_playwright
-R='/home/claude/ride-meter/'
+R=str(Path(__file__).resolve().parents[2]) + '/'
 with sync_playwright() as p:
     b=p.chromium.launch();pg=b.new_page();pg.set_content('<html></html>');pg.add_script_tag(path=R+'route/parse-yamanashi.js')
     lst=open(R+'tests/data/yamanashi-list.html',encoding='utf-8').read();det=open(R+'tests/data/yamanashi-detail-90.html',encoding='utf-8').read()

@@ -1,10 +1,11 @@
+from http_test_server import TestServer
 """快適・絶景/共通探索のe2e用の共通部品(模擬サーバー)。このファイル自体はテストではない。"""
 import urllib.parse,json,time,threading,http.server,socketserver,os,functools,math
 from playwright.sync_api import sync_playwright
 ROOT=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..','route')
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self,*a):pass
-srv=socketserver.TCPServer(('127.0.0.1',0),functools.partial(Q,directory=ROOT));srv.allow_reuse_address=True
+srv=TestServer(('127.0.0.1',0),functools.partial(Q,directory=ROOT));srv.allow_reuse_address=True
 threading.Thread(target=srv.serve_forever,daemon=True).start()
 def enc(pts):
     out='';pla=plo=0
@@ -66,7 +67,15 @@ class Env:
             if 'valhalla' in u and 'trace_attributes' in u:
                 body=json.loads(route.request.post_data);pts=dec(body['encoded_polyline']);self.tr.append(pts)
                 if self.edges is None:return route.fulfill(status=400,json={'error':'x'})
-                return route.fulfill(json={'edges':self.edges(pts)})
+                edges=self.edges(pts);dist=[0]
+                for i in range(1,len(pts)):dist.append(dist[-1]+hav(pts[i-1],pts[i]))
+                acc=0
+                for edge in edges:
+                    end=acc+edge.get('length',0)*1000
+                    edge.setdefault('begin_shape_index',min(range(len(dist)),key=lambda i:abs(dist[i]-acc)))
+                    edge.setdefault('end_shape_index',min(range(len(dist)),key=lambda i:abs(dist[i]-end)))
+                    acc=end
+                return route.fulfill(json={'shape':body['encoded_polyline'],'edges':edges})
             if 'valhalla' in u and u.endswith('/locate'):
                 body=json.loads(route.request.post_data);self.loc.append(body)
                 out=[]

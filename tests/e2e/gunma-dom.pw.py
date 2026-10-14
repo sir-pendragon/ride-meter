@@ -1,7 +1,8 @@
+from pathlib import Path
 # 群馬県の道路規制ページ(2026-10-14に確認した表の構造)の読み取りを確認する
 import json
 from playwright.sync_api import sync_playwright
-R='/home/claude/ride-meter/'
+R=str(Path(__file__).resolve().parents[2]) + '/'
 with sync_playwright() as p:
     b=p.chromium.launch();pg=b.new_page();pg.set_content('<html></html>');pg.add_script_tag(path=R+'route/parse-road.js')
     h=open(R+'tests/data/gunma-list.html',encoding='utf-8').read()

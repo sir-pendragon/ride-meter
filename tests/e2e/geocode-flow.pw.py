@@ -1,13 +1,15 @@
+from http_test_server import TestServer
+from pathlib import Path
 import json,sys,time,threading,http.server,socketserver,os,functools,re
 from playwright.sync_api import sync_playwright
 ROOT=__import__('os').path.join(__import__('os').path.dirname(__import__('os').path.abspath(__file__)),'..','..','route')
-FAKE=open('/home/claude/ride-meter/tests/e2e/fake-google-maps.js',encoding='utf-8').read()
+FAKE=open(str(Path(__file__).with_name('fake-google-maps.js')),encoding='utf-8').read()
 import sys
 MODE=sys.argv[1] if len(sys.argv)>1 else 'ok'
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self,*a):pass
 H=functools.partial(Q,directory=ROOT)
-srv=socketserver.TCPServer(('127.0.0.1',0),H);srv.allow_reuse_address=True
+srv=TestServer(('127.0.0.1',0),H);srv.allow_reuse_address=True
 threading.Thread(target=srv.serve_forever,daemon=True).start()
 def enc(pts):
     out='';pl=pla=0;plo=0

@@ -1,7 +1,8 @@
+from pathlib import Path
 # 松本市・安曇野市・甲府市・伊那市の実ページ(2026-10-14に確認した構造・文面)の読み取りを確認する
 import json
 from playwright.sync_api import sync_playwright
-R='/home/claude/ride-meter/'
+R=str(Path(__file__).resolve().parents[2]) + '/'
 def rd(n): return open(R+'tests/data/'+n,encoding='utf-8').read()
 with sync_playwright() as p:
     b=p.chromium.launch();pg=b.new_page();pg.set_content('<html></html>');pg.add_script_tag(path=R+'route/parse-city.js')

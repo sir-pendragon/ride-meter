@@ -1,8 +1,9 @@
+from http_test_server import TestServer
 """場所検索の結果の整形: 種類・住所を付け、ホーム等の細かい点と重複を除く(Nominatimの応答は手元の見本。実サーバーの応答ではない)。"""
 import json,threading,http.server,socketserver,functools,os
 from playwright.sync_api import sync_playwright
 ROOT=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..','route')
-srv=socketserver.TCPServer(('127.0.0.1',0),functools.partial(type('Q',(http.server.SimpleHTTPRequestHandler,),{'log_message':lambda *a:None}),directory=ROOT));srv.allow_reuse_address=True
+srv=TestServer(('127.0.0.1',0),functools.partial(type('Q',(http.server.SimpleHTTPRequestHandler,),{'log_message':lambda *a:None}),directory=ROOT));srv.allow_reuse_address=True
 threading.Thread(target=srv.serve_forever,daemon=True).start()
 def X(cls,typ,name,addr,disp,lat='35.85',lon='139.32'):return {'class':cls,'type':typ,'name':name,'address':addr,'display_name':disp,'lat':lat,'lon':lon}
 HANNO=[X('railway','station','飯能',{'state':'埼玉県','city':'飯能市','suburb':'八幡町','road':'材木通り'},'飯能, 材木通り, 八幡町, 飯能市, 埼玉県, 日本'),

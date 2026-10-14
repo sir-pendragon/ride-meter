@@ -1,10 +1,12 @@
+from http_test_server import TestServer
+from pathlib import Path
 import json,sys,time,threading,http.server,socketserver,os,functools,re
 from playwright.sync_api import sync_playwright
-ROOT='/home/claude/ride-meter/route'
+ROOT=str(Path(__file__).resolve().parents[2] / 'route')
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self,*a):pass
 H=functools.partial(Q,directory=ROOT)
-srv=socketserver.TCPServer(('127.0.0.1',0),H);srv.allow_reuse_address=True
+srv=TestServer(('127.0.0.1',0),H);srv.allow_reuse_address=True
 threading.Thread(target=srv.serve_forever,daemon=True).start()
 def enc(pts):
     out='';pl=pla=0;plo=0

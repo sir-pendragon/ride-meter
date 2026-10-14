@@ -1,6 +1,8 @@
+from http_test_server import TestServer
+from pathlib import Path
 import threading,http.server,socketserver,functools,time
 from playwright.sync_api import sync_playwright
-srv=socketserver.TCPServer(('127.0.0.1',0),functools.partial(type('Q',(http.server.SimpleHTTPRequestHandler,),{'log_message':lambda *a:None}),directory='/home/claude/ride-meter'));threading.Thread(target=srv.serve_forever,daemon=True).start()
+srv=TestServer(('127.0.0.1',0),functools.partial(type('Q',(http.server.SimpleHTTPRequestHandler,),{'log_message':lambda *a:None}),directory=str(Path(__file__).resolve().parents[2])));threading.Thread(target=srv.serve_forever,daemon=True).start()
 with sync_playwright() as p:
     b=p.chromium.launch();pg=b.new_page(viewport={'width':412,'height':915});errs=[];pg.on('pageerror',lambda e:errs.append(str(e)))
     pg.goto('http://127.0.0.1:%d/route/sources.html'%srv.server_address[1]);time.sleep(1)

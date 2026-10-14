@@ -1,10 +1,11 @@
+from http_test_server import TestServer
 """最小/最大獲得標高の選択 → 1本のルートだけ表示。候補は同時に問い合わせ、舗装率は選んだルートだけ調べる。"""
 import json,time,threading,http.server,socketserver,os,functools,math
 from playwright.sync_api import sync_playwright
 ROOT=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..','route')
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self,*a):pass
-srv=socketserver.TCPServer(('127.0.0.1',0),functools.partial(Q,directory=ROOT));srv.allow_reuse_address=True
+srv=TestServer(('127.0.0.1',0),functools.partial(Q,directory=ROOT));srv.allow_reuse_address=True
 threading.Thread(target=srv.serve_forever,daemon=True).start()
 def enc(pts):
     out='';pla=plo=0

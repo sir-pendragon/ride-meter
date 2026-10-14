@@ -1,3 +1,4 @@
+from http_test_server import TestServer
 """通信回数の削減: 市町村の表・逆ジオコーダ・標高タイルを端末に保存し、2回目以降は通信しないことを確認する。"""
 import json,time,threading,http.server,socketserver,os,functools,math,sys
 from playwright.sync_api import sync_playwright
@@ -11,7 +12,7 @@ class Q(http.server.SimpleHTTPRequestHandler):
             t={str(10000+i).zfill(5):['テスト県','市%d'%i] for i in range(1100)};t['14151']=['神奈川県','相模原市　緑区']
             b=json.dumps({'t':t}).encode();self.send_response(200);self.send_header('Content-Type','application/json');self.end_headers();self.wfile.write(b);return
         return super().do_GET()
-srv=socketserver.TCPServer(('127.0.0.1',0),functools.partial(Q,directory=ROOT));srv.allow_reuse_address=True
+srv=TestServer(('127.0.0.1',0),functools.partial(Q,directory=ROOT));srv.allow_reuse_address=True
 threading.Thread(target=srv.serve_forever,daemon=True).start()
 # routeはサイト直下の /route/ ではなく ROOT 直下で配信しているため、../data/ は /data/ に当たる
 URL='http://127.0.0.1:%d/index.html'%srv.server_address[1]

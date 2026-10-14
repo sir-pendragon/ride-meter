@@ -1,8 +1,9 @@
+from http_test_server import TestServer
 """地点の入力: 経由地を入れたあとに目的地を入れても、経由地が消えない。並びは常に [出発, 経由…, 目的地]。"""
 import json,threading,http.server,socketserver,functools,os,urllib.parse
 from playwright.sync_api import sync_playwright
 ROOT=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..','route')
-srv=socketserver.TCPServer(('127.0.0.1',0),functools.partial(type('Q',(http.server.SimpleHTTPRequestHandler,),{'log_message':lambda *a:None}),directory=ROOT));srv.allow_reuse_address=True
+srv=TestServer(('127.0.0.1',0),functools.partial(type('Q',(http.server.SimpleHTTPRequestHandler,),{'log_message':lambda *a:None}),directory=ROOT));srv.allow_reuse_address=True
 threading.Thread(target=srv.serve_forever,daemon=True).start()
 PL={'飯能':('35.851','139.319'),'西武秩父駅':('35.9897','139.0838'),'十石峠':('36.1064','138.6476'),'秩父駅':('35.9986','139.0857')}
 n=0
