@@ -52,7 +52,7 @@ a{color:var(--acc)}
  <div class="row" style="margin-top:8px"><button class="btn pri" id="go">3つのルートを計算</button></div>
  <div class="bar" id="bar" hidden><i></i></div><p class="hint" id="st"></p>
 </section>
-<section id="s-res" hidden><h2>③ 結果</h2><div class="cards" id="cards"></div>
+<section id="s-res" hidden><h2>③ 結果</h2><div class="cards" id="cards"></div><p class="hint" id="gap-note" style="color:#B58900"></p>
  <div class="row" style="margin-top:10px"><label><input type="checkbox" id="ov" checked> 3つを重ねて地図に表示</label></div>
  <h3 style="margin-top:14px">標高プロファイル<span class="hint" id="pn"></span></h3><div id="prof"></div><p class="hint" id="pr"></p>
  <h3 style="margin-top:14px">計算した全候補</h3><div style="overflow-x:auto"><table id="tb"></table></div>
@@ -73,7 +73,7 @@ a{color:var(--acc)}
  <p class="hint" style="margin:0 0 6px">ボタンを押したときだけ、通る県の公式ページ(埼玉県・東京都)を取得します。定期取得はしません。位置はOpenStreetMapの同名の道に当てはめた<b>推定</b>です。地図で確認して「避ける」を押したものだけ、ルート計算で避けます。情報がない道を「通行可能」とは判定しません。</p>
  <div class="row"><input type="text" id="ac-relay" class="grow" placeholder="中継のURL(例: https://….workers.dev)"><button class="btn sm" id="ac-save">保存</button></div>
  <div class="row" style="margin-top:8px"><button class="btn pri" id="ac-go">ルート周辺の規制を取得</button></div>
- <p class="hint" id="ac-st"></p><ul class="sr" id="ac-list"></ul>
+ <p class="hint" id="ac-st"></p><ul class="sr" id="ac-list"></ul><div id="ac-gap"></div>
  <h3 style="margin-top:12px">「避ける」を確定した規制</h3><ul class="cl" id="ac-conf"></ul>
 </section>
 <section id="s-pref"><h2>通過する県の規制情報(林道など)</h2>
@@ -143,7 +143,7 @@ async function compute(){if(busy)return;if(!compute._r)Closures.resetBoost();if(
     if(!cs.length)throw new Error('ルートが見つかりませんでした');
     {const hh=cs.flatMap(c=>Closures.hits(c.pts));if(hh.length&&(compute._r||0)<2){compute._r=(compute._r||0)+1;setProg(null,`「避ける」を確定した規制を通るため、除外を追加して再計算します(${compute._r}/2)`);Closures.addBoost(hh);busy=false;return compute()}}
     for(let i=0;i<cs.length;i++){const c=cs[i];setProg(0.5+0.5*i/cs.length,`標高と路面を調べています ${i+1}/${cs.length}`);const D=densify(c.pts,25);c.D=D;c.len=D.total;const [z,sf]=await Promise.all([elevations(D),surfaceOf(c)]);c.m=metrics(D,z);c.sf=sf;c.paved=sf?sf.paved:null;c.gain=c.m.gain;c.closed=nearClosure(c.pts);c.hitsAuto=Closures.hits(c.pts);c.unkAuto=Closures.warnings(c.pts);await sleep(100)}
-    st.cands=cs;compute._r=0;choose();setProg(null,'');render()}
+    st.cands=cs;compute._r=0;choose();setProg(null,'');render();{const gn=document.getElementById('gap-note');if(gn)gn.textContent=Closures.gapText()}}
   catch(e){setProg(null,'計算できませんでした: '+(e&&e.message||e)+(e&&e.code===171?'(地点が道路から遠すぎます)':''));}
   busy=false;$('#go').disabled=false}
 function choose(){const cs=st.cands;const minLen=Math.min(...cs.map(c=>c.len));const lim=+$('#detour').value;const ok=cs.filter(c=>c.len<=minLen*lim);st.pool=ok;

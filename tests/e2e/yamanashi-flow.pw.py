@@ -4,7 +4,7 @@ ROOT='/home/claude/ride-meter/route'
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self,*a):pass
 H=functools.partial(Q,directory=ROOT)
-srv=socketserver.TCPServer(('127.0.0.1',8772),H);srv.allow_reuse_address=True
+srv=socketserver.TCPServer(('127.0.0.1',0),H);srv.allow_reuse_address=True
 threading.Thread(target=srv.serve_forever,daemon=True).start()
 def enc(pts):
     out='';pl=pla=0;plo=0
@@ -54,7 +54,7 @@ def run(honor):
             if '127.0.0.1' in u: return route.continue_()
             return route.fulfill(status=204,body='')
         pg.route('**/*',h)
-        pg.goto('http://127.0.0.1:8772/index.html');time.sleep(0.5)
+        pg.goto('http://127.0.0.1:%d/index.html'%srv.server_address[1]);time.sleep(0.5)
         pg.evaluate("""()=>{localStorage.setItem('rt-relay','https://relay.test');localStorage.removeItem('rt-confirmed');
           __rt.st.points=[{lat:35.8990,lon:139.0850,name:'S'},{lat:35.9040,lon:139.1100,name:'G'}]}""")
         pg.reload();time.sleep(0.5)
@@ -62,6 +62,7 @@ def run(honor):
         pg.evaluate('__rt.compute()');pg.wait_for_selector('#ac-list button[data-a=avoid]',timeout=30000);pg.wait_for_selector('#cards .card',timeout=30000);time.sleep(0.5)
         print('AUTO fetched without button; relay hits:',sum(1 for _ in [0]))
         print('status:',pg.inner_text('#ac-st')[:300])
+        print('GAP:',pg.inner_text('#ac-gap').replace('\n',' / ')[:700]);print('NOTE:',pg.inner_text('#gap-note')[:300])
         print('list:',pg.inner_text('#ac-list').replace('\n',' / ')[:600])
         pg.click('#ac-list button[data-a=avoid]');time.sleep(0.5)
         print('confirmed:',pg.inner_text('#ac-conf').replace('\n',' / ')[:200])

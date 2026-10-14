@@ -13,6 +13,9 @@
     13: [{ id: 'tokyo', name: '東京都 森林事務所', url: 'https://forestry-office.metro.tokyo.lg.jp/about/rin/rin_kisei/index.html', kind: 'tokyo' }],
   };
   const UNSUPPORTED = {};
+  const PREF_ALL = ['北海道','青森県','岩手県','宮城県','秋田県','山形県','福島県','茨城県','栃木県','群馬県','埼玉県','千葉県','東京都','神奈川県','新潟県','富山県','石川県','福井県','山梨県','長野県','岐阜県','静岡県','愛知県','三重県','滋賀県','京都府','大阪府','兵庫県','奈良県','和歌山県','鳥取県','島根県','岡山県','広島県','山口県','徳島県','香川県','愛媛県','高知県','福岡県','佐賀県','長崎県','熊本県','大分県','宮崎県','鹿児島県','沖縄県'];
+  const prefName = (k) => PREF_ALL[k - 1] || ('県コード' + k);
+  let lastGaps = null;
   const PREF_NAMES = { 11: '埼玉県', 13: '東京都', 19: '山梨県', 9: '栃木県(矢板のみ)' };
   const PDFJS = ['https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'];
   const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
@@ -200,7 +203,13 @@
     // 範囲内(bbox)に道がないものは一覧から外す(遠い県内の路線を並べない)
     const near = located.filter((r) => r.ways.length > 0);
     const outside = located.length - near.length;
-    return { near, total: results.length, regulated: targets.length, outside, fails, notes };
+    const gaps = {
+      unjudged: results.filter((r) => r.status === '不明').map((r) => ({ route: r.route, municipality: r.municipality || '', why: r.note || '規制の内容を判定できませんでした', text: r.reason || r.typeText || '', url: r.sourceUrl, src: r.sourceName })),
+      notFound: located.filter((r) => !r.ways || !r.ways.length).map((r) => ({ route: r.route, municipality: r.municipality || '', status: r.status, section: r.section || r.typeText || '', why: (r.position && r.position.reason) || 'この範囲のOSMに同名の道が見つかりません', url: r.sourceUrl, src: r.sourceName })),
+      noPos: near.filter((r) => r.position && (r.position.level === '不明' || r.position.level === 'なし')).map((r) => ({ route: r.route, municipality: r.municipality || '', status: r.status, why: r.position.reason, url: r.sourceUrl, src: r.sourceName })),
+      fails: fails.slice(), sources: Object.fromEntries(codes.map((k) => [k, (SOURCES[k] || []).map((s) => ({ name: s.name, url: s.url }))])),
+    };
+    return { near, total: results.length, regulated: targets.length, outside, fails, notes, gaps };
   }
 
   const keyOf = (r) => r.sourceName + '|' + r.route + '|' + (r.municipality || '') + '|' + (r.section || '') + (r.rid ? '|' + r.rid : '');
@@ -235,6 +244,38 @@
   }
 
   function candLabel(r, u, i) { return `案${i + 1}: ${u.end ? u.end + 'から測定・' : ''}約${Math.round(Math.abs(u.d1 - u.d0))}m(確度 ${u.confidence})`; }
+  // ---- 取りこぼしの一覧 ----
+  function buildGaps(res, allCodes) {
+    const g = res ? res.gaps : { unjudged: [], notFound: [], noPos: [], fails: [], sources: {} };
+    const unsupported = (allCodes || []).filter((k) => !SOURCES[k]).map(prefName);
+    lastGaps = { ...g, unsupported, count: g.unjudged.length + g.notFound.length + g.noPos.length + g.fails.length + unsupported.length };
+    return lastGaps;
+  }
+  function gapText() {
+    if (!lastGaps) return '';
+    const p = [];
+    if (lastGaps.unsupported.length) p.push(`${lastGaps.unsupported.join('・')}は自動取得に未対応`);
+    if (lastGaps.fails.length) p.push(`取得失敗${lastGaps.fails.length}件`);
+    if (lastGaps.notFound.length) p.push(`地図上で道を見つけられなかった規制${lastGaps.notFound.length}件`);
+    if (lastGaps.noPos.length) p.push(`位置が不明な規制${lastGaps.noPos.length}件`);
+    if (lastGaps.unjudged.length) p.push(`内容を判定できなかった行${lastGaps.unjudged.length}件`);
+    return p.length ? '取りこぼしの可能性: ' + p.join(' / ') + '。通行止めがないことの保証ではありません。詳細は「通行規制の自動取得」欄の「取りこぼしの可能性」を確認してください。' : '';
+  }
+  function renderGaps() {
+    const el = document.querySelector('#ac-gap'); if (!el) return;
+    const g = lastGaps; if (!g) { el.innerHTML = ''; return; }
+    const e = ctx.esc; const link = (x) => `<a href="${e(x.url)}" target="_blank" rel="noopener">${e(x.src || '公式ページ')}</a>`;
+    const li = (arr, f) => arr.length ? '<ul class="sr">' + arr.map((x) => `<li style="display:block"><div class="nm" style="white-space:normal"><b>${e(x.route)}</b> <span class="hint">${e(x.municipality)}</span></div><div class="hint">${f(x)}</div></li>`).join('') + '</ul>' : '<div class="hint">なし</div>';
+    el.innerHTML = `<details${g.count ? ' open' : ''}><summary><b>取りこぼしの可能性(${g.count}件)</b></summary>`
+      + `<div class="hint">ここにある項目は、アプリが地図に反映できていない、または判断できていない規制です。「ない」という意味ではありません。公式ページで確認してください。</div>`
+      + `<h3 style="font-size:14px">未対応の県(通過するが自動取得できない)</h3>` + (g.unsupported.length ? `<div class="hint">${e(g.unsupported.join('・'))}(公式の一覧を取り込めていません。各県・市町村の公式ページで確認してください)</div>` : '<div class="hint">なし</div>')
+      + `<h3 style="font-size:14px">取得できなかったページ</h3>` + (g.fails.length ? '<ul class="sr">' + g.fails.map((f) => `<li class="hint" style="display:block">${e(f)}</li>`).join('') + '</ul>' : '<div class="hint">なし</div>')
+      + `<h3 style="font-size:14px">この範囲の地図(OSM)に同名の道が見つからなかった規制</h3><div class="hint">ルートの範囲外にある路線も含みます。通る予定の地域の路線がないか確認してください。</div>` + li(g.notFound, (x) => `${e(x.status)} ・ ${e(x.section)} ・ ${e(x.why)} ・ ${link(x)}`)
+      + `<h3 style="font-size:14px">位置が不明な規制</h3>` + li(g.noPos, (x) => `${e(x.status)} ・ ${e(x.why)} ・ ${link(x)}`)
+      + `<h3 style="font-size:14px">内容を判定できなかった行(通行止めとは扱っていません)</h3>` + li(g.unjudged, (x) => `${e(x.why)}${x.text ? ' ・ 原文: ' + e(x.text.slice(0, 80)) : ''} ・ ${link(x)}`)
+      + `</details>`;
+  }
+
   function renderList(res) {
     const ul = document.querySelector('#ac-list'); ul.innerHTML = '';
     found = res.near;
@@ -293,16 +334,16 @@
     async function fetchNow2(auto) {
       const pts = ctx.getPoints(); if (!pts.length) { setStatus('先に出発地と目的地を入れてください'); return null; }
       setStatus('通る県を調べています…'); const codes = await ctx.getPrefCodes(); const known = codes.filter((k) => SOURCES[k]);
-      if (!known.length) { setStatus('通過する県の自動取得にはまだ対応していません(対応: '+Object.keys(SOURCES).map((k)=>PREF_NAMES[k]||k).join('・')+')'); return null; }
+      if (!known.length) { buildGaps(null, codes); renderGaps(); setStatus('通過する県の自動取得にはまだ対応していません(対応: '+Object.keys(SOURCES).map((k)=>PREF_NAMES[k]||k).join('・')+')'); return null; }
       const m = 0.08; const bbox = [Math.min(...pts.map((p) => p.lat)) - m, Math.min(...pts.map((p) => p.lon)) - m, Math.max(...pts.map((p) => p.lat)) + m, Math.max(...pts.map((p) => p.lon)) + m].map((v) => +v.toFixed(4));
       const sig = bbox.join(',') + '|' + known.join(',');
       if (auto && lastAuto && lastAuto.sig === sig && Date.now() - lastAuto.t < 600000) { setStatus('直前に取得済みのため再取得しません(10分以内)'); return null; }
       $('#ac-go').disabled = true;
       try {
-        const res = await run(bbox, known, setStatus); renderList(res); lastAuto = { sig, t: Date.now() };
+        const res = await run(bbox, known, setStatus); renderList(res); buildGaps(res, codes); renderGaps(); lastAuto = { sig, t: Date.now() };
         const log = root.FetchCore ? fc().getLog().slice(-6).map((l) => `${l.label}:${l.result}`).join(' / ') : '';
         setStatus(`取得: 規制あり ${res.regulated}路線(全${res.total}行)のうち、この範囲でOSMに同名の道がある ${res.near.length}路線を表示。範囲外/道が見つからない ${res.outside}路線は表示しません。` + (res.fails.length ? ' 失敗: ' + res.fails.join(' / ') : '') + (res.notes.length ? ' 未対応・注意: ' + res.notes.join(' / ') : '') + (log ? ' 〔取得状況 ' + log + '〕' : ''));
-      } catch (e) { setStatus('取得できませんでした: ' + e.message); }
+      } catch (e) { buildGaps({ gaps: { unjudged: [], notFound: [], noPos: [], fails: ['取得できませんでした: ' + e.message], sources: {} } }, codes); renderGaps(); setStatus('取得できませんでした: ' + e.message); }
       $('#ac-go').disabled = false;
     }
     $('#ac-go').onclick = () => fetchNow(false);
@@ -364,5 +405,5 @@
   function active() { return confirmed.length > 0; }
   const exportGeoJSON = () => toGeoJSON();
 
-  root.Closures = { init, autoFetch: (ms) => (autoFn ? autoFn(ms) : Promise.resolve(null)), samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _internal: { run, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
+  root.Closures = { init, gapText, autoFetch: (ms) => (autoFn ? autoFn(ms) : Promise.resolve(null)), samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _internal: { run, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
 })(typeof globalThis !== "undefined" ? globalThis : self);
