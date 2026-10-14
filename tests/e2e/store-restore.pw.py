@@ -19,6 +19,7 @@ def h(route):
 with sync_playwright() as p:
     b=p.chromium.launch();ctx=b.new_context(viewport={'width':412,'height':915});pg=ctx.new_page();errs=[]
     pg.on('pageerror',lambda e:errs.append(str(e)));pg.route('**/*',h)
+    pg.route('**/config.js',lambda r:r.fulfill(content_type='text/javascript',body="window.RT_CONFIG={gmapsKey:'',relayUrl:''}"))
     # 1) 画面から保存 → Google モード
     pg.goto(URL);pg.wait_for_timeout(800)
     pg.evaluate("document.getElementById('set-toggle').click()")
@@ -34,7 +35,7 @@ with sync_playwright() as p:
     pg.reload();pg.wait_for_timeout(1500)
     ok(pg.evaluate('window.__map.kind')=='leaflet','両方消えたら leaflet(config 予備なし)')
     # 4) config.js に予備のキーがある場合
-    pg.route('**/config.js',lambda r:r.fulfill(content_type='text/javascript',body="window.RT_CONFIG={gmapsKey:'AIzaCFG',relayUrl:'https://relay.cfg'}"))
+    pg.unroute('**/config.js');pg.route('**/config.js',lambda r:r.fulfill(content_type='text/javascript',body="window.RT_CONFIG={gmapsKey:'AIzaCFG',relayUrl:'https://relay.cfg'}"))
     pg.evaluate("localStorage.clear();indexedDB.deleteDatabase('rt-store')");pg.wait_for_timeout(300)
     pg.reload();pg.wait_for_timeout(1500)
     ok(pg.evaluate('window.__map.kind')=='google','config 予備のキーで google')

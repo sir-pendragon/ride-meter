@@ -5,7 +5,7 @@ srv=socketserver.TCPServer(('127.0.0.1',0),functools.partial(type('Q',(http.serv
 with sync_playwright() as p:
     b=p.chromium.launch();pg=b.new_page(viewport={'width':412,'height':900});errs=[];pg.on('pageerror',lambda e:errs.append(str(e)))
     pg.route('**/*',lambda r:r.continue_() if '127.0.0.1' in r.request.url else r.fulfill(status=204,body=''))
-    pg.goto('http://127.0.0.1:%d/index.html'%srv.server_address[1]);time.sleep(1)
+    pg.goto('http://127.0.0.1:%d/index.html'%srv.server_address[1]);pg.wait_for_function('typeof __rt!=="undefined"',timeout=20000)
     def show(run,hits=[],warns=[]):
         return pg.evaluate("""([run,hits,warns])=>{Closures.lastRun=()=>run;Closures.hits=()=>hits;Closures.warnings=()=>warns;__rt.st.sel={pts:[[35.9,139.1],[35.91,139.11]]};__rt.renderClFound();return document.getElementById('cl-found').innerText}""",[run,hits,warns])
     t=show(None);print('未調査:',t.replace('\n',' / '));assert '未調査' in t and '通行規制なし' not in t.split('とは言えません')[0].replace('「通行規制なし」','')
