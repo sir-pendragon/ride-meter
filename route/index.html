@@ -72,6 +72,7 @@ a{color:var(--acc)}
 <section id="s-auto"><h2>通行規制の自動取得(試験中)</h2>
  <p class="hint" style="margin:0 0 6px">ボタンを押したときだけ、通る県の公式ページ(埼玉県・東京都)を取得します。定期取得はしません。位置はOpenStreetMapの同名の道に当てはめた<b>推定</b>です。地図で確認して「避ける」を押したものだけ、ルート計算で避けます。情報がない道を「通行可能」とは判定しません。</p>
  <div class="row"><input type="text" id="ac-relay" class="grow" placeholder="中継のURL(例: https://….workers.dev)"><button class="btn sm" id="ac-save">保存</button></div>
+ <label class="hint" style="display:block;margin:6px 0"><input type="checkbox" id="ac-ai"> Geminiで二重チェックする(参考表示のみ。中継側にGeminiのキーを設定した場合)</label>
  <div class="row" style="margin-top:8px"><button class="btn pri" id="ac-go">ルート周辺の規制を取得</button></div>
  <p class="hint" id="ac-st"></p><ul class="sr" id="ac-list"></ul><div id="ac-gap"></div>
  <h3 style="margin-top:12px">「避ける」を確定した規制</h3><ul class="cl" id="ac-conf"></ul>
@@ -83,7 +84,7 @@ a{color:var(--acc)}
 <p class="hint" style="margin-top:14px">地図: 国土地理院タイル / © OpenStreetMap contributors。ルート計算: Valhalla(公開サーバー・OpenStreetMapデータ)。標高: 国土地理院 標高タイル(DEM10B)。場所検索: Nominatim。獲得標高・舗装率は推定値です。実際の道路状況・通行止め・冬期閉鎖は必ず公式情報で確認してください。</p>
 </main>
 <script src="leaflet/leaflet.js"></script><script src="gm-shim.js"></script>
-<script src="fetchcore.js"></script><script src="parse-tables.js"></script><script src="parse-tokyo-pdf.js"></script><script src="parse-yamanashi.js"></script><script src="locate.js"></script><script src="closures.js"></script>
+<script src="fetchcore.js"></script><script src="aicheck.js"></script><script src="parse-tables.js"></script><script src="parse-tokyo-pdf.js"></script><script src="parse-yamanashi.js"></script><script src="locate.js"></script><script src="closures.js"></script>
 <script type="text/plain" id="main-src">
 (()=>{
 const $=s=>document.querySelector(s);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

@@ -95,8 +95,9 @@
     return { records: tag({ records: out, stale: false }), failed: fails, total: flagged.length };
   }
 
+  const rawText = {}; // ページ本文(解析が走ったときだけ入る。AI二重チェック用)
   async function fetchSource(src) {
-    if (src.kind === 'yamanashi') { const r = await fetchYamanashi(src); if (r.failed.length) src._partial = `詳細ページ${r.failed.length}/${r.total}件を取得できませんでした(${r.failed.slice(0, 3).join('・')}${r.failed.length > 3 ? ' ほか' : ''})`; else src._partial = null; return r.records; }
+    if (src.kind === 'yamanashi') { const r = await fetchYamanashi(src); if (r.failed.length) src._partial = `詳細ページ${r.failed.length}/${r.total}件を取得できませんでした(${r.failed.slice(0, 3).join('・')}${r.failed.length > 3 ? ' ほか' : ''})`; else src._partial = null; const ys = r.records; ys._ai = { key: src.url + '#details', text: ys.filter((x) => x.reason && x.rid && !/^L/.test(x.rid)).map((x) => `【${x.route}】(${x.municipality || ''}) ${x.reason}`).join('\n').slice(0, 39000) }; return ys; }
     if (src.kind === 'table') {
       const r = await fc().load({
         key: src.url, ver: PARSER_VER, label: src.name, fetcher: relayFetcher(src.url, false),
@@ -104,10 +105,11 @@
           const doc = new DOMParser().parseFromString(body, 'text/html');
           const recs = ClosureParse.parseClosureTables(doc, src.url, meta.fetchedAt || new Date().toISOString(), { closedTable: !!src.closedTable });
           if (!recs.length) throw perr('表を読み取れませんでした(ページの構造が変わった可能性)');
+          rawText[src.url] = [...doc.querySelectorAll('table')].map((t) => [...t.rows].map((tr) => [...tr.cells].map((td) => td.textContent.replace(/\s+/g, ' ').trim()).join(' | ')).join('\n')).join('\n\n').slice(0, 39000);
           return recs.map((x) => ({ ...x, sourceName: src.name }));
         },
       });
-      return tag(r);
+      const tr = tag(r); tr._ai = { key: src.url, hash: r.hash, text: rawText[src.url] || null }; return tr;
     }
     // 東京都: ページ内のPDFリンクを見つけ、PDFを取得して文字を取り出す
     const pg = await fc().load({
@@ -167,15 +169,51 @@
     return (lat, lon) => cache.get(kk([lat, lon])) || null;
   }
 
+  // ---- Geminiによる二重チェック(中継の /ai を使う。参考情報であり、判定は変えない) ----
+  const LS_AI = 'rt-ai', LS_AICACHE = 'rt-aicache', AI_VER = 'a1';
+  const aiEnabled = () => { try { return localStorage.getItem(LS_AI) === '1' && !!relayUrl(); } catch (e) { return false; } };
+  const lsj = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } };
+  async function aiCall(text) {
+    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 40000);
+    try {
+      const r = await fetch(relayUrl() + '/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, today: new Date().toISOString().slice(0, 10) }), signal: ctl.signal });
+      if (r.status === 503) { const e = new Error('Geminiのキーが中継に設定されていません'); e.code = 'noconf'; throw e; }
+      if (!r.ok) { let m = ''; try { m = (await r.json()).error; } catch (e) {} throw new Error('Geminiの呼び出しに失敗しました(' + r.status + (m ? ' ' + m : '') + ')'); }
+      const j = await r.json(); if (!j.ok) throw new Error('Geminiの応答を使えませんでした'); return j.items;
+    } finally { clearTimeout(tm); }
+  }
+  // records: 私たちの解析結果(_ai に text/hash/key が付いている)。戻り値: { records(ai付き), aiOnly, note }
+  async function aiApply(src, records) {
+    const meta = records._ai; const res = { records, aiOnly: [], note: null };
+    if (!aiEnabled() || !meta) return res;
+    let hash = meta.hash; const cache = lsj(LS_AICACHE, {});
+    try {
+      if (!hash && meta.text) hash = await root.FetchCore.sha256Hex(meta.text);
+      let ent = cache[meta.key];
+      if (!(ent && ent.hash === hash && ent.ver === AI_VER)) {
+        if (!meta.text) { res.note = `${src.name}: ページ本文が手元にないため、今回はAIチェックを行いません(ページが変わった時に実施)`; return res; }
+        const items = await aiCall(meta.text);
+        const v = AiCheck.verifyItems(items, meta.text);
+        ent = { hash, ver: AI_VER, at: new Date().toISOString(), items: v.kept, rejected: v.rejected }; cache[meta.key] = ent;
+        try { localStorage.setItem(LS_AICACHE, JSON.stringify(cache)); } catch (e) {}
+      }
+      const cmp = AiCheck.compare(records, ent.items);
+      cmp.records._ai = meta; res.records = cmp.records;
+      res.aiOnly = cmp.aiOnly.map((x) => ({ ...x, sourceName: src.name, sourceUrl: src.url }));
+      if (ent.rejected) res.note = `${src.name}: AIの項目のうち${ent.rejected}件は、原文の引用が本文に見つからないため破棄しました`;
+    } catch (e) { res.note = `${src.name}: AI二重チェックは行えませんでした(${e.message})`; }
+    return res;
+  }
+
   async function run(bbox, codes, say) {
-    const results = []; const fails = []; const notes = [];
+    const results = []; const fails = []; const notes = []; const aiOnly = []; let aiTried = false;
     for (const code of codes) {
       for (const u of UNSUPPORTED[code] || []) notes.push(u);
       const srcs = SOURCES[code];
       if (!srcs) continue;
       for (const s of srcs) {
         say(`${s.name} を取得中…`);
-        try { results.push(...(await fetchSource(s))); if (s._partial) fails.push(`${s.name}: ${s._partial}`); } catch (e) { fails.push(`${s.name}: ${e.message}`); }
+        try { let part = await fetchSource(s); if (aiEnabled()) { aiTried = true; say(`${s.name} をGeminiで二重チェック中…`); const ap = await aiApply(s, part); part = ap.records; aiOnly.push(...ap.aiOnly); if (ap.note) notes.push(ap.note); } results.push(...part); if (s._partial) fails.push(`${s.name}: ${s._partial}`); } catch (e) { fails.push(`${s.name}: ${e.message}`); }
       }
     }
     const unk = results.filter((r) => r.status === '不明'); if (unk.length) notes.push(`規制の内容を判定できなかった行が${unk.length}件あります(通行止めとは扱いません。${unk.slice(0, 3).map((r) => r.route).join('・')}${unk.length > 3 ? ' ほか' : ''})。公式ページで確認してください`);
@@ -207,7 +245,8 @@
       unjudged: results.filter((r) => r.status === '不明').map((r) => ({ route: r.route, municipality: r.municipality || '', why: r.note || '規制の内容を判定できませんでした', text: r.reason || r.typeText || '', url: r.sourceUrl, src: r.sourceName })),
       notFound: located.filter((r) => !r.ways || !r.ways.length).map((r) => ({ route: r.route, municipality: r.municipality || '', status: r.status, section: r.section || r.typeText || '', why: (r.position && r.position.reason) || 'この範囲のOSMに同名の道が見つかりません', url: r.sourceUrl, src: r.sourceName })),
       noPos: near.filter((r) => r.position && (r.position.level === '不明' || r.position.level === 'なし')).map((r) => ({ route: r.route, municipality: r.municipality || '', status: r.status, why: r.position.reason, url: r.sourceUrl, src: r.sourceName })),
-      fails: fails.slice(), sources: Object.fromEntries(codes.map((k) => [k, (SOURCES[k] || []).map((s) => ({ name: s.name, url: s.url }))])),
+      aiDiff: results.filter((r) => r.ai && (r.ai.state === '相違' || r.ai.state === 'AIのみ検出')).map((r) => ({ route: r.route, municipality: r.municipality || '', state: r.ai.state, ours: r.status, ai: r.ai.aiStatus, aiSection: r.ai.aiSection, quote: r.ai.quote, url: r.sourceUrl, src: r.sourceName })),
+      aiOnly, aiTried, fails: fails.slice(), sources: Object.fromEntries(codes.map((k) => [k, (SOURCES[k] || []).map((s) => ({ name: s.name, url: s.url }))])),
     };
     return { near, total: results.length, regulated: targets.length, outside, fails, notes, gaps };
   }
@@ -246,9 +285,9 @@
   function candLabel(r, u, i) { return `案${i + 1}: ${u.end ? u.end + 'から測定・' : ''}約${Math.round(Math.abs(u.d1 - u.d0))}m(確度 ${u.confidence})`; }
   // ---- 取りこぼしの一覧 ----
   function buildGaps(res, allCodes) {
-    const g = res ? res.gaps : { unjudged: [], notFound: [], noPos: [], fails: [], sources: {} };
+    const g = res ? res.gaps : { unjudged: [], notFound: [], noPos: [], fails: [], sources: {}, aiDiff: [], aiOnly: [] };
     const unsupported = (allCodes || []).filter((k) => !SOURCES[k]).map(prefName);
-    lastGaps = { ...g, unsupported, count: g.unjudged.length + g.notFound.length + g.noPos.length + g.fails.length + unsupported.length };
+    lastGaps = { ...g, unsupported, count: g.unjudged.length + g.notFound.length + g.noPos.length + g.fails.length + unsupported.length + (g.aiDiff || []).length + (g.aiOnly || []).length };
     return lastGaps;
   }
   function gapText() {
@@ -259,6 +298,7 @@
     if (lastGaps.notFound.length) p.push(`地図上で道を見つけられなかった規制${lastGaps.notFound.length}件`);
     if (lastGaps.noPos.length) p.push(`位置が不明な規制${lastGaps.noPos.length}件`);
     if (lastGaps.unjudged.length) p.push(`内容を判定できなかった行${lastGaps.unjudged.length}件`);
+    const ad = (lastGaps.aiDiff || []).length + (lastGaps.aiOnly || []).length; if (ad) p.push(`AIの二重チェックで食い違い・未取り込みが${ad}件`);
     return p.length ? '取りこぼしの可能性: ' + p.join(' / ') + '。通行止めがないことの保証ではありません。詳細は「通行規制の自動取得」欄の「取りこぼしの可能性」を確認してください。' : '';
   }
   function renderGaps() {
@@ -273,6 +313,7 @@
       + `<h3 style="font-size:14px">この範囲の地図(OSM)に同名の道が見つからなかった規制</h3><div class="hint">ルートの範囲外にある路線も含みます。通る予定の地域の路線がないか確認してください。</div>` + li(g.notFound, (x) => `${e(x.status)} ・ ${e(x.section)} ・ ${e(x.why)} ・ ${link(x)}`)
       + `<h3 style="font-size:14px">位置が不明な規制</h3>` + li(g.noPos, (x) => `${e(x.status)} ・ ${e(x.why)} ・ ${link(x)}`)
       + `<h3 style="font-size:14px">内容を判定できなかった行(通行止めとは扱っていません)</h3>` + li(g.unjudged, (x) => `${e(x.why)}${x.text ? ' ・ 原文: ' + e(x.text.slice(0, 80)) : ''} ・ ${link(x)}`)
+      + ((g.aiDiff || []).length || (g.aiOnly || []).length ? `<h3 style="font-size:14px">AI(Gemini)の二重チェックで食い違った項目(未確認の参考情報)</h3><div class="hint">AIの読みは誤ることがあります。ここは「要確認」の目印で、通行止めの判定や「避ける」には使っていません。引用は公式ページの本文に実在することを確認済みです。</div>` + li(g.aiDiff || [], (x) => `${e(x.state)} ・ このアプリ: ${e(x.ours)} / AI: ${e(x.ai)}${x.aiSection ? '(' + e(x.aiSection) + ')' : ''} ・ 原文の引用: 「${e(x.quote)}」 ・ ${link(x)}`) + li(g.aiOnly || [], (x) => `AIのみ検出 ・ AI: ${e(x.status)}${x.section ? '(' + e(x.section) + ')' : ''} ・ 原文の引用: 「${e(x.quote)}」 ・ ${link(x)}`) : '')
       + `</details>`;
   }
 
@@ -293,6 +334,7 @@
       li.innerHTML = `${badge}<div class="grow"><div class="nm" style="white-space:normal"><b>${ctx.esc(r.route)}</b> <span class="hint">${ctx.esc(r.municipality || '')}</span></div>`
         + `<div class="hint">区間: ${ctx.esc(r.section || r.typeText || '記載なし')}${r.period ? ' ・期間: ' + ctx.esc(r.period) : ''}${r.reason ? ' ・事由: ' + ctx.esc(r.reason) : ''}</div>`
         + `<div class="hint">位置: <b>${ctx.esc(lvl)}</b>(${ctx.esc(r.position.reason)}) ・ 自転車の通行可否: ${r.bicycle == null ? '記載なし' : r.bicycle ? '可' : '不可'}${r.note ? ' ・ ' + ctx.esc(r.note) : ''}${r.stale ? ' ・ <b>情報期限切れ(取得に失敗したため前回の内容)</b>' : ''}</div>`
+        + (r.ai ? `<div class="hint">AI二重チェック(参考): <b>${ctx.esc(r.ai.state)}</b>${r.ai.aiStatus ? ' ・ AI: ' + ctx.esc(r.ai.aiStatus) : ''}${r.ai.quote ? ' ・ 引用「' + ctx.esc(r.ai.quote) + '」' : ''}</div>` : '')
         + `<div class="hint">出典: <a href="${ctx.esc(r.sourceUrl)}" target="_blank" rel="noopener">${ctx.esc(r.sourceName)}</a> ・ 公式の更新: ${ctx.esc(r.officialUpdated || '不明')} ・ 取得: ${ctx.esc((r.fetchedAt || '').slice(0, 16).replace('T', ' '))}</div>`
         + (multi ? `<div class="hint">候補:</div>` + r.usable.map((u, k) => `<div style="margin:2px 0"><span class="hint">${ctx.esc(candLabel(r, u, k))}${u.muni ? ' ・' + ctx.esc(u.muni) : ''}</span> <button class="btn sm" data-a="show" data-i="${i}" data-c="${k}">地図で見る</button> ${isC ? '' : `<button class="btn sm pri" data-a="avoid" data-i="${i}" data-c="${k}">この案で避ける</button>`}</div>`).join('') : '')
         + `</div>`
@@ -325,6 +367,7 @@
     ctx = c;
     const $ = (s) => document.querySelector(s);
     $('#ac-relay').value = relayUrl();
+    const aiBox = $('#ac-ai'); if (aiBox) { try { aiBox.checked = localStorage.getItem(LS_AI) === '1'; } catch (e) {} aiBox.onchange = () => { try { localStorage.setItem(LS_AI, aiBox.checked ? '1' : '0'); } catch (e) {} setStatus(aiBox.checked ? 'Geminiの二重チェックを有効にしました(次の取得から。中継側にキーの設定が必要です)' : 'Geminiの二重チェックを無効にしました'); }; }
     $('#ac-save').onclick = () => { const v = $('#ac-relay').value.trim(); try { localStorage.setItem(LS_RELAY, v); } catch (e) {} setStatus(v ? '中継のURLを保存しました' : '中継のURLを消しました'); };
     let lastAuto = null;
     let running = false;
