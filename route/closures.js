@@ -299,22 +299,18 @@
     if (lastGaps.noPos.length) p.push(`位置が不明な規制${lastGaps.noPos.length}件`);
     if (lastGaps.unjudged.length) p.push(`内容を判定できなかった行${lastGaps.unjudged.length}件`);
     const ad = (lastGaps.aiDiff || []).length + (lastGaps.aiOnly || []).length; if (ad) p.push(`AIの二重チェックで食い違い・未取り込みが${ad}件`);
-    return p.length ? '取りこぼしの可能性: ' + p.join(' / ') + '。通行止めがないことの保証ではありません。詳細は「通行規制の自動取得」欄の「取りこぼしの可能性」を確認してください。' : '';
+    return p.length ? '取りこぼしの可能性: ' + p.join(' / ') + '。通行止めがないことの保証ではありません。' : '';
   }
+  // 画面に出すのは、AIの二重チェックで食い違った項目だけ(それ以外の取りこぼしは、ルート結果の下の一行の注意にとどめる)
   function renderGaps() {
     const el = document.querySelector('#ac-gap'); if (!el) return;
-    const g = lastGaps; if (!g) { el.innerHTML = ''; return; }
+    const g = lastGaps; const ad = g ? (g.aiDiff || []).length + (g.aiOnly || []).length : 0;
+    if (!ad) { el.innerHTML = ''; return; }
     const e = ctx.esc; const link = (x) => `<a href="${e(x.url)}" target="_blank" rel="noopener">${e(x.src || '公式ページ')}</a>`;
-    const li = (arr, f) => arr.length ? '<ul class="sr">' + arr.map((x) => `<li style="display:block"><div class="nm" style="white-space:normal"><b>${e(x.route)}</b> <span class="hint">${e(x.municipality)}</span></div><div class="hint">${f(x)}</div></li>`).join('') + '</ul>' : '<div class="hint">なし</div>';
-    el.innerHTML = `<details${g.count ? ' open' : ''}><summary><b>取りこぼしの可能性(${g.count}件)</b></summary>`
-      + `<div class="hint">ここにある項目は、アプリが地図に反映できていない、または判断できていない規制です。「ない」という意味ではありません。公式ページで確認してください。</div>`
-      + `<h3 style="font-size:14px">未対応の県(通過するが自動取得できない)</h3>` + (g.unsupported.length ? `<div class="hint">${e(g.unsupported.join('・'))}(公式の一覧を取り込めていません。各県・市町村の公式ページで確認してください)</div>` : '<div class="hint">なし</div>')
-      + `<h3 style="font-size:14px">取得できなかったページ</h3>` + (g.fails.length ? '<ul class="sr">' + g.fails.map((f) => `<li class="hint" style="display:block">${e(f)}</li>`).join('') + '</ul>' : '<div class="hint">なし</div>')
-      + `<h3 style="font-size:14px">この範囲の地図(OSM)に同名の道が見つからなかった規制</h3><div class="hint">ルートの範囲外にある路線も含みます。通る予定の地域の路線がないか確認してください。</div>` + li(g.notFound, (x) => `${e(x.status)} ・ ${e(x.section)} ・ ${e(x.why)} ・ ${link(x)}`)
-      + `<h3 style="font-size:14px">位置が不明な規制</h3>` + li(g.noPos, (x) => `${e(x.status)} ・ ${e(x.why)} ・ ${link(x)}`)
-      + `<h3 style="font-size:14px">内容を判定できなかった行(通行止めとは扱っていません)</h3>` + li(g.unjudged, (x) => `${e(x.why)}${x.text ? ' ・ 原文: ' + e(x.text.slice(0, 80)) : ''} ・ ${link(x)}`)
-      + ((g.aiDiff || []).length || (g.aiOnly || []).length ? `<h3 style="font-size:14px">AI(Gemini)の二重チェックで食い違った項目(未確認の参考情報)</h3><div class="hint">AIの読みは誤ることがあります。ここは「要確認」の目印で、通行止めの判定や「避ける」には使っていません。引用は公式ページの本文に実在することを確認済みです。</div>` + li(g.aiDiff || [], (x) => `${e(x.state)} ・ このアプリ: ${e(x.ours)} / AI: ${e(x.ai)}${x.aiSection ? '(' + e(x.aiSection) + ')' : ''} ・ 原文の引用: 「${e(x.quote)}」 ・ ${link(x)}`) + li(g.aiOnly || [], (x) => `AIのみ検出 ・ AI: ${e(x.status)}${x.section ? '(' + e(x.section) + ')' : ''} ・ 原文の引用: 「${e(x.quote)}」 ・ ${link(x)}`) : '')
-      + `</details>`;
+    const li = (arr, f) => arr.map((x) => `<li style="display:block"><div class="nm" style="white-space:normal"><b>${e(x.route)}</b> <span class="hint">${e(x.municipality || '')}</span></div><div class="hint">${f(x)}</div></li>`).join('');
+    el.innerHTML = `<div class="hint"><b>AI(Gemini)の二重チェックで食い違った項目(${ad}件・未確認の参考情報)</b><br>AIの読みは誤ることがあります。通行止めの判定や「避ける」には使っていません。引用は公式ページの本文に実在することを確認済みです。</div><ul class="sr">`
+      + li(g.aiDiff || [], (x) => `${e(x.state)} ・ このアプリ: ${e(x.ours)} / AI: ${e(x.ai)}${x.aiSection ? '(' + e(x.aiSection) + ')' : ''} ・ 原文の引用: 「${e(x.quote)}」 ・ ${link(x)}`)
+      + li(g.aiOnly || [], (x) => `AIのみ検出 ・ AI: ${e(x.status)}${x.section ? '(' + e(x.section) + ')' : ''} ・ 原文の引用: 「${e(x.quote)}」 ・ ${link(x)}`) + '</ul>';
   }
 
   function renderList(res) {
