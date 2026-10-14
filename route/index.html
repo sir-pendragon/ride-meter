@@ -55,9 +55,7 @@ a{color:var(--acc)}
 <div id="map" style="margin:0 0 12px;border-radius:10px;overflow:hidden"></div>
 <section id="s-prof" hidden>
  <h3 style="margin-top:0">標高プロファイル<span class="hint" id="pn"></span></h3><div id="prof"></div><p class="hint" id="pr"></p>
- <h3 style="margin-top:14px">計算した全候補</h3><div style="overflow-x:auto"><table id="tb"></table></div>
- <div class="row" style="margin-top:10px"><button class="btn" id="gpx">選択中のルートをGPXで保存</button></div>
- <p class="hint" id="notes"></p>
+ <div class="row" style="margin-top:10px"><button class="btn" id="gpx">ルートをGPXで保存</button></div>
 </section>
 <section id="s-res" hidden><h2>③ 結果</h2><div class="cards" id="cards"></div><p class="hint" id="gap-note" style="color:#B58900"></p>
  </section>
@@ -230,13 +228,9 @@ function render(noFit){renderClFound();$('#s-res').hidden=$('#s-prof').hidden=fa
   const c=st.sel;const d=document.createElement('div');d.className='card sel';
   if(!c||!c.m||c.gain==null){d.innerHTML=`<div class="t"><i class="sw" style="background:${HEX[obj]}"></i>${NAMES[obj]}</div><p class="hint" style="margin:4px 0 0">獲得標高を計算できませんでした(標高データが取れませんでした)。</p>`;cards.appendChild(d)}
   else{const isBest=c===st.best;d.innerHTML=`<div class="t"><i class="sw" style="background:${HEX[obj]}"></i>${isBest?NAMES[obj]:'選んだ候補 #'+(st.cands.indexOf(c)+1)}${isBest?'':' <span class="hint">('+NAMES[obj]+'ではありません)</span>'}</div>${statsHTML(c)}${c.closed&&c.closed.length?`<p class="warn" style="margin:6px 0 0">⚠ 登録した通行止め地点(${c.closed.length}件)の近くを通ります</p>`:''}${c.hitsAuto&&c.hitsAuto.length?`<p class="warn" style="margin:6px 0 0">⚠ 「避ける」を確定した規制(${c.hitsAuto.map(h=>esc(h.route)).join('・')})を通ります。避けるルートが見つかりませんでした</p>`:''}${c.unkAuto&&c.unkAuto.length?`<p class="warn" style="margin:6px 0 0">⚠ 規制がある道(${c.unkAuto.map(h=>esc(h.route)+(h.kind==='candidate'?'・未確定':'・区間不明')).join('、')})を通る可能性があります。「避ける」を確定していない、または区間を特定できていないため、通れるとは判断していません。公式ページで確認してください</p>`:''}`;cards.appendChild(d)}
-  const tb=$('#tb');const pool=new Set(st.pool);tb.innerHTML='<tr><th>候補</th><th>距離</th><th>獲得標高</th><th>舗装率</th></tr>'+st.cands.map((c,i)=>{return `<tr class="cand${st.sel===c?' sel':''}" data-i="${i}"><td>${c===st.best?'★ ':''}#${i+1}${pool.has(c)?'':' (範囲外)'}</td><td>${(c.len/1000).toFixed(1)}km</td><td>${c.gain==null?'—':c.gain+'m'}</td><td>${c.sfDone?pc(c.paved):'—'}</td></tr>`}).join('');
-  drawRoutes(!noFit);drawProfile();notes();updatePrefs()}
-function notes(){const n=[];if(st.cands.some(c=>c.gain==null))n.push('一部の候補は標高データがなく(国外・海上など)、獲得標高を計算していません。');
-  n.push(`候補は${st.cands.length}本です。「${NAMES[objective()]}」は、この候補の中から選んでいます(迂回の上限の範囲内)。経路探索の結果から選ぶため、地域全体で最小・最大になる道とは限りません。道が少ない地域では、候補が1本だけになります。`);n.push('舗装率は、選んだルートだけ調べます(表の「—」は未調査)。OpenStreetMapに路面情報がない道を舗装とみなしている場合があります。獲得標高は地理院の標高(約19m間隔)から計算した推定値で、実走の値とは異なります。');$('#notes').textContent=n.join(' ')}
+  drawRoutes(!noFit);drawProfile();updatePrefs()}
 function drawRoutes(fit){gRt.clearLayers();const sel=st.sel;if(!sel)return;L.polyline(sel.pts,{color:HEX[objective()],weight:7,opacity:1}).addTo(gRt);
   if(fit){map.fitBounds(L.polyline(sel.pts).getBounds(),{padding:[30,30]})}}
-$('#tb').onclick=e=>{const r=e.target.closest('tr.cand');if(!r)return;st.sel=st.cands[+r.dataset.i];render();ensureSurface(st.sel)};
 $('#obj').onchange=()=>{save();clearResults()};
 $('#detour').onchange=()=>{save();if(st.cands.length){choose();render();ensureSurface(st.sel)}};
 
