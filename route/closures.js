@@ -6,14 +6,15 @@
   const SOURCES = {
     11: [
       { id: 'sai-chichibu', name: '埼玉県 秩父農林振興センター', url: 'https://www.pref.saitama.lg.jp/b0904/tukoseigen/index.html', kind: 'table' },
+      { id: 'sai-kawagoe', name: '埼玉県 川越農林振興センター', url: 'https://www.pref.saitama.lg.jp/b0902/forestry/road-closed.html', kind: 'table', closedTable: true },
       { id: 'sai-yorii', name: '埼玉県 寄居林業事務所', url: 'https://www.pref.saitama.lg.jp/b0923/tuukoudome.html', kind: 'table' },
     ],
     13: [{ id: 'tokyo', name: '東京都 森林事務所', url: 'https://forestry-office.metro.tokyo.lg.jp/about/rin/rin_kisei/index.html', kind: 'tokyo' }],
   };
-  const UNSUPPORTED = { 11: ['埼玉県 川越農林振興センター管内: 公開されているのは地図画像(PDF)が中心のため未対応(公式ページで確認してください)'] };
+  const UNSUPPORTED = {};
   const PDFJS = ['https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'];
   const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
-  const PARSER_VER = 'p4'; // 解析プログラムを変えたら上げる(保存済みの解析結果を使い回さないため)
+  const PARSER_VER = 'p5'; // 解析プログラムを変えたら上げる(保存済みの解析結果を使い回さないため)
   const rad = Math.PI / 180, R = 6371000;
   const hav = (a, b) => { const dl = (b[0] - a[0]) * rad, dg = (b[1] - a[1]) * rad; const s = Math.sin(dl / 2) ** 2 + Math.cos(a[0] * rad) * Math.cos(b[0] * rad) * Math.sin(dg / 2) ** 2; return 2 * R * Math.asin(Math.min(1, Math.sqrt(s))); };
 
@@ -65,7 +66,7 @@
         key: src.url, ver: PARSER_VER, label: src.name, fetcher: relayFetcher(src.url, false),
         parse: async (body, meta) => {
           const doc = new DOMParser().parseFromString(body, 'text/html');
-          const recs = ClosureParse.parseClosureTables(doc, src.url, meta.fetchedAt || new Date().toISOString());
+          const recs = ClosureParse.parseClosureTables(doc, src.url, meta.fetchedAt || new Date().toISOString(), { closedTable: !!src.closedTable });
           if (!recs.length) throw perr('表を読み取れませんでした(ページの構造が変わった可能性)');
           return recs.map((x) => ({ ...x, sourceName: src.name }));
         },

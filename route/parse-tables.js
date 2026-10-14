@@ -8,11 +8,11 @@
 (function (root) {
   const HEAD = {
     route: /路線名/,
-    muni: /市町村/,
+    muni: /市町村|所在地/,
     type: /制限.*種類|規制.*種類/,
     section: /区間|位置/,
     period: /期間/,
-    reason: /事由|理由/,
+    reason: /事由|理由|状況/,
   };
   const clean = (s) =>
     (s || '')
@@ -34,7 +34,7 @@
     return { status: '不明', scope: 'unknown' };
   }
 
-  function parseClosureTables(doc, sourceUrl, fetchedAt) {
+  function parseClosureTables(doc, sourceUrl, fetchedAt, opts = {}) {
     const out = [];
     const m = (doc.body.textContent || '').match(/掲載日[：:]\s*(\d{4})年(\d{1,2})月(\d{1,2})日/);
     const updated = m ? `${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}` : null;
@@ -51,7 +51,7 @@
         const route = g('route');
         if (!route) continue;
         const a = cells[col.route] && cells[col.route].querySelector('a[href]');
-        const c = classify(g('type'), g('section'));
+        const c = classify(g('type') || (opts.closedTable ? '通行止め' : ''), g('section'));
         out.push({
           route,
           municipality: g('muni') || null,
