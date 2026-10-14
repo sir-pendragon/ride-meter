@@ -13,7 +13,7 @@
   const OFF = new Set(['cycleway', 'mountain_bike', 'track', 'footway', 'sidewalk', 'path', 'pedestrian']);
   const NONRIDE = new Set(['steps', 'ferry', 'rail-ferry', 'rail', 'bus', 'tram', 'elevator', 'escalator', 'egress_connection', 'platform_connection', 'transit_connection']);
   const NEUTRAL = 0.5; // 不明な辺の交通指数(静かとも多いとも言わない)
-  const ATTRS = ['edge.surface', 'edge.length', 'edge.road_class', 'edge.use', 'edge.lane_count', 'edge.speed_limit', 'edge.cycle_lane', 'edge.bridge', 'edge.tunnel', 'edge.travel_mode', 'edge.begin_shape_index', 'edge.end_shape_index'];
+  const ATTRS = ['edge.surface', 'edge.length', 'edge.road_class', 'edge.use', 'edge.lane_count', 'edge.speed_limit', 'edge.cycle_lane', 'edge.bridge', 'edge.tunnel', 'edge.travel_mode'];
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const rad = Math.PI / 180;
