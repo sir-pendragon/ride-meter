@@ -41,11 +41,11 @@ a{color:var(--acc)}
 </style></head><body>
 <header class="top"><h1>自転車ルート予想</h1><span class="pill">試作版</span></header>
 <main>
-<section id="s-pts"><h2>① 地点(出発・経由・目的地)</h2>
- <div class="row"><input type="text" id="q" class="grow" placeholder="場所名で検索(例: 薬研野営場 / 道の駅 よこはま)"><button class="btn" id="qgo">検索</button><button class="btn" id="geo">現在地を出発に</button></div>
+<section id="s-pts"><h2>① 地点(スタート・経由・ゴール)</h2>
+ <div class="row"><input type="text" id="q" class="grow" placeholder="場所名で検索(例: 薬研野営場 / 道の駅 よこはま)"><button class="btn" id="qgo">検索</button><button class="btn" id="geo">現在地をスタートに</button></div>
  <ul class="sr" id="sr"></ul>
  <ul class="pts" id="pts"></ul>
- <div class="row" style="margin-top:8px"><button class="btn sm" id="swap">出発↔目的地を入れ替え</button><button class="btn sm" id="clr">地点をすべて消す</button></div>
+ <div class="row" style="margin-top:8px"><button class="btn sm" id="swap">スタート↔ゴールを入れ替え</button><button class="btn sm" id="clr">地点をすべて消す</button></div>
 </section>
 <section id="s-opt"><h2>② ルートを計算</h2>
  <div class="row"><label>獲得標高 <select id="obj"><option value="min" selected>最小獲得標高</option><option value="max">最大獲得標高</option></select></label><button class="btn pri" id="go">ルートを計算</button></div>
@@ -142,7 +142,7 @@ function nearClosure(pts){const hits=[];for(const c of st.closures){let m=1e9;fo
 
 function setProg(f,t){$('#bar').hidden=f==null;if(f!=null)$('#bar i').style.width=Math.round(f*100)+'%';$('#st').textContent=t||''}
 let busy=false;
-async function compute(){if(busy)return;if(!compute._r)Closures.resetBoost();normPts();if(!st.points.some(p=>p.k==='s')||!st.points.some(p=>p.k==='g')){setProg(null,'出発地と目的地を入れてください(経由地だけでは計算できません)');return}busy=true;$('#go').disabled=true;$('#s-res').hidden=$('#s-prof').hidden=true;st.cands=[];
+async function compute(){if(busy)return;if(!compute._r)Closures.resetBoost();normPts();if(!st.points.some(p=>p.k==='s')||!st.points.some(p=>p.k==='g')){setProg(null,'スタートとゴールを入れてください(経由地だけでは計算できません)');return}busy=true;$('#go').disabled=true;$('#s-res').hidden=$('#s-prof').hidden=true;st.cands=[];
   try{const first=!compute._r;
   const closureP=first?Closures.autoFetch(60000).catch(()=>{}):Promise.resolve();
   const vs=VAR[objective()];setProg(0.05,first?`通行止め情報を取得しながら、ルート候補を作成しています(${vs.length}通りを同時に問い合わせ)`:`ルート候補を作り直しています(${vs.length}通りを同時に問い合わせ)`);
@@ -170,8 +170,8 @@ L.control.layers(base,null,{collapsed:true}).addTo(map);
 const gPts=L.layerGroup().addTo(map),gRt=L.layerGroup().addTo(map),gCl=L.layerGroup().addTo(map);let hoverMk=null;
 const HEX={min:'#2E7D4F',max:'#C25A12'};
 function pinIcon(t,c){return L.divIcon({className:'',html:`<div class="pin ${c||''}">${t}</div>`,iconSize:[26,26],iconAnchor:[13,13]})}
-/* 地点の役割(出発 s / 経由 v / 目的地 g)を、位置ではなく印で持つ。並びは常に [出発, 経由…, 目的地]。
-   印の無い地点(古い保存データ)は、先頭=出発、末尾=目的地(2点以上のとき)、間=経由とみなす */
+/* 地点の役割(スタート s / 経由 v / ゴール g)を、位置ではなく印で持つ。並びは常に [スタート, 経由…, ゴール]。
+   印の無い地点(古い保存データ)は、先頭=スタート、末尾=ゴール(2点以上のとき)、間=経由とみなす */
 function normPts(){const P=st.points;if(P.every(p=>p.k))return;P.forEach((p,i)=>{p.k=i===0?'s':(i===P.length-1?'g':'v')})}
 const viaNo=(i)=>st.points.slice(0,i+1).filter(p=>p.k==='v').length;
 function drawPts(){normPts();gPts.clearLayers();st.points.forEach((p,i)=>{const mk=L.marker([p.lat,p.lon],{icon:pinIcon(p.k==='s'?'S':p.k==='g'?'G':String(viaNo(i)),p.k==='s'?'s':p.k==='g'?'g':''),draggable:true}).addTo(gPts);mk.on('dragend',()=>{const ll=mk.getLatLng();p.lat=ll.lat;p.lon=ll.lng;p.name=p.name||'地図上の地点';save();clearResults();listPts()})});
@@ -191,7 +191,7 @@ function renderClFound(){const box=document.getElementById('cl-found');if(!box)r
     +ws.map(x=>li(x.status,x.status==='通行止め'?'#B3261E':'#B58900',x.route+(x.municipality?'('+x.municipality+')':''),[x.kind==='candidate'?'位置は推定(地図で確認して「避ける」を押すと迂回します)':'区間を特定できていません(通れるとは判断しません)',x.section?'区間: '+esc(x.section):'',x.period?'期間: '+esc(x.period):'',x.sourceName?esc(x.sourceName):''].filter(Boolean).join(' ・ '),x.sourceUrl)).join('')+'</ul>';
 }
 function clearResults(){renderClFound();st.cands=[];st.best=st.sel=null;$('#s-res').hidden=$('#s-prof').hidden=true;gRt.clearLayers()}
-function listPts(){normPts();setTimeout(()=>{if(typeof updatePrefs==='function')updatePrefs()},0);const ul=$('#pts');ul.innerHTML='';st.points.forEach((p,i)=>{const li=document.createElement('li');li.innerHTML=`<span class="badge">${p.k==='s'?'S':p.k==='g'?'G':viaNo(i)}</span><div class="grow"><div class="nm">${esc(p.name||'地図上の地点')}</div><div class="hint">${p.k==='s'?'出発':p.k==='g'?'目的地':'経由'} ・ ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</div></div><button class="btn sm" data-i="${i}">削除</button>`;ul.appendChild(li)});
+function listPts(){normPts();setTimeout(()=>{if(typeof updatePrefs==='function')updatePrefs()},0);const ul=$('#pts');ul.innerHTML='';st.points.forEach((p,i)=>{const li=document.createElement('li');li.innerHTML=`<span class="badge">${p.k==='s'?'S':p.k==='g'?'G':viaNo(i)}</span><div class="grow"><div class="nm">${esc(p.name||'地図上の地点')}</div><div class="hint">${p.k==='s'?'スタート':p.k==='g'?'ゴール':'経由'} ・ ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</div></div><button class="btn sm" data-i="${i}">削除</button>`;ul.appendChild(li)});
   if(!st.points.length)ul.innerHTML='<li class="hint">まだ地点がありません</li>';drawPts()}
 function listCl(){renderClFound();const ul=$('#cl');ul.innerHTML='';st.closures.forEach((c,i)=>{const li=document.createElement('li');li.innerHTML=`<span class="badge" style="background:#B3261E">✕</span><div class="grow"><div class="nm">${esc(c.note||'通行止め')}</div><div class="hint">${esc(c.date||'')} ・ ${c.lat.toFixed(5)}, ${c.lon.toFixed(5)}</div></div><button class="btn sm" data-i="${i}">削除</button>`;ul.appendChild(li)});if(!st.closures.length)ul.innerHTML='<li class="hint">登録した通行止めはありません</li>';drawPts()}
 function addPoint(kind,lat,lon,name){normPts();const p={lat,lon,name:name||'地図上の地点',k:kind==='s'?'s':kind==='g'?'g':'v'};
@@ -200,7 +200,7 @@ function addPoint(kind,lat,lon,name){normPts();const p={lat,lon,name:name||'地�
   save();clearResults();listPts();map.closePopup()}
 function setStart(lat,lon,name){addPoint('s',lat,lon,name)}
 function setGoal(lat,lon,name){addPoint('g',lat,lon,name)}
-map.on('click',e=>{const{lat,lng}=e.latlng;const d=document.createElement('div');d.innerHTML=`<div class="hint">${lat.toFixed(5)}, ${lng.toFixed(5)}</div><button class="btn sm" data-k="s">出発</button><button class="btn sm" data-k="v">経由</button><button class="btn sm" data-k="g">目的地</button><div style="margin-top:6px"><input type="text" placeholder="通行止めのメモ(任意)" style="width:100%;min-height:32px;padding:3px 8px"><button class="btn sm" data-k="x" style="margin-top:4px">✕ 通行止めにする</button></div>`;
+map.on('click',e=>{const{lat,lng}=e.latlng;const d=document.createElement('div');d.innerHTML=`<div class="hint">${lat.toFixed(5)}, ${lng.toFixed(5)}</div><button class="btn sm" data-k="s">スタート</button><button class="btn sm" data-k="v">経由</button><button class="btn sm" data-k="g">ゴール</button><div style="margin-top:6px"><input type="text" placeholder="通行止めのメモ(任意)" style="width:100%;min-height:32px;padding:3px 8px"><button class="btn sm" data-k="x" style="margin-top:4px">✕ 通行止めにする</button></div>`;
   d.onclick=ev=>{const b=ev.target.closest('[data-k]');if(!b)return;const k=b.dataset.k;if(k==='s')setStart(lat,lng);else if(k==='g')setGoal(lat,lng);else if(k==='v')addPoint('v',lat,lng);else if(k==='x'){const note=d.querySelector('input').value.trim();st.closures.push({lat,lon:lng,note,date:new Date().toISOString().slice(0,10)});save();clearResults();listCl();map.closePopup()}map.closePopup()};
   L.popup().setLatLng(e.latlng).setContent(d).openOn(map)});
 $('#pts').onclick=e=>{const b=e.target.closest('button[data-i]');if(!b)return;st.points.splice(+b.dataset.i,1);save();clearResults();listPts()};
@@ -217,7 +217,7 @@ function placeAddr(x){const a=x.address||{};const pick=(...ks)=>{for(const k of 
 function formatPlaces(list,q){const seen=new Set();const out=[];for(const x of list||[]){const key0=x.class+'/'+x.type;if(SKIP.has(key0))continue;const kind=placeKind(x);let name=x.name||String(x.display_name||'').split(',')[0];if(kind==='駅'&&!/駅$/.test(name))name+='駅';const addr=placeAddr(x);const id=[name,kind,addr].join('|');if(seen.has(id))continue;seen.add(id);out.push({name,kind,addr,lat:x.lat,lon:x.lon,station:kind==='駅'})}
   if(/駅$/.test(q))out.sort((p,r)=>(r.station?1:0)-(p.station?1:0));return out.slice(0,6)}
 async function search(){const q=$('#q').value.trim();if(!q)return;const ul=$('#sr');ul.innerHTML='<li class="hint">検索中…</li>';try{const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&countrycodes=jp&limit=12&addressdetails=1&accept-language=ja&q='+encodeURIComponent(q));const j=await r.json();ul.innerHTML='';const ps=formatPlaces(j,q);if(!ps.length){ul.innerHTML='<li class="hint">見つかりませんでした。別の言い方や、地図のタップを試してください</li>';return}
-  for(const x of ps){const li=document.createElement('li');li.innerHTML=`<div class="grow"><div class="nm">${esc(x.name)}${x.kind&&!x.name.endsWith(x.kind)?` <span class="hint">・${esc(x.kind)}</span>`:''}</div><div class="hint nm">${esc(x.addr)}</div></div><button class="btn sm" data-k="s">出発</button><button class="btn sm" data-k="v">経由</button><button class="btn sm" data-k="g">目的地</button>`;li.dataset.lat=x.lat;li.dataset.lon=x.lon;li.dataset.nm=x.name;ul.appendChild(li)}}catch(e){ul.innerHTML='<li class="warn">検索できませんでした(通信状態を確認してください)</li>'}}
+  for(const x of ps){const li=document.createElement('li');li.innerHTML=`<div class="grow"><div class="nm">${esc(x.name)}${x.kind&&!x.name.endsWith(x.kind)?` <span class="hint">・${esc(x.kind)}</span>`:''}</div><div class="hint nm">${esc(x.addr)}</div></div><button class="btn sm" data-k="s">スタート</button><button class="btn sm" data-k="v">経由</button><button class="btn sm" data-k="g">ゴール</button>`;li.dataset.lat=x.lat;li.dataset.lon=x.lon;li.dataset.nm=x.name;ul.appendChild(li)}}catch(e){ul.innerHTML='<li class="warn">検索できませんでした(通信状態を確認してください)</li>'}}
 $('#qgo').onclick=search;$('#q').addEventListener('keydown',e=>{if(e.key==='Enter')search()});
 $('#sr').onclick=e=>{const b=e.target.closest('button[data-k]');if(!b)return;const li=b.closest('li');const lat=+li.dataset.lat,lon=+li.dataset.lon,nm=li.dataset.nm;const k=b.dataset.k;if(k==='s')setStart(lat,lon,nm);else if(k==='g')setGoal(lat,lon,nm);else addPoint('v',lat,lon,nm);map.setView([lat,lon],Math.max(map.getZoom(),12));$('#sr').innerHTML=''};
 $('#geo').onclick=()=>{if(!navigator.geolocation){return}navigator.geolocation.getCurrentPosition(p=>{setStart(p.coords.latitude,p.coords.longitude,'現在地');map.setView([p.coords.latitude,p.coords.longitude],13)},()=>{$('#st').textContent='現在地を取得できませんでした(位置情報の許可を確認してください)'},{enableHighAccuracy:true,timeout:15000})};

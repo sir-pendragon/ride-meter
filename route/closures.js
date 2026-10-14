@@ -344,7 +344,7 @@
   async function routeMunis(pts, say) {
     if (!pts || !pts.length) return null;
     let tb; try { tb = await getMuniRaw(); } catch (e) { return null; }
-    // 約1.5kmごと(最大200地点)+出発地・経由地・到着地。間隔より短い区間だけ通る市町村は拾えないことがある
+    // 約1.5kmごと(最大200地点)+スタート・経由地・到着地。間隔より短い区間だけ通る市町村は拾えないことがある
     const hav = (a, b) => { const R = 6371000, r = Math.PI / 180, dl = (b[0] - a[0]) * r, dn = (b[1] - a[1]) * r; const x = Math.sin(dl / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dn / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); };
     let total = 0; for (let i = 1; i < pts.length; i++) total += hav(pts[i - 1], pts[i]);
     const step = Math.max(1500, total / 200); const sample = [pts[0]]; let acc = 0, next = step;
@@ -576,7 +576,7 @@
       if (running) return null; running = true; try { return await fetchNow2(auto); } finally { running = false; }
     }
     async function fetchNow2(auto) {
-      const pts = ctx.getPoints(); if (!pts.length) { setStatus('先に出発地と目的地を入れてください'); return null; }
+      const pts = ctx.getPoints(); if (!pts.length) { setStatus('先にスタートとゴールを入れてください'); return null; }
       setStatus('通る県を調べています…'); const codes = await ctx.getPrefCodes(); const known = codes.filter((k) => SOURCES[k]);
       const muniKeys = ctx.getRoutePts ? await routeMunis(ctx.getRoutePts(), setStatus) : null; renderMunis(muniKeys, codes);
       if (!known.length) { buildGaps(null, codes); renderGaps(); setStatus('通過する県の自動取得にはまだ対応していません(対応: '+Object.keys(SOURCES).map((k)=>PREF_NAMES[k]||k).join('・')+')'); return null; }
