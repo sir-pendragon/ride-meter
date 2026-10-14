@@ -205,9 +205,10 @@
       const o = { auto: !!c.auto, km: r3(c.len / 1000), gain: c.gain == null ? null : Math.round(c.gain) };
       if (c.m && c.m.fixed != null) o.fixedPts = c.m.fixed;
       try { if (c.zraw && c.D && root.__rt && root.__rt.metrics) { const g = root.__rt.metrics(c.D, c.zraw).gain; o.gainRaw = g == null ? null : Math.round(g); } } catch (e) { }
-      if (c.cmf && !c.cmf.excluded) { const m = c.cmf; o.Q = r3(m.Q); o.H = r3(m.H); o.V = m.V == null ? null : r3(m.V); o.S = r3(m.S); o.unk = r3(m.unk); o.walkM = m.walkM == null ? null : Math.round(m.walkM); if (m.g) o.steep = { m: Math.round(m.g.steep || 0), n15: m.g.n15, m15: Math.round(m.g.m15 || 0), anomalies: m.g.anom }; }
+      if (c.cmf && !c.cmf.excluded) { const m = c.cmf; o.Q = r3(m.Q); o.H = r3(m.H); o.V = m.V == null ? null : r3(m.V); o.S = r3(m.S); o.unk = r3(m.unk); o.walkM = m.walkM == null ? null : Math.round(m.walkM); if (m.g) o.steep = { m9: Math.round((m.g.steep && m.g.steep.t1) || 0), m12: Math.round((m.g.steep && m.g.steep.t2) || 0), m15: Math.round(m.g.m15 || 0), n15: m.g.n15, anomalies: m.g.anom }; if (m.vd) o.scenic = { density: m.vd.density, pointScore: m.vd.pointScore, waterW: m.vd.waterW, waterScore: m.vd.waterScore, share100: r3(m.vd.waterShare), points: m.vd.points }; }
       else if (c.cmf && c.cmf.excluded) o.excluded = c.cmf.excluded;
       if (c.cyc != null) o.cyc = r3(c.cyc);
+      if (c.fixInfo) o.fix = c.fixInfo;
       if (c.edges) { o.edges = c.edges.length; o.edgeFit = edgeFit(c.edges, c.len); }
       o.legs = c.shape === null ? 'multi' : 'single';
       return o;
@@ -223,6 +224,7 @@
       st.points = pts.map((p, i) => ({ lat: p[0], lon: p[1], name: '診断' + i, k: i === 0 ? 's' : i === pts.length - 1 ? 'g' : 'v' }));
       st.cands = []; st.sel = st.best = null; st.xlog = null; compute._r = 0;
       try { await Promise.race([compute(), sleep(LIMITS.scnTimeoutMs).then(() => { throw new Error('時間切れ(' + LIMITS.scnTimeoutMs / 1000 + '秒)'); })]); } catch (e) { rec.error = scrub(e && e.message); }
+      for (let k = 0; k < 40 && st.sel && !st.sel.sfDone; k++) await sleep(200);   // 選ばれた候補の舗装率・橋トンネル補正(表示後に非同期)を待つ
       const stt = scrub(($('#st') || {}).textContent || '');
       if (!st.cands.length && !rec.error) rec.error = stt || '候補なし';
       rec.ms = Date.now() - t0; rec.valhalla = ctl.valCalls - v0; rec.cands = st.cands.length; rec.auto = st.cands.filter((c) => c.auto).length;

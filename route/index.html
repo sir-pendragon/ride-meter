@@ -139,7 +139,7 @@ async function routeVariant(v,alts,opt){opt=opt||{};const body={locations:opt.lo
 const PAVED=new Set(['paved_smooth','paved','paved_rough']);
 /* 道路の属性(舗装・種別・車線数・橋・トンネルなど)。経由地つきでも、区間が分かれていても、ルートの形状(pts)から作り直して問い合わせる。
    長いルートは、公開サーバーの制限が未確認のため、約60kmごとに分けて問い合わせる */
-async function attrsOf(c){try{const pts=c.pts;if(!pts||pts.length<2)return null;let edges=[];for(const ch of Comfort.chunkPts(pts,60000)){const j=await vpost('/trace_attributes',{encoded_polyline:Comfort.enc6(ch),costing:'bicycle',shape_match:'walk_or_snap',filters:{attributes:Comfort.ATTRS,action:'include'}},1);edges=edges.concat(j.edges||[])}return edges.length?edges:null}catch(e){return null}}
+async function attrsOf(c){try{const pts=c.pts;if(!pts||pts.length<2)return null;let edges=[];for(const ch of Comfort.chunkPts(pts,60000)){const j=await vpost('/trace_attributes',{encoded_polyline:Comfort.enc6(ch),costing:'bicycle',shape_match:'walk_or_snap',filters:{attributes:Comfort.ATTRS,action:'include'}},1);const sh=typeof j.shape==='string'?dec6(j.shape):null;for(const e of (j.edges||[]))if((e.bridge||e.tunnel)&&sh){const p0=sh[e.begin_shape_index],p1=sh[e.end_shape_index];if(p0&&p1){e._p0=p0;e._p1=p1}}edges=edges.concat(j.edges||[])}return edges.length?edges:null}catch(e){return null}}
 function surfaceFrom(edges){if(!edges)return null;let tot=0,pv=0;const by={};for(const e of edges){const s=e.surface||'unknown',l=+e.length||0;by[s]=(by[s]||0)+l;tot+=l;if(PAVED.has(s))pv+=l}return tot>0?{paved:pv/tot,by,km:tot}:null}
 async function surfaceOf(c){const edges=c.edges||await attrsOf(c);c.edges=edges;return surfaceFrom(edges)}
 function sig(pts){const n=pts.length,o=[];for(let i=0;i<12;i++){const p=pts[Math.floor(i*(n-1)/11)];o.push(p[0].toFixed(3)+','+p[1].toFixed(3))}return o.join('|')}
@@ -187,14 +187,19 @@ function choose(){const cs=st.cands;const base=cs.filter(c=>!c.auto);const minLe
   const withG=ok.filter(c=>c.gain!=null);st.best=withG.length?withG.reduce((a,b)=>((mx?b.gain>a.gain:b.gain<a.gain)||(b.gain===a.gain&&b.len<a.len))?b:a):null;
   st.sel=st.best||ok[0]}
 /* 自転車ルート: OSMに「自転車ルート(route=bicycle)」として登録された道を取得し、各候補がその道に沿う割合を出す(登録の有無であり、走行量ではない) */
-const CYC_EP=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
+/* Overpass(公開API)。予備の overpass.kumi.systems は、実機の診断で5回呼んで成功0回(30秒で打ち切り×4、103秒後に504×1)。失敗のたびに待ちを足すだけだったため外した。
+   1接続先あたり30秒で打ち切る。200でも「実行時エラー」の注記があれば失敗扱い(空の結果を保存しない) */
+const CYC_EP=['https://overpass-api.de/api/interpreter'];
+async function ovPost(q){const ms=window.__rtOvpMs||30000;let err;for(const ep of CYC_EP){const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),ms);
+  try{const r=await fetch(ep,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'content-type':'application/x-www-form-urlencoded'},signal:ac.signal});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();
+    if(j&&j.remark&&/runtime error|timed out|out of memory/i.test(j.remark))throw new Error('Overpass: '+String(j.remark).slice(0,60));clearTimeout(tm);return j}
+  catch(e){clearTimeout(tm);err=ac.signal.aborted?new Error('時間切れ('+Math.round(ms/1000)+'秒)'):e}}throw err}
 async function cycWays(bb){const g=0.05,b=[Math.floor(bb[0]/g)*g,Math.floor(bb[1]/g)*g,Math.ceil(bb[2]/g)*g,Math.ceil(bb[3]/g)*g].map(v=>+v.toFixed(2));const url='https://rt.invalid/cyc/'+b.join(',');let c=null;
   try{c=await caches.open('rt-cyc');const m=await c.match(url);if(m){const o=await m.json();if(Date.now()-o.t<6048e5)return o.w}}catch(e){c=null}
-  const q=`[out:json][timeout:25];relation["route"="bicycle"](${b.join(',')});way(r);out geom qt;`;let err;
-  for(const ep of CYC_EP){try{const r=await fetch(ep,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'content-type':'application/x-www-form-urlencoded'}});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();
-    const w=(j.elements||[]).filter(e=>e.geometry&&e.geometry.length>1).map(e=>e.geometry.map(p=>[+p.lat.toFixed(5),+p.lon.toFixed(5)]));
-    if(c){try{await c.put(url,new Response(JSON.stringify({t:Date.now(),w})))}catch(e){}}return w}catch(e){err=e}}
-  throw err}
+  const q=`[out:json][timeout:25];relation["route"="bicycle"](${b.join(',')});way(r);out geom qt;`;
+  const j=await ovPost(q);
+    const w=(j.elements||[]).filter(e=>Array.isArray(e.geometry)).map(e=>e.geometry.filter(p=>p&&Number.isFinite(p.lat)).map(p=>[+p.lat.toFixed(5),+p.lon.toFixed(5)])).filter(g=>g.length>1);
+    if(c){try{await c.put(url,new Response(JSON.stringify({t:Date.now(),w})))}catch(e){}}return w}
 function cycCover(cs,ways){const G=0.0004,cell=(la,lo)=>Math.floor(la/G)+','+Math.floor(lo/G),idx=new Map();
   for(const w of ways){const d=densify(w,10);for(let i=0;i<d.la.length;i++){const k=cell(d.la[i],d.lo[i]);(idx.get(k)||idx.set(k,[]).get(k)).push([d.la[i],d.lo[i]])}}
   for(const c of cs){const D=c.D||densify(c.pts,25);let hit=0;for(let i=0;i<D.la.length;i++){const a=Math.floor(D.la[i]/G),b=Math.floor(D.lo[i]/G);let f=false;
@@ -207,7 +212,15 @@ async function ensureSurface(c){if(!c||c.sfDone||c._sf)return;c._sf=true;const s
 /* ---------- 候補の共通評価・快適スコア・共通探索 ---------- */
 async function evalCand(c){const D=densify(c.pts,25);c.D=D;c.len=D.total;const z=await elevations(D);c.zraw=z;c.m=metrics(D,z);c.sf=null;c.paved=null;c.sfDone=false;c.gain=c.m.gain;c.closed=nearClosure(c.pts);c.hitsAuto=Closures.hits(c.pts);c.unkAuto=Closures.warnings(c.pts)}
 /* 橋・トンネルの辺だけ、両端の標高を直線で結び直す。ほかの区間(実在する激坂を含む)は変えない。辺の位置が合わない(25%以上ずれる)ときは何もしない */
-function fixStruct(c){if(!c.edges||!c.zraw||c.fixDone)return false;c.fixDone=true;const sp=Comfort.edgeSpans(c.edges,c.len);if(!sp.ok)return false;c.spans=sp.spans;const rg=Comfort.structureRanges(sp.spans);if(!rg.length)return false;const m=metrics(c.D,c.zraw,rg);if(!(m.fixed>0))return false;c.m=m;c.gain=m.gain;return true}
+/* 位置: 照合結果の形状(shape)の座標で重ねる(正確)。取れないときだけ、辺の長さの比例配分(実測で最大0.3%ずれる)。
+   幅: 両端を標高データの1画素分(z13で約15m)広げる。橋台・坑口の画素には谷や斜面の標高が混ざり、短い橋で10〜38%の偽の急勾配が残ったため(実測) */
+const demPx=lat=>40075016.686*Math.cos(lat*rad)/2**(DEM_Z+8);
+function fixStruct(c){if(!c.edges||!c.zraw||c.fixDone)return false;c.fixDone=true;const sp=Comfort.edgeSpans(c.edges,c.len);if(sp.ok)c.spans=sp.spans;
+  const al=Comfort.alignedRanges(c.D,c.edges,30);const r0=al||(sp.ok?Comfort.structureRanges(sp.spans):null);if(!r0||!r0.length){c.fixInfo={how:al?'shape':sp.ok?'scaled':'none',n:0};return false}
+  const pad=demPx(c.D.la[Math.floor(c.D.la.length/2)]);const rg=Comfort.padRanges(r0,pad,c.len);
+  let off=null;if(al&&sp.ok){const sc=Comfort.structureRanges(sp.spans);if(sc.length===al.length)off=Math.round(Math.max(0,...al.map((r,i)=>Math.max(Math.abs(r.a-sc[i].a),Math.abs(r.b-sc[i].b)))))}
+  c.fixInfo={how:al?'shape':'scaled',n:r0.length,m:Math.round(r0.reduce((a,r)=>a+r.b-r.a,0)),pad:+pad.toFixed(1),maxOffScaled:off};
+  const m=metrics(c.D,c.zraw,rg);if(!(m.fixed>0))return false;c.m=m;c.gain=m.gain;return true}
 function cmfEval(c,feat){const cm={};fixStruct(c);if(c.edges){const a=Comfort.analyzeEdges(c.edges,c.len);if(a){cm.Q=a.Q;cm.unk=a.unknownRatio;cm.walkM=a.walkM}if(c.spans)cm.spans=c.spans}
   if(c.m&&c.m.z){const g=Comfort.gradeProfile(c.D,c.m.z);cm.H=g.H;cm.g={steep:g.steepM,n15:g.n15,m15:g.m15,anom:g.anomalies}}
   if(feat){const v=Comfort.scenicScore(c.D,feat);if(v){cm.V=v.V;cm.vd=v}}
@@ -222,9 +235,7 @@ async function cmfAttach(cs){st.cmfErr=[];let feat=null;try{feat=await sceneFeat
   for(const c of pool)cmfEval(c,feat);Comfort.scoreAll(pool)}
 /* Overpass(公開API)。結果は、端末のCache APIに7日間保存する(同じ範囲の再検索では通信しない) */
 async function overpassJ(q,key,reduce){let c=null;const url='https://rt.invalid/scn/'+key;try{c=await caches.open('rt-scn');const m=await c.match(url);if(m){const o=await m.json();if(Date.now()-o.t<6048e5)return o.d}}catch(e){c=null}
-  /* 1接続先あたり30秒で打ち切る(実機の診断で、2番目の接続先が103秒後に504だったため) */
-  const ms=window.__rtOvpMs||30000;let err;for(const ep of CYC_EP){const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),ms);try{const r=await fetch(ep,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'content-type':'application/x-www-form-urlencoded'},signal:ac.signal});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();if(j&&j.remark&&/runtime error|timed out|out of memory/i.test(j.remark))throw new Error('Overpass: '+String(j.remark).slice(0,60));const d=reduce(j.elements||[]);if(c){try{await c.put(url,new Response(JSON.stringify({t:Date.now(),d})))}catch(e){}}clearTimeout(tm);return d}catch(e){clearTimeout(tm);err=ac.signal.aborted?new Error('時間切れ('+Math.round(ms/1000)+'秒)'):e}}
-  throw err}
+  const j=await ovPost(q);const d=reduce(j.elements||[]);if(c){try{await c.put(url,new Response(JSON.stringify({t:Date.now(),d})))}catch(e){}}return d}
 function gridBB(pts,pad,g){g=g||0.05;let a=90,b=180,c2=-90,d=-180;for(const p of pts){if(p[0]<a)a=p[0];if(p[1]<b)b=p[1];if(p[0]>c2)c2=p[0];if(p[1]>d)d=p[1]}return[Math.floor((a-pad)/g)*g,Math.floor((b-pad)/g)*g,Math.ceil((c2+pad)/g)*g,Math.ceil((d+pad)/g)*g].map(v=>+v.toFixed(2))}
 /* 景観のデータ: 展望地・山頂・峠(点)と、川・湖・海岸(線)。範囲が広いときは点だけ(水域は未評価)。森林・山並みは対象外 */
 async function sceneFeat(cs){const b=gridBB(cs.flatMap(c=>c.pts),0.002),bb=b.join(','),full=(b[2]-b[0])*(b[3]-b[1])<=0.25;
@@ -289,7 +300,8 @@ function noteHTML(c){let h='';const hint=t=>`<p class="hint" style="margin:2px 0
   if(c.auto&&c.propObj)h+=hint(`※追加探索の候補です(自動で足した経由地${c.propObj.via.length}点・除外点${c.propObj.excl.length}点)`);
   const len0=compute._len0||st.minLen;if(objective()!=='max'&&len0&&c.len>len0*1.5)h+=`<p class="warn" style="margin:4px 0 0;font-size:12px">⚠ 通行止めを避けるため、最短(${(len0/1000).toFixed(1)} km)の1.5倍を超えています(${(c.len/1000).toFixed(1)} km)。通行止めの回避を優先しました</p>`;
   if(objective()==='cmf'||st.cands.some(x=>x.auto))h+=hint('取得できた候補の中で条件を満たす最良のルートです。最適解を保証するものではありません');
-  if(st.xlog&&st.xlog.routes)h+=hint(`追加探索: ${st.xlog.routes}回(経由地の確認 ${st.xlog.locate}回)`);return h}
+  if(st.xlog&&st.xlog.routes)h+=hint(`追加探索: ${st.xlog.routes}回(経由地の確認 ${st.xlog.locate}回)`);
+  else if(st.xlog&&st.xlog.note&&/取得できません|確認できなかった|時間/.test(st.xlog.note))h+=`<p class="warn" style="margin:4px 0 0;font-size:12px">⚠ 追加探索は行っていません: ${esc(st.xlog.note)}。基本の候補から選んでいます</p>`;return h}
 
 /* ---------- 地図 ---------- */
 const map=L.map('map',{zoomControl:true}).setView([36.5,138],5);

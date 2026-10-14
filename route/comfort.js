@@ -13,7 +13,8 @@
   const OFF = new Set(['cycleway', 'mountain_bike', 'track', 'footway', 'sidewalk', 'path', 'pedestrian']);
   const NONRIDE = new Set(['steps', 'ferry', 'rail-ferry', 'rail', 'bus', 'tram', 'elevator', 'escalator', 'egress_connection', 'platform_connection', 'transit_connection']);
   const NEUTRAL = 0.5; // 不明な辺の交通指数(静かとも多いとも言わない)
-  const ATTRS = ['edge.surface', 'edge.length', 'edge.road_class', 'edge.use', 'edge.lane_count', 'edge.speed_limit', 'edge.cycle_lane', 'edge.bridge', 'edge.tunnel', 'edge.travel_mode'];
+  const ATTRS = ['edge.surface', 'edge.length', 'edge.road_class', 'edge.use', 'edge.lane_count', 'edge.speed_limit', 'edge.cycle_lane', 'edge.bridge', 'edge.tunnel', 'edge.travel_mode', 'edge.begin_shape_index', 'edge.end_shape_index', 'shape'];
+  // shape と begin/end_shape_index は、橋・トンネルの位置をルート上に正確に重ねるために使う(辺の長さの比例配分は、実測で0.3%ずれた)
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const rad = Math.PI / 180;
@@ -77,6 +78,43 @@
     for (const s of spans) if (s.bridge || s.tunnel) { const l = out[out.length - 1]; if (l && Math.abs(l.b - s.a) < 1) l.b = s.b; else out.push({ a: s.a, b: s.b }); }
     return out;
   }
+  /* 橋・トンネルの区間を、照合結果の形状(shape)の座標からルート上の距離に直す。辺の長さを比例配分するより正確。
+     どれか1つでもルートから maxD m 以上離れたら null(呼び出し側は比例配分に戻る) */
+  function segProj(D, i, p) {
+    const a = [D.la[i], D.lo[i]], b = [D.la[i + 1], D.lo[i + 1]], kx = 111320 * Math.cos(a[0] * rad), ky = 110540;
+    const bx = (b[1] - a[1]) * kx, by = (b[0] - a[0]) * ky, px = (p[1] - a[1]) * kx, py = (p[0] - a[0]) * ky, L2 = bx * bx + by * by;
+    const t = L2 > 0 ? clamp((px * bx + py * by) / L2, 0, 1) : 0, dx = px - t * bx, dy = py - t * by;
+    return { s: D.s[i] + t * (D.s[i + 1] - D.s[i]), d: Math.sqrt(dx * dx + dy * dy) };
+  }
+  function locateOn(D, p, from, maxD, minS) {   // from 以降・距離 minS 以降で、最初に maxD 以内に入る場所の、局所的に最も近い位置(同じ場所を2度通るルートでも、進む順に対応させる)
+    const n = D.s.length; let best = null;
+    for (let i = Math.max(0, from); i < n - 1; i++) {
+      const q = segProj(D, i, p); if (q.s < minS) continue;
+      if (q.d <= maxD) { if (!best || q.d < best.d) best = { s: q.s, d: q.d, i }; }
+      else if (best) break;
+    }
+    return best;
+  }
+  function alignedRanges(D, edges, maxD) {
+    maxD = maxD || 30; const out = []; let cur = 0, endS = -Infinity;
+    if (!D || !Array.isArray(edges)) return null;
+    for (const e of edges) {
+      if (!(e && (e.bridge || e.tunnel))) continue;
+      if (!e._p0 || !e._p1) return null;
+      const a = locateOn(D, e._p0, cur, maxD, endS - 1); if (!a) return null;
+      const b = locateOn(D, e._p1, a.i, maxD, a.s); if (!b) return null;
+      cur = a.i; endS = b.s;
+      const l = out[out.length - 1];
+      if (l && a.s - l.b < 1) l.b = Math.max(l.b, b.s); else out.push({ a: a.s, b: b.s });
+    }
+    return out;
+  }
+  /* 区間の両端を pad m ずつ広げる(標高データの1画素分。橋台・坑口の画素は、谷や斜面の標高が混ざるため)。重なれば結合 */
+  function padRanges(ranges, pad, total) {
+    const out = [];
+    for (const r of ranges || []) { const a = Math.max(0, r.a - pad), b = Math.min(total == null ? Infinity : total, r.b + pad); const l = out[out.length - 1]; if (l && a <= l.b) l.b = Math.max(l.b, b); else out.push({ a, b }); }
+    return out;
+  }
   /* 橋・トンネルの区間だけ、区間の両端のすぐ外側(区間の外で最も近い標高点)の標高を直線で結ぶ。それ以外の区間(実在する激坂を含む)には触れない */
   function correctZ(D, z, ranges) {
     const out = z.slice(); let changed = 0, used = 0;
@@ -127,24 +165,34 @@
   }
   function gridIndex(points, cell) { const m = new Map(); for (const p of points) { const k = Math.floor(p[0] / cell) + ',' + Math.floor(p[1] / cell); (m.get(k) || m.set(k, []).get(k)).push(p); } return m; }
   function nearAny(idx, cell, p, r) { const a = Math.floor(p[0] / cell), b = Math.floor(p[1] / cell); for (let x = -1; x <= 1; x++) for (let y = -1; y <= 1; y++) { const l = idx.get((a + x) + ',' + (b + y)); if (l) for (const q of l) if (hv(p, q) <= r) return true; } return false; }
-  const POINT_R = 300, WATER_R = 100, CELL = 0.0015;
+  /* 景観は「連続値・距離で重み・長さで正規化」(以前は 展望地等3か所・水域30% で頭打ちになり、川沿いの実ルートで全候補が1.0になった)。
+     展望地・山頂・峠: ルートからの距離 100m以内=1、300mで0 の重みの合計を、1kmあたりにして、1-exp(-密度/PT_K)。
+     水域: ルートの各点から最も近い水域までの距離 50m以内=1、200mで0 の重みの平均を、1-exp(-値/WT_K)。
+     V = 0.4×点 + 0.6×水域(配分は従来どおり)。基準値 PT_K・WT_K は仮置き(実データ1ルートで、差が出ることを確認しただけ) */
+  const POINT_R = 300, POINT_FULL = 100, WATER_R = 200, WATER_FULL = 50, PT_K = 0.5, WT_K = 0.35, CELL = 0.0035;
+  const wLin = (d, full, zero) => (d <= full ? 1 : d >= zero ? 0 : (zero - d) / (zero - full));
+  function nearestIn(idx, cell, p, r) { const a = Math.floor(p[0] / cell), b = Math.floor(p[1] / cell); let m = Infinity; for (let x = -1; x <= 1; x++) for (let y = -1; y <= 1; y++) { const l = idx.get((a + x) + ',' + (b + y)); if (l) for (const q of l) { const d = hv(p, q); if (d < m) m = d; } } return m <= r ? m : Infinity; }
   function scenicScore(D, feat) {
     if (!feat) return null;
     const rp = []; for (let i = 0; i < D.la.length; i++) rp.push([D.la[i], D.lo[i]]);
-    const cnt = { viewpoint: 0, peak: 0, pass: 0 }; let nPts = 0;
+    const L = D.total || (D.s && D.s[D.s.length - 1]) || 0, km = Math.max(L / 1000, 0.5);
+    const cnt = { viewpoint: 0, peak: 0, pass: 0 }; let nPts = 0, wsum = 0;
     if (feat.points && feat.points.length) {
       const idx = gridIndex(rp, CELL);
-      for (const f of feat.points) if (nearAny(idx, CELL, [f.lat, f.lon], POINT_R)) { nPts++; if (cnt[f.t] != null) cnt[f.t]++; }
+      for (const f of feat.points) { const d = nearestIn(idx, CELL, [f.lat, f.lon], POINT_R); if (d === Infinity) continue; nPts++; if (cnt[f.t] != null) cnt[f.t]++; wsum += wLin(d, POINT_FULL, POINT_R); }
     }
-    const pointScore = Math.min(1, nPts / 3);
-    let share = null, V = pointScore, partial = true;
+    const density = wsum / km, pointScore = 1 - Math.exp(-density / PT_K);
+    let share = null, waterW = null, V = pointScore, partial = true, waterScore = null;
     if (feat.lines) {
       partial = false;
-      const wp = []; for (const w of feat.lines) if (w && w.length > 1) for (const p of densifyLL(w, 25)) wp.push(p);
-      if (wp.length) { const idx = gridIndex(wp, CELL); let hit = 0; for (const p of rp) if (nearAny(idx, CELL, p, WATER_R)) hit++; share = rp.length ? hit / rp.length : 0; } else share = 0;
-      V = 0.4 * pointScore + 0.6 * Math.min(1, share / 0.30);
+      const wp = []; for (const w of feat.lines) if (w && w.length > 1) for (const p of densifyLL(w, 20)) wp.push(p);
+      if (wp.length && rp.length) { const idx = gridIndex(wp, CELL); let hit = 0, ws = 0; for (const p of rp) { const d = nearestIn(idx, CELL, p, WATER_R); if (d <= 100) hit++; if (d !== Infinity) ws += wLin(d, WATER_FULL, WATER_R); } share = hit / rp.length; waterW = ws / rp.length; }
+      else { share = 0; waterW = 0; }
+      waterScore = 1 - Math.exp(-waterW / WT_K);
+      V = 0.4 * pointScore + 0.6 * waterScore;
     }
-    return { V: clamp(V, 0, 1), points: nPts, counts: cnt, waterShare: share, partial };
+    const r3 = (x) => (x == null ? null : Math.round(x * 1000) / 1000);
+    return { V: clamp(V, 0, 1), points: nPts, counts: cnt, density: r3(density), pointScore: r3(pointScore), waterShare: share, waterW: r3(waterW), waterScore: r3(waterScore), partial };
   }
 
   /* ---- 総合スコア: 全候補で評価できた指標だけで重みを正規化して比べる(一部の候補だけ指標がある状態では比べない) ---- */
@@ -180,6 +228,6 @@
     return out;
   }
 
-  const api = { WEIGHTS, GRADE, ATTRS, NEUTRAL, edgeAccess, trafficIndex, edgeScale, analyzeEdges, edgeSpans, structureRanges, correctZ, gradeProfile, scenicScore, composite, scoreAll, upperBound, enc6, chunkPts, hv };
+  const api = { WEIGHTS, GRADE, ATTRS, NEUTRAL, edgeAccess, trafficIndex, edgeScale, analyzeEdges, edgeSpans, structureRanges, alignedRanges, padRanges, correctZ, gradeProfile, scenicScore, composite, scoreAll, upperBound, enc6, chunkPts, hv };
   if (typeof module !== 'undefined') module.exports = api; else root.Comfort = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
