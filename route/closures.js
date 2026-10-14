@@ -547,7 +547,8 @@
     for (const [i, c] of confirmed.entries()) { const li = document.createElement('li'); li.innerHTML = `<span class="badge" style="background:#B3261E">✕</span><div class="grow"><div class="nm">${ctx.esc(c.route)}(${ctx.esc(c.status)})</div><div class="hint">${ctx.esc(c.position)}${c.basis ? ' ・根拠: ' + ctx.esc(c.basis) : ''} ・ ${ctx.esc(c.sourceName)} ・ 取得 ${ctx.esc((c.fetchedAt || '').slice(0, 10))}</div></div><button class="btn sm" data-a="del" data-i="${i}">解除</button>`; ul.appendChild(li); }
     const h = document.querySelector('#ac-conf-h'); if (h) h.hidden = !confirmed.length;
   }
-  function setStatus(t) { const e = document.querySelector('#ac-st'); if (e) e.textContent = t || ''; }
+  let lastStatus = '';
+  function setStatus(t) { lastStatus = t || ''; const e = document.querySelector('#ac-st'); if (e) e.textContent = t || ''; }
 
   function avoid(r, cand) {
     const c0 = cand || r.selected;
@@ -567,9 +568,12 @@
     $('#ac-relay').value = relayUrl();
     $('#ac-save').onclick = () => { const v = $('#ac-relay').value.trim(); try { localStorage.setItem(LS_RELAY, v); } catch (e) {} try { if (window.RTStore) window.RTStore.set(LS_RELAY, v); } catch (e) {} setStatus(v ? '中継のURLを保存しました' : '中継のURLを消しました'); };
     let lastAuto = null;
-    let running = false;
-    async function fetchNow(auto) {
-      if (running) return null; running = true; try { return await fetchNow2(auto); } finally { running = false; }
+    let runningP = null;
+    // 取得中にもう一度呼ばれたら、断らずに、実行中の取得の終わりを待つ(以前は null を返して「未調査」のままになった)
+    function fetchNow(auto) {
+      if (runningP) return runningP;
+      runningP = fetchNow2(auto).finally(() => { runningP = null; try { if (ctx.onFetched) ctx.onFetched(); } catch (e) {} });
+      return runningP;
     }
     async function fetchNow2(auto) {
       const pts = ctx.getPoints(); if (!pts.length) { setStatus('先にスタートとゴールを入れてください'); return null; }
@@ -649,5 +653,5 @@
   function active() { return avoidAll().length > 0; }
   const exportGeoJSON = () => toGeoJSON();
 
-  root.Closures = { init, hasRelay: () => !!relayUrl(), revGeo, rgSave, muniRaw: getMuniRaw, gapText, lastRun: () => lastRun, autoFetch: (ms) => (autoFn ? autoFn(ms) : Promise.resolve(null)), samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _test: { avoid: (i) => avoid(found[i]), setFound: (f) => { found = f; }, autoAvoid }, _internal: { run, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
+  root.Closures = { init, hasRelay: () => !!relayUrl(), revGeo, rgSave, muniRaw: getMuniRaw, gapText, lastRun: () => lastRun, lastStatus: () => lastStatus, autoFetch: (ms) => (autoFn ? autoFn(ms) : Promise.resolve(null)), samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _test: { avoid: (i) => avoid(found[i]), setFound: (f) => { found = f; }, autoAvoid }, _internal: { run, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
 })(typeof globalThis !== "undefined" ? globalThis : self);
