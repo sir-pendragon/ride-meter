@@ -85,7 +85,7 @@ a{color:var(--acc)}
 </div>
 <script>(function(){var b=document.getElementById("set-toggle"),x=document.getElementById("set-box");b.onclick=function(){x.hidden=!x.hidden;b.setAttribute("aria-expanded",String(!x.hidden));b.textContent=x.hidden?"⚙ 設定":"⚙ 設定を閉じる";if(!x.hidden)x.scrollIntoView({behavior:"smooth",block:"nearest"})}})();</script>
 </main>
-<script src="leaflet/leaflet.js"></script><script src="gm-shim.js"></script>
+<script src="leaflet/leaflet.js"></script><script src="config.js"></script><script src="store.js"></script><script src="gm-shim.js"></script>
 <script src="fetchcore.js"></script><script src="aicheck.js"></script><script src="parse-tables.js"></script><script src="parse-tokyo-pdf.js"></script><script src="parse-yamanashi.js"></script><script src="parse-kanagawa.js"></script><script src="parse-city.js"></script><script src="parse-road.js"></script><script src="muni-registry.js"></script><script src="locate.js"></script><script src="closures.js"></script>
 <script type="text/plain" id="main-src">
 (()=>{
@@ -262,14 +262,14 @@ if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceW
 </script>
 <script>
 (async()=>{
-const src=document.getElementById('main-src');let key='';try{key=localStorage.getItem('rt-gkey')||''}catch(e){}
+const src=document.getElementById('main-src');let key='';try{await RTStore.restore()}catch(e){}try{key=localStorage.getItem('rt-gkey')||''}catch(e){}
 window.__map={kind:'leaflet',error:null};
 if(key){try{const gm=await GMShim.load(key,10000);window.L=GMShim.create(gm);window.__map={kind:'google',error:null}}catch(e){window.__map={kind:'leaflet',error:e.message}}}
 const sc=document.createElement('script');sc.textContent=src.textContent;document.body.appendChild(sc);
 const st=document.getElementById('gk-st');
 const show=()=>{st.textContent=window.__map.kind==='google'?'表示中: Googleマップ':(key?'Googleマップを読み込めなかったため、地理院地図を表示しています。'+(window.__map.error?'('+window.__map.error+')':''):'表示中: 地理院地図(APIキー未設定)')};show();
 window.__onGmAuthFail=()=>{st.textContent='Googleマップの認証に失敗しました。APIキー・請求先・「HTTPリファラー」の制限(https://sir-pendragon.github.io/*)を確認するか、キーを削除して地理院地図に戻してください。'};
-document.getElementById('gk-save').onclick=()=>{const v=document.getElementById('gk-key').value.trim();if(!v){st.textContent='キーを入力してください';return}try{localStorage.setItem('rt-gkey',v)}catch(e){st.textContent='保存できませんでした';return}st.textContent='保存しました。再読み込みします…';setTimeout(()=>location.reload(),600)};
-document.getElementById('gk-del').onclick=()=>{try{localStorage.removeItem('rt-gkey')}catch(e){}st.textContent='削除しました。再読み込みします…';setTimeout(()=>location.reload(),600)};
+document.getElementById('gk-save').onclick=async()=>{const v=document.getElementById('gk-key').value.trim();if(!v){st.textContent='キーを入力してください';return}if(!(await RTStore.set('rt-gkey',v))){st.textContent='保存できませんでした';return}st.textContent='保存しました。再読み込みします…';setTimeout(()=>location.reload(),600)};
+document.getElementById('gk-del').onclick=async()=>{await RTStore.remove('rt-gkey');st.textContent='削除しました(config.js にキーがあるときは、再読み込みで予備のキーが使われます)。再読み込みします…';setTimeout(()=>location.reload(),600)};
 })();
 </script></body></html>

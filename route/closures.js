@@ -532,7 +532,7 @@
     ctx = c;
     const $ = (s) => document.querySelector(s);
     $('#ac-relay').value = relayUrl();
-    $('#ac-save').onclick = () => { const v = $('#ac-relay').value.trim(); try { localStorage.setItem(LS_RELAY, v); } catch (e) {} setStatus(v ? '中継のURLを保存しました' : '中継のURLを消しました'); };
+    $('#ac-save').onclick = () => { const v = $('#ac-relay').value.trim(); try { localStorage.setItem(LS_RELAY, v); } catch (e) {} try { if (window.RTStore) window.RTStore.set(LS_RELAY, v); } catch (e) {} setStatus(v ? '中継のURLを保存しました' : '中継のURLを消しました'); };
     let lastAuto = null;
     let running = false;
     async function fetchNow(auto) {
