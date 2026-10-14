@@ -6,7 +6,7 @@
 *,*::before,*::after{box-sizing:border-box}[hidden]{display:none!important}html{-webkit-text-size-adjust:100%}
 :root{--bg:#F3F5F4;--card:#fff;--ink:#17211F;--muted:#5C6B67;--line:#D3DBD8;--acc:#0F4C5C;--c-a:#2E7D4F;--c-b:#2440C8;--c-c:#C25A12;--warn:#B3261E}
 @media (prefers-color-scheme:dark){:root{--bg:#101615;--card:#18211F;--ink:#E6EEEB;--muted:#9AABA6;--line:#2C3A36;--acc:#5FB3C6;--c-a:#6CC78F;--c-b:#8FA2FF;--c-c:#F0A065;--warn:#FF8A80}}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;padding-bottom:48px}
+html,body{overscroll-behavior-y:contain}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;padding-bottom:48px}
 .top{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;padding-top:max(10px,env(safe-area-inset-top))}
 .top h1{font-size:18px;margin:0}.pill{font-size:12px;border:1px solid var(--line);border-radius:99px;padding:1px 10px;color:var(--muted)}
 #map{height:48vh;min-height:300px;width:100%;background:#cfd8dc}
@@ -154,9 +154,17 @@ async function compute(){if(busy)return;if(!compute._r)Closures.resetBoost();nor
     const seen=new Map();for(const r of raw){const k=sig(r.pts);if(!seen.has(k))seen.set(k,r)}const cs=[...seen.values()];
     {const hh=cs.flatMap(c=>Closures.hits(c.pts));if(hh.length&&(compute._r||0)<2){compute._r=(compute._r||0)+1;setProg(null,`自動で避ける規制を通るため、除外を追加して再計算します(${compute._r}/2)`);Closures.addBoost(hh);busy=false;return compute()}}
     let done=0;await Promise.all(cs.map(async c=>{const D=densify(c.pts,25);c.D=D;c.len=D.total;const z=await elevations(D);c.m=metrics(D,z);c.sf=null;c.paved=null;c.sfDone=false;c.gain=c.m.gain;c.closed=nearClosure(c.pts);c.hitsAuto=Closures.hits(c.pts);c.unkAuto=Closures.warnings(c.pts);done++;setProg(0.5+0.5*done/cs.length,`標高を調べています ${done}/${cs.length}`)}));
-    st.cands=cs;compute._r=0;choose();setProg(null,'');render();{const gn=document.getElementById('gap-note');if(gn)gn.textContent=Closures.gapText()}ensureSurface(st.sel)}
+    st.cands=cs;compute._r=0;choose();setProg(null,'');render();saveLast();{const gn=document.getElementById('gap-note');if(gn)gn.textContent=Closures.gapText()}ensureSurface(st.sel)}
   catch(e){setProg(null,'計算できませんでした: '+(e&&e.message||e)+(e&&e.code===171?'(地点が道路から遠すぎます)':''));}
   busy=false;$('#go').disabled=false}
+/* 計算したルートは端末に保存し、画面が読み込み直されても(ブラウザの再読み込み・メモリ解放など)、同じ地点なら自動で復元する */
+const lastKey=()=>st.points.map(p=>p.k+p.lat.toFixed(5)+','+p.lon.toFixed(5)).join('|')+'#'+objective();
+function saveLast(){try{if(st.sel&&st.sel.pts)localStorage.setItem('rt-last',JSON.stringify({key:lastKey(),pts:st.sel.pts.map(q=>[+q[0].toFixed(5),+q[1].toFixed(5)])}))}catch(e){}}
+async function restoreLast(){if(busy||st.cands.length)return;let o=null;try{o=JSON.parse(localStorage.getItem('rt-last')||'null')}catch(e){}
+  if(!o||!Array.isArray(o.pts)||o.pts.length<2||o.key!==lastKey())return;busy=true;$('#go').disabled=true;
+  try{const c={pts:o.pts};const D=densify(c.pts,25);c.D=D;c.len=D.total;const z=await elevations(D);if(st.cands.length)return;c.m=metrics(D,z);c.sf=null;c.paved=null;c.sfDone=false;c.gain=c.m.gain;c.closed=nearClosure(c.pts);c.hitsAuto=[];c.unkAuto=[];
+    st.cands=[c];choose();render();ensureSurface(st.sel);Closures.autoFetch(60000).catch(()=>{}).then(()=>{if(st.sel===c){c.hitsAuto=Closures.hits(c.pts);c.unkAuto=Closures.warnings(c.pts);render(true)}})}
+  catch(e){}finally{busy=false;$('#go').disabled=false}}
 function choose(){const cs=st.cands;const minLen=Math.min(...cs.map(c=>c.len));const mx=objective()==='max';const lim=mx?Infinity:+$('#detour').value;const ok=cs.filter(c=>c.len<=minLen*lim);st.pool=ok;
   const withG=ok.filter(c=>c.gain!=null);st.best=withG.length?withG.reduce((a,b)=>((mx?b.gain>a.gain:b.gain<a.gain)||(b.gain===a.gain&&b.len<a.len))?b:a):null;
   st.sel=st.best||ok[0]}
@@ -189,8 +197,8 @@ function renderClFound(){const box=document.getElementById('cl-found');if(!box)r
     else box.innerHTML='<p style="margin:0"><b>未調査</b></p><p class="hint" style="margin:6px 0 0">このルートの規制は取得できていません(通る県の自動取得に未対応、または取得に失敗しました)。「通行規制なし」とは言えません。</p>'+(Closures.lastStatus()?`<p class="hint" style="margin:6px 0 0">状況: ${esc(Closures.lastStatus().slice(0,160))}</p>`:'');
     return}
   const li=(badge,col,t,sub,url)=>`<li style="display:block"><span class="badge" style="background:${col};width:auto;border-radius:12px;padding:0 8px">${esc(badge)}</span> <b>${esc(t)}</b><div class="hint" style="white-space:normal">${sub}${url?` <a href="${esc(url)}" target="_blank" rel="noopener">公式ページ ↗</a>`:''}</div></li>`;
-  box.innerHTML='<ul class="sr">'+hs.map(x=>li('避ける確定','#B3261E',x.route,'自動で避ける規制を、このルートが通ります(避けるルートが見つかっていません)。','')).join('')
-    +ws.map(x=>li(x.status,x.status==='通行止め'?'#B3261E':'#B58900',x.route+(x.municipality?'('+x.municipality+')':''),[x.kind==='candidate'?'位置は推定(地図で確認して「避ける」を押すと迂回します)':'区間を特定できていません(通れるとは判断しません)',x.section?'区間: '+esc(x.section):'',x.period?'期間: '+esc(x.period):'',x.sourceName?esc(x.sourceName):''].filter(Boolean).join(' ・ '),x.sourceUrl)).join('')+'</ul>';
+  box.innerHTML='<ul class="sr">'+hs.map(x=>li('自動で避ける','#B3261E',x.route,'自動で避ける規制を、このルートが通ります(避けるルートが見つかっていません)。','')).join('')
+    +ws.map(x=>li(x.status,x.status==='通行止め'?'#B3261E':'#B58900',x.route+(x.municipality?'('+x.municipality+')':''),[x.kind==='candidate'?'位置は推定のため、自動では避けていません':'区間を特定できていません(通れるとは判断しません)',x.section?'区間: '+esc(x.section):'',x.period?'期間: '+esc(x.period):'',x.sourceName?esc(x.sourceName):''].filter(Boolean).join(' ・ '),x.sourceUrl)).join('')+'</ul>';
 }
 function clearResults(){renderClFound();st.cands=[];st.best=st.sel=null;$('#s-res').hidden=$('#s-prof').hidden=true;gRt.clearLayers()}
 function listPts(){normPts();setTimeout(()=>{if(typeof updatePrefs==='function')updatePrefs()},0);const ul=$('#pts');ul.innerHTML='';st.points.forEach((p,i)=>{const li=document.createElement('li');li.innerHTML=`<span class="badge">${p.k==='s'?'S':p.k==='g'?'G':viaNo(i)}</span><div class="grow"><div class="nm">${esc(p.name||'地図上の地点')}</div><div class="hint">${p.k==='s'?'スタート':p.k==='g'?'ゴール':'経由'} ・ ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</div></div>${p.k==='v'?`<button class="btn sm" data-mv="-1" data-i="${i}" aria-label="上へ" ${st.points[i-1]&&st.points[i-1].k==='v'?'':'disabled'}>↑</button><button class="btn sm" data-mv="1" data-i="${i}" aria-label="下へ" ${st.points[i+1]&&st.points[i+1].k==='v'?'':'disabled'}>↓</button>`:''}<button class="btn sm" data-i="${i}">削除</button>`;ul.appendChild(li)});
@@ -268,7 +276,8 @@ listPts();listCl();if(st.points.length){const b=L.latLngBounds(st.points.map(p=>
 const routePts=()=>{let ps=st.sel&&st.sel.pts?st.sel.pts:null;if(!ps){ps=[];for(let i=0;i<st.points.length;i++){const b=st.points[i];ps.push([b.lat,b.lon]);const n=st.points[i+1];if(n){const d=hav([b.lat,b.lon],[n.lat,n.lon]),k=Math.floor(d/3000);for(let j=1;j<=k;j++)ps.push([b.lat+(n.lat-b.lat)*j/(k+1),b.lon+(n.lon-b.lon)*j/(k+1)])}}}return ps};
 Closures.init({map,L,esc,getPoints:()=>st.points,getRoutePts:routePts,getPrefCodes:async()=>{return detectPrefs(routePts())},geocode:async(q,bb)=>{if(!window.__map||window.__map.kind!=='google'||!window.google||!google.maps)return null;try{const {Geocoder}=await google.maps.importLibrary('geocoding');const r=await new Geocoder().geocode({address:q,region:'JP',bounds:{south:bb[0],west:bb[1],north:bb[2],east:bb[3]}});const x=r&&r.results&&r.results[0];if(!x||x.partial_match)return null;const p=x.geometry.location;const la=typeof p.lat==='function'?p.lat():p.lat,lo=typeof p.lng==='function'?p.lng():p.lng;return{lat:la,lon:lo}}catch(e){const c=e&&(e.code||e.message)||'';return /REQUEST_DENIED|not enabled|API/i.test(String(c))?{denied:true}:null}},onChange:()=>clearResults(),onFetched:()=>renderClFound()});
 {const b=document.getElementById('cl-found');if(b)b.addEventListener('click',e=>{if(!e.target.closest('[data-a=openrelay]'))return;const box=document.getElementById('set-box');if(box&&box.hidden)document.getElementById('set-toggle').click();const i=document.getElementById('ac-relay');if(i){i.scrollIntoView({behavior:'smooth',block:'center'});i.focus()}})}
-window.__rt={addPoint,maxGrade,st,compute,metrics,densify,elevations,zigzag,renderClFound,formatPlaces};
+window.__rt={restoreLast,addPoint,maxGrade,st,compute,metrics,densify,elevations,zigzag,renderClFound,formatPlaces};
+restoreLast();
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();
 </script>

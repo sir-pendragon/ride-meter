@@ -10,7 +10,11 @@ def ok(c,m):
 with sync_playwright() as p:
     b=p.chromium.launch();pg=b.new_page(viewport={'width':412,'height':915});errs=[]
     pg.on('pageerror',lambda e:errs.append(str(e)))
-    pg.route('**/*',lambda r:r.continue_() if '127.0.0.1' in r.request.url else r.fulfill(status=204,body=''))
+    def h(r):
+        u=r.request.url
+        if u.endswith('/config.js'):return r.fulfill(content_type='text/javascript',body='window.RT_CONFIG={gmapsKey:"",relayUrl:""};')
+        return r.continue_() if '127.0.0.1' in u else r.fulfill(status=204,body='')
+    pg.route('**/*',h)
     pg.goto('http://127.0.0.1:%d/index.html'%srv.server_address[1]);pg.wait_for_function('typeof __rt!=="undefined"',timeout=20000)
     ok(not pg.evaluate("Closures.hasRelay()"),'中継URLなし')
     pg.evaluate("__rt.st.sel={pts:[[35.9,139.1],[35.91,139.11]]};__rt.renderClFound()")
