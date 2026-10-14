@@ -65,14 +65,8 @@ a{color:var(--acc)}
  <h3 id="cl-mine-h" hidden style="margin-top:12px">あなたが地図で登録した通行止め</h3>
  <ul class="cl" id="cl"></ul>
 </section>
-<section id="s-map"><h2>地図(Googleマップ)</h2>
- <p class="hint" style="margin:0 0 6px">Googleマップを使うには、あなたのAPIキーが必要です。キーはこの端末だけに保存され、サーバーには送りません。未設定のときは、これまでの地理院地図を使います。</p>
- <div class="row"><input type="password" id="gk-key" class="grow" placeholder="Google Maps APIキー(AIza…)" autocomplete="off"><button class="btn sm" id="gk-save">保存</button><button class="btn sm" id="gk-del">削除</button></div>
- <p class="hint" id="gk-st"></p>
-</section>
 <section id="s-auto"><h2>ルート周辺の規制(自動取得)</h2>
  <p class="hint" style="margin:0 0 6px">ルートを計算するたびに、通る県・市町村の公式ページを自動で取得し、Geminiで二重チェックします(Geminiは参考表示のみ)。位置はOpenStreetMapの同名の道に当てはめた<b>推定</b>で、地図で確認して「避ける」を押したものだけルート計算で避けます。情報がない道を「通行可能」とは判定しません。</p>
- <div class="row"><input type="text" id="ac-relay" class="grow" placeholder="中継のURL(例: https://….workers.dev)"><button class="btn sm" id="ac-save">保存</button></div>
  <p class="hint" id="ac-st"></p><ul class="sr" id="ac-list"></ul><div id="ac-gap"></div><div id="ac-munis"></div>
  <h3 style="margin-top:12px">「避ける」を確定した規制</h3><ul class="cl" id="ac-conf"></ul>
 </section>
@@ -81,6 +75,19 @@ a{color:var(--acc)}
  <ul class="sr" id="prefs"><li class="hint">地点を置くか、ルートを計算すると、ここに出ます</li></ul>
 </section>
 <p class="hint" style="margin-top:14px">地図: 国土地理院タイル / © OpenStreetMap contributors。ルート計算: Valhalla(公開サーバー・OpenStreetMapデータ)。標高: 国土地理院 標高タイル(DEM10B)。場所検索: Nominatim。獲得標高・舗装率は推定値です。実際の道路状況・通行止め・冬期閉鎖は必ず公式情報で確認してください。</p>
+<div class="row" style="margin-top:14px"><button class="btn sm" id="set-toggle" aria-expanded="false" aria-controls="set-box">⚙ 設定</button></div>
+<div id="set-box" hidden>
+<section id="s-set"><h2>中継(通行規制の取得)</h2>
+ <p class="hint" style="margin:0 0 6px">通行規制の自動取得に使う中継のURLです。一度保存すれば、以後は入力不要です。この端末だけに保存されます。</p>
+ <div class="row"><input type="text" id="ac-relay" class="grow" placeholder="中継のURL(例: https://….workers.dev)"><button class="btn sm" id="ac-save">保存</button></div>
+</section>
+<section id="s-map"><h2>地図(Googleマップ)</h2>
+ <p class="hint" style="margin:0 0 6px">Googleマップを使うには、あなたのAPIキーが必要です。キーはこの端末だけに保存され、サーバーには送りません。未設定のときは、これまでの地理院地図を使います。</p>
+ <div class="row"><input type="password" id="gk-key" class="grow" placeholder="Google Maps APIキー(AIza…)" autocomplete="off"><button class="btn sm" id="gk-save">保存</button><button class="btn sm" id="gk-del">削除</button></div>
+ <p class="hint" id="gk-st"></p>
+</section>
+</div>
+<script>(function(){var b=document.getElementById("set-toggle"),x=document.getElementById("set-box");b.onclick=function(){x.hidden=!x.hidden;b.setAttribute("aria-expanded",String(!x.hidden));b.textContent=x.hidden?"⚙ 設定":"⚙ 設定を閉じる";if(!x.hidden)x.scrollIntoView({behavior:"smooth",block:"nearest"})}})();</script>
 </main>
 <script src="leaflet/leaflet.js"></script><script src="gm-shim.js"></script>
 <script src="fetchcore.js"></script><script src="aicheck.js"></script><script src="parse-tables.js"></script><script src="parse-tokyo-pdf.js"></script><script src="parse-yamanashi.js"></script><script src="parse-kanagawa.js"></script><script src="parse-city.js"></script><script src="parse-road.js"></script><script src="muni-registry.js"></script><script src="locate.js"></script><script src="closures.js"></script>
