@@ -36,4 +36,21 @@ ok(dt<20,('Overpassが応答しなくても、時間で打ち切って完了',dt
 ok('時間切れ' in txt and '景観は評価せず' in txt,('景観を評価しない旨を表示',txt))
 ok(pg.evaluate("__rt.st.cands.length>0 && !!__rt.st.sel"),'景観なしでも候補を選べる')
 ok(errs==[],errs);pg.unroute_all(behavior='ignoreErrors');b.close()
+# ③ 景観の線(川・湖・海岸): geom(範囲) は範囲の外の点を null で返す。落ちずに、線を分けて評価する(実機で、これが原因で景観が毎回「評価なし」だった)
+VP=[{'type':'node','lat':35.9036,'lon':139.1000,'tags':{'tourism':'viewpoint'}}]
+RIV={'type':'way','tags':{'waterway':'river'},'geometry':[None,{'lat':35.9004,'lon':139.0900},{'lat':35.9004,'lon':139.1000},None,{'lat':35.9004,'lon':139.1100},{'lat':35.9004,'lon':139.1110}]}
+env=Env(route=direct,edges=edgesOf(),feat=VP+[RIV])
+pg,b,errs=go(env,'cmf')
+pg.click('#go');pg.wait_for_selector('#cards .card',timeout=40000);pg.wait_for_timeout(600)
+r=pg.evaluate("({err:(__rt.st.cmfErr||[]).join('|'),lines:__rt.st.feat&&__rt.st.feat.lines&&__rt.st.feat.lines.length,V:__rt.st.cands[0].cmf&&__rt.st.cands[0].cmf.V})")
+ok(r['err']=='' and r['lines']==2 and r['V'] is not None,('null を含む線でも景観を評価(線は null で2つに分かれる)',r))
+ok(len(env.ov)==1,('Overpassは1回(2番目の接続先へ進まない)',len(env.ov)));ok(errs==[],errs);b.close()
+# ④ 200でも実行時エラーの注記つきなら、失敗として扱い、空の結果を保存しない
+env=Env(route=direct,edges=edgesOf(),feat=VP)
+pg,b,errs=go(env,'cmf')
+pg.route('**/*overpass*/**',lambda r:r.fulfill(json={'elements':[],'remark':'runtime error: Query timed out in "query" at line 1.'},headers={'access-control-allow-origin':'*'}))
+pg.click('#go');pg.wait_for_selector('#cards .card',timeout=40000);pg.wait_for_timeout(600)
+ok('景観のデータを取得できませんでした' in pg.evaluate("(__rt.st.cmfErr||[]).join('|')"),'実行時エラーの注記つきは失敗として扱い、景観は評価しない旨を表示')
+ok(pg.evaluate("caches.open('rt-scn').then(c=>c.keys()).then(k=>k.length)")==0,'失敗した(空の)結果はキャッシュしない')
+ok(errs==[],errs);b.close()
 done('attrs-fallback')
