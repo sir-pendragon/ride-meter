@@ -4,7 +4,7 @@ srv=socketserver.TCPServer(('127.0.0.1',0),functools.partial(type('Q',(http.serv
 with sync_playwright() as p:
     b=p.chromium.launch();pg=b.new_page(viewport={'width':412,'height':915});errs=[];pg.on('pageerror',lambda e:errs.append(str(e)))
     pg.goto('http://127.0.0.1:%d/route/sources.html'%srv.server_address[1]);time.sleep(1)
-    n=pg.evaluate("document.querySelectorAll('details.pf').length");assert n==7,n
+    n=pg.evaluate("document.querySelectorAll('details.pf').length");assert n==8,n
     assert pg.evaluate("[...document.querySelectorAll('details.pf')].every(d=>!d.open)"),'最初は全部閉じている'
     assert pg.evaluate("document.querySelectorAll('details.pf table').length")==0,'閉じている間は表を作らない'
     cs=pg.evaluate("[...document.querySelectorAll('details.pf summary')].map(s=>s.textContent)");print(cs)

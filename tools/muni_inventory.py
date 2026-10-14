@@ -26,7 +26,7 @@ KEYS = [('林道', 5), ('通行止', 5), ('通行規制', 5), ('交通規制', 4
 WORDS = re.compile(r'通行止|通行規制|交通規制|道路規制|林道')
 DATE = re.compile(r'(令和\s*\d+\s*年\s*\d+\s*月\s*\d+\s*日|20\d\d[/.\-年]\s*\d{1,2}[/.\-月]\s*\d{1,2})')
 KEEP = {'found', 'found_empty', 'index_only'}
-FILES = {'茨城県': 'ibaraki', '栃木県': 'tochigi', '群馬県': 'gunma', '埼玉県': 'saitama', '千葉県': 'chiba', '東京都': 'tokyo', '神奈川県': 'kanagawa'}
+FILES = {'茨城県': 'ibaraki', '栃木県': 'tochigi', '群馬県': 'gunma', '埼玉県': 'saitama', '千葉県': 'chiba', '東京都': 'tokyo', '神奈川県': 'kanagawa', '福島県': 'fukushima'}
 
 
 class Page(HTMLParser):

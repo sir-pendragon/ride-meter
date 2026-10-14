@@ -10,7 +10,7 @@ assert.strictEqual(R.normName('秩父市'), '秩父市'); ok();
 assert.strictEqual(R.keyOf('神奈川県', '横浜市　青葉区'), '神奈川県|横浜市'); ok();
 
 // 台帳の整合(全ファイル)
-const exp = { ibaraki: 44, tochigi: 25, gunma: 35, saitama: 63, chiba: 54, tokyo: 62, kanagawa: 33 };
+const exp = { ibaraki: 44, tochigi: 25, gunma: 35, saitama: 63, chiba: 54, tokyo: 62, kanagawa: 33, fukushima: 59 };
 const ST = new Set(['found', 'found_empty', 'index_only', 'unverified', 'not_found']);
 const by = {};
 for (const f of Object.keys(exp)) {
@@ -29,7 +29,7 @@ for (const f of Object.keys(exp)) {
 }
 ok();
 const reg = R.build(by);
-assert.strictEqual(reg.size, 316); ok();
+assert.strictEqual(reg.size, 375); ok();
 
 // ルート突き合わせ
 const r = R.forRoute(reg, ['神奈川県|相模原市', '神奈川県|相模原市', '神奈川県|山北町', '山梨県|甲府市', '東京都|あきる野市', '神奈川県|存在しない町']);

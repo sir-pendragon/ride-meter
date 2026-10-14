@@ -1,7 +1,7 @@
 // 市町村の通行規制ページ台帳(data/muni-inventory/*.json)と、ルートが通る市町村の突き合わせ。
 // 台帳は調査途中。「未確認」は「規制ページが無い」という意味ではない。
 (function (root) {
-  const FILES = { 茨城県: 'ibaraki', 栃木県: 'tochigi', 群馬県: 'gunma', 埼玉県: 'saitama', 千葉県: 'chiba', 東京都: 'tokyo', 神奈川県: 'kanagawa' };
+  const FILES = { 茨城県: 'ibaraki', 栃木県: 'tochigi', 群馬県: 'gunma', 埼玉県: 'saitama', 千葉県: 'chiba', 東京都: 'tokyo', 神奈川県: 'kanagawa', 福島県: 'fukushima' };
   const CONFIRMED = new Set(['found', 'found_empty', 'index_only']);
   // 国土地理院の表では政令市の区が「相模原市　緑区」のように入る。台帳は市単位なので、区を落として市に寄せる
   const normName = (n) => String(n || '').replace(/[\s　].*$/, '').trim();
