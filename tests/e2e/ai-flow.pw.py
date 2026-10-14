@@ -61,7 +61,7 @@ def run(honor):
             return route.fulfill(status=204,body='')
         pg.route('**/*',h)
         pg.goto('http://127.0.0.1:%d/index.html'%srv.server_address[1]);time.sleep(0.5)
-        pg.evaluate("""()=>{localStorage.setItem('rt-relay','https://relay.test');localStorage.setItem('rt-ai','1');localStorage.removeItem('rt-aicache');localStorage.removeItem('rt-confirmed');
+        pg.evaluate("""()=>{localStorage.setItem('rt-relay','https://relay.test');localStorage.removeItem('rt-aicache');localStorage.removeItem('rt-confirmed');
           __rt.st.points=[{lat:35.8990,lon:139.0850,name:'S'},{lat:35.9040,lon:139.1100,name:'G'}]}""")
         pg.reload();time.sleep(0.5)
         pg.evaluate("()=>{__rt.st.points=[{lat:35.8990,lon:139.0850,name:'S'},{lat:35.9040,lon:139.1100,name:'G'}]}")

@@ -260,7 +260,8 @@
 
   // ---- Geminiによる二重チェック(中継の /ai を使う。参考情報であり、判定は変えない) ----
   const LS_AI = 'rt-ai', LS_AICACHE = 'rt-aicache', AI_VER = 'a1';
-  const aiEnabled = () => { try { return localStorage.getItem(LS_AI) === '1' && !!relayUrl(); } catch (e) { return false; } };
+  const aiEnabled = () => !!relayUrl(); // 常に併用する(キーが中継に無いときは、その旨を1回だけ表示して以後の呼び出しを止める)
+  let aiBlocked = false;
   const lsj = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } };
   async function aiCall(text) {
     const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 40000);
@@ -274,7 +275,7 @@
   // records: 私たちの解析結果(_ai に text/hash/key が付いている)。戻り値: { records(ai付き), aiOnly, note }
   async function aiApply(src, records) {
     const meta = records._ai; const res = { records, aiOnly: [], note: null };
-    if (!aiEnabled() || !meta) return res;
+    if (!aiEnabled() || !meta || aiBlocked) return res;
     let hash = meta.hash; const cache = lsj(LS_AICACHE, {});
     try {
       if (!hash && meta.text) hash = await root.FetchCore.sha256Hex(meta.text);
@@ -290,7 +291,7 @@
       cmp.records._ai = meta; res.records = cmp.records;
       res.aiOnly = cmp.aiOnly.map((x) => ({ ...x, sourceName: src.name, sourceUrl: src.url }));
       if (ent.rejected) res.note = `${src.name}: AIの項目のうち${ent.rejected}件は、原文の引用が本文に見つからないため破棄しました`;
-    } catch (e) { res.note = `${src.name}: AI二重チェックは行えませんでした(${e.message})`; }
+    } catch (e) { if (e.code === 'noconf') { aiBlocked = true; res.note = 'Geminiのキーが中継に設定されていないため、二重チェックは行っていません'; } else res.note = `${src.name}: AI二重チェックは行えませんでした(${e.message})`; }
     return res;
   }
 
@@ -319,6 +320,7 @@
   }
 
   async function run(bbox, codes, say, muniKeys) {
+    aiBlocked = false;
     const results = []; const fails = []; const notes = []; const aiOnly = []; const skipped = []; let aiTried = false;
     for (const code of codes) {
       for (const u of UNSUPPORTED[code] || []) notes.push(u);
@@ -327,7 +329,7 @@
       for (const s of srcs) {
         if (!root.MuniRegistry.wantsMuni(s, muniKeys)) { skipped.push(s.name); continue; }
         say(`${s.name} を取得中…`);
-        try { let part = await fetchSource(s); if (aiEnabled()) { aiTried = true; say(`${s.name} をGeminiで二重チェック中…`); const ap = await aiApply(s, part); part = ap.records; aiOnly.push(...ap.aiOnly); if (ap.note) notes.push(ap.note); } results.push(...part); if (s._partial) fails.push(`${s.name}: ${s._partial}`); } catch (e) { fails.push(`${s.name}: ${e.message}`); }
+        try { let part = await fetchSource(s); if (aiEnabled()) { aiTried = true; say(`${s.name} をGeminiで二重チェック中…`); const ap = await aiApply(s, part); part = ap.records; aiOnly.push(...ap.aiOnly); if (ap.note && !notes.includes(ap.note)) notes.push(ap.note); } results.push(...part); if (s._partial) fails.push(`${s.name}: ${s._partial}`); } catch (e) { fails.push(`${s.name}: ${e.message}`); }
       }
     }
     if (skipped.length) notes.push('ルートが通らない市町村のため取得しなかったページ: ' + skipped.join('・'));
@@ -523,7 +525,6 @@
     ctx = c;
     const $ = (s) => document.querySelector(s);
     $('#ac-relay').value = relayUrl();
-    const aiBox = $('#ac-ai'); if (aiBox) { try { aiBox.checked = localStorage.getItem(LS_AI) === '1'; } catch (e) {} aiBox.onchange = () => { try { localStorage.setItem(LS_AI, aiBox.checked ? '1' : '0'); } catch (e) {} setStatus(aiBox.checked ? 'Geminiの二重チェックを有効にしました(次の取得から。中継側にキーの設定が必要です)' : 'Geminiの二重チェックを無効にしました'); }; }
     $('#ac-save').onclick = () => { const v = $('#ac-relay').value.trim(); try { localStorage.setItem(LS_RELAY, v); } catch (e) {} setStatus(v ? '中継のURLを保存しました' : '中継のURLを消しました'); };
     let lastAuto = null;
     let running = false;
@@ -539,15 +540,12 @@
       const sig = bbox.join(',') + '|' + known.join(',') + '|' + (muniKeys ? [...muniKeys].sort().join(',') : '-');
       if (!(lastAuto && lastAuto.sig === sig)) lastRun = null; // 別のルートの調査結果を使い回さない
       if (auto && lastAuto && lastAuto.sig === sig && Date.now() - lastAuto.t < 600000) { setStatus('直前に取得済みのため再取得しません(10分以内)'); return null; }
-      $('#ac-go').disabled = true;
       try {
         const res = await run(bbox, known, setStatus, muniKeys); lastRun = { fails: res.fails.slice(), unsupported: codes.filter((k) => !SOURCES[k]).map(prefName) }; renderList(res); buildGaps(res, codes); renderGaps(); lastAuto = { sig, t: Date.now() };
         const log = root.FetchCore ? fc().getLog().slice(-6).map((l) => `${l.label}:${l.result}`).join(' / ') : '';
         setStatus(`取得: 規制あり ${res.regulated}路線(全${res.total}行)のうち、この範囲でOSMに同名の道がある ${res.near.length}路線を表示。範囲外/道が見つからない ${res.outside}路線は表示しません。` + (res.fails.length ? ' 失敗: ' + res.fails.join(' / ') : '') + (res.notes.length ? ' 未対応・注意: ' + res.notes.join(' / ') : '') + (log ? ' 〔取得状況 ' + log + '〕' : ''));
       } catch (e) { buildGaps({ gaps: { unjudged: [], notFound: [], noPos: [], fails: ['取得できませんでした: ' + e.message], sources: {} } }, codes); renderGaps(); setStatus('取得できませんでした: ' + e.message); }
-      $('#ac-go').disabled = false;
     }
-    $('#ac-go').onclick = () => fetchNow(false);
     autoFn = (timeoutMs) => Promise.race([fetchNow(true), new Promise((r) => setTimeout(() => r('timeout'), timeoutMs || 60000))]).catch(() => null);
     $('#ac-list').onclick = (e) => {
       const b = e.target.closest('button[data-a]'); if (!b) return; const r = found[+b.dataset.i]; if (!r) return;

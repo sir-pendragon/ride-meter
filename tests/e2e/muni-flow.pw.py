@@ -30,7 +30,7 @@ def scenario(points,codes_by_lat,expect_in,expect_not_in,relay_expect,relay_not)
         pg.evaluate("""(pts)=>{localStorage.setItem('rt-relay','https://relay.test');__rt.st.points=pts}""",points)
         pg.reload();time.sleep(0.5)
         pg.evaluate("(pts)=>{__rt.st.points=pts}",points)
-        pg.evaluate("document.querySelector('#ac-go').click()")
+        pg.evaluate("Closures.autoFetch(30000)")
         for _ in range(60):
             time.sleep(0.5)
             if pg.evaluate("document.querySelector('#ac-munis').innerText.length")>0: break

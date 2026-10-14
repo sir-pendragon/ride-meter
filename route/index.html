@@ -70,11 +70,9 @@ a{color:var(--acc)}
  <div class="row"><input type="password" id="gk-key" class="grow" placeholder="Google Maps APIキー(AIza…)" autocomplete="off"><button class="btn sm" id="gk-save">保存</button><button class="btn sm" id="gk-del">削除</button></div>
  <p class="hint" id="gk-st"></p>
 </section>
-<section id="s-auto"><h2>通行規制の自動取得(試験中)</h2>
- <p class="hint" style="margin:0 0 6px">ボタンを押したときだけ、通る県の公式ページ(埼玉県・東京都)を取得します。定期取得はしません。位置はOpenStreetMapの同名の道に当てはめた<b>推定</b>です。地図で確認して「避ける」を押したものだけ、ルート計算で避けます。情報がない道を「通行可能」とは判定しません。</p>
+<section id="s-auto"><h2>ルート周辺の規制(自動取得)</h2>
+ <p class="hint" style="margin:0 0 6px">ルートを計算するたびに、通る県・市町村の公式ページを自動で取得し、Geminiで二重チェックします(Geminiは参考表示のみ)。位置はOpenStreetMapの同名の道に当てはめた<b>推定</b>で、地図で確認して「避ける」を押したものだけルート計算で避けます。情報がない道を「通行可能」とは判定しません。</p>
  <div class="row"><input type="text" id="ac-relay" class="grow" placeholder="中継のURL(例: https://….workers.dev)"><button class="btn sm" id="ac-save">保存</button></div>
- <label class="hint" style="display:block;margin:6px 0"><input type="checkbox" id="ac-ai"> Geminiで二重チェックする(参考表示のみ。中継側にGeminiのキーを設定した場合)</label>
- <div class="row" style="margin-top:8px"><button class="btn pri" id="ac-go">ルート周辺の規制を取得</button></div>
  <p class="hint" id="ac-st"></p><ul class="sr" id="ac-list"></ul><div id="ac-gap"></div><div id="ac-munis"></div>
  <h3 style="margin-top:12px">「避ける」を確定した規制</h3><ul class="cl" id="ac-conf"></ul>
 </section>
