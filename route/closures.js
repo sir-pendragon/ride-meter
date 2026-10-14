@@ -121,9 +121,10 @@
     try { const t = await (await fetch('https://maps.gsi.go.jp/js/muni.js')).text(); table = {}; for (const m of t.matchAll(/MUNI_ARRAY\["(\d+)"\]\s*=\s*'([^']*)'/g)) table[m[1]] = m[2].split(',')[3]; } catch (e) { table = null; }
     if (table) {
       const uniq = []; for (const c of centers) if (!cache.has(kk(c))) { cache.set(kk(c), null); uniq.push(c); }
-      await Promise.all(uniq.slice(0, 60).map(async (c) => {
-        try { const j = await (await fetch(`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${c[0]}&lon=${c[1]}`)).json(); const cd = j.results && j.results.muniCd; cache.set(kk(c), (cd && table[String(cd).padStart(5, '0')]) || table[cd] || null); } catch (e) { /* 判定できない候補は除外しない */ }
-      }));
+      // 同時に10件ずつ、最大240地点まで(国土地理院の逆ジオコーダ。超えた分は判定せず、除外もしない)
+      const todo = uniq.slice(0, 240);
+      const worker = async () => { while (todo.length) { const c = todo.shift(); try { const j = await (await fetch(`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${c[0]}&lon=${c[1]}`)).json(); const cd = j.results && j.results.muniCd; cache.set(kk(c), (cd && table[String(cd).padStart(5, '0')]) || null); } catch (e) { /* 判定できない候補は除外しない */ } } };
+      await Promise.all(Array.from({ length: 10 }, worker));
     }
     return (lat, lon) => cache.get(kk([lat, lon])) || null;
   }
