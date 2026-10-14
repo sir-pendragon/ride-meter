@@ -10,6 +10,10 @@ const ALLOWED_HOSTS = new Set([
   'www.pref.yamanashi.jp',
   'www.pref.tochigi.lg.jp',
   'www.pref.kanagawa.jp',
+  'www.city.matsumoto.nagano.jp',
+  'www.city.azumino.nagano.jp',
+  'www.inacity.jp',
+  'www.city.kofu.yamanashi.jp',
 ]);
 // このアプリ(公開ページ)からの呼び出しだけを許可
 const ALLOWED_ORIGINS = new Set(['https://sir-pendragon.github.io']);

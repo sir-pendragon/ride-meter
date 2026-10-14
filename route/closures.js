@@ -11,17 +11,25 @@
     ],
     9: [{ id: 'tochigi-yaita', name: '栃木県 矢板森林管理事務所', url: 'https://www.pref.tochigi.lg.jp/d56/tuukoudome/2025rindo.html', kind: 'table', closedTable: true, brSep: true }],
     14: [{ id: 'kanagawa-keneirin', name: '神奈川県 自然環境保全センター(県営林道)', url: 'https://www.pref.kanagawa.jp/docs/f4y/03shinrin/seibi/keneirin/rinndou.html', kind: 'kanagawa' }],
-    19: [{ id: 'yamanashi', name: '山梨県 県営林道通行規制情報', url: 'https://www.pref.yamanashi.jp/rindoujyouhou/list.php', kind: 'yamanashi' }],
+    19: [
+      { id: 'yamanashi', name: '山梨県 県営林道通行規制情報', url: 'https://www.pref.yamanashi.jp/rindoujyouhou/list.php', kind: 'yamanashi' },
+      { id: 'kofu', name: '甲府市 市営林道通行規制情報', url: 'https://www.city.kofu.yamanashi.jp/machi/kotsu/index.html', kind: 'kofu' },
+    ],
+    20: [
+      { id: 'matsumoto', name: '長野県 松本市 林道規制情報', url: 'https://www.city.matsumoto.nagano.jp/site/benricho/3182.html', kind: 'city', parse: 'parseMatsumoto' },
+      { id: 'azumino', name: '長野県 安曇野市 林道などの道路状況', url: 'https://www.city.azumino.nagano.jp/soshiki/30/91218.html', kind: 'city', parse: 'parseAzumino' },
+      { id: 'ina', name: '長野県 伊那市 南アルプス林道の車両通行規制', url: 'https://www.inacity.jp/kankojoho/sangaku_alps/minamialps/minamialps_tozan/tozanshanominasamahe/rindoutuuko.html', kind: 'city', parse: 'parseIna' },
+    ],
     13: [{ id: 'tokyo', name: '東京都 森林事務所', url: 'https://forestry-office.metro.tokyo.lg.jp/about/rin/rin_kisei/index.html', kind: 'tokyo' }],
   };
   const UNSUPPORTED = {};
   const PREF_ALL = ['北海道','青森県','岩手県','宮城県','秋田県','山形県','福島県','茨城県','栃木県','群馬県','埼玉県','千葉県','東京都','神奈川県','新潟県','富山県','石川県','福井県','山梨県','長野県','岐阜県','静岡県','愛知県','三重県','滋賀県','京都府','大阪府','兵庫県','奈良県','和歌山県','鳥取県','島根県','岡山県','広島県','山口県','徳島県','香川県','愛媛県','高知県','福岡県','佐賀県','長崎県','熊本県','大分県','宮崎県','鹿児島県','沖縄県'];
   const prefName = (k) => PREF_ALL[k - 1] || ('県コード' + k);
   let lastGaps = null;
-  const PREF_NAMES = { 11: '埼玉県', 13: '東京都', 14: '神奈川県(県営林道)', 19: '山梨県', 9: '栃木県(矢板のみ)' };
+  const PREF_NAMES = { 20: '長野県(松本市・安曇野市・伊那市のみ)', 11: '埼玉県', 13: '東京都', 14: '神奈川県(県営林道)', 19: '山梨県', 9: '栃木県(矢板のみ)' };
   const PDFJS = ['https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'];
   const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
-  const PARSER_VER = 'p7'; // 解析プログラムを変えたら上げる(保存済みの解析結果を使い回さないため)
+  const PARSER_VER = 'p8'; // 解析プログラムを変えたら上げる(保存済みの解析結果を使い回さないため)
   const rad = Math.PI / 180, R = 6371000;
   const hav = (a, b) => { const dl = (b[0] - a[0]) * rad, dg = (b[1] - a[1]) * rad; const s = Math.sin(dl / 2) ** 2 + Math.cos(a[0] * rad) * Math.cos(b[0] * rad) * Math.sin(dg / 2) ** 2; return 2 * R * Math.asin(Math.min(1, Math.sqrt(s))); };
 
@@ -100,6 +108,32 @@
   const rawText = {}; // ページ本文(解析が走ったときだけ入る。AI二重チェック用)
   async function fetchSource(src) {
     if (src.kind === 'yamanashi') { const r = await fetchYamanashi(src); if (r.failed.length) src._partial = `詳細ページ${r.failed.length}/${r.total}件を取得できませんでした(${r.failed.slice(0, 3).join('・')}${r.failed.length > 3 ? ' ほか' : ''})`; else src._partial = null; const ys = r.records; ys._ai = { key: src.url + '#details', text: ys.filter((x) => x.reason && x.rid && !/^L/.test(x.rid)).map((x) => `【${x.route}】(${x.municipality || ''}) ${x.reason}`).join('\n').slice(0, 39000) }; return ys; }
+    if (src.kind === 'city' || src.kind === 'kofu') {
+      // 日付で現在の規制かどうかを判定する解析のため、日付が変わったら再解析する
+      const ver = PARSER_VER + '@' + new Date().toISOString().slice(0, 10);
+      const toDoc = (b) => new DOMParser().parseFromString(b, 'text/html');
+      let pageUrl = src.url;
+      if (src.kind === 'kofu') {
+        // 甲府市はお知らせごとにページのURLが変わるため、「交通」ページから「市営林道通行規制情報」のリンクを探す
+        const idx = await fc().load({
+          key: src.url, ver, label: src.name + '(案内ページ)', fetcher: relayFetcher(src.url, false),
+          parse: async (body) => { const link = ClosureCity.findKofuLink(toDoc(body), src.url); if (!link) throw perr('市営林道通行規制情報のページが見つかりません(ページが移動した可能性)'); return [{ url: link }]; },
+        });
+        pageUrl = idx.records[0].url;
+      }
+      const r = await fc().load({
+        key: pageUrl, ver, label: src.name, fetcher: relayFetcher(pageUrl, false),
+        parse: async (body, meta) => {
+          const doc = toDoc(body); const at = meta.fetchedAt || new Date().toISOString();
+          const recs = src.kind === 'kofu' ? ClosureCity.parseKofu(doc, pageUrl, at) : ClosureCity[src.parse](doc, pageUrl, at);
+          const has = src.kind === 'kofu' ? /路線名/.test(body) && /通行規制/.test(body) : src.parse === 'parseMatsumoto' ? /規制内容/.test(body) : src.parse === 'parseAzumino' ? /規制等/.test(body) : /南アルプス林道/.test(body);
+          if (!has) throw perr('ページの構造を読み取れませんでした(ページが変わった可能性)');
+          rawText[pageUrl] = (doc.body.textContent || '').replace(/\s+/g, ' ').slice(0, 39000);
+          return recs.map((x) => ({ ...x, sourceName: src.name }));
+        },
+      });
+      const tr = tag(r); tr._ai = { key: pageUrl, hash: r.hash, text: rawText[pageUrl] || null }; return tr;
+    }
     if (src.kind === 'kanagawa') {
       const r = await fc().load({
         key: src.url, ver: PARSER_VER, label: src.name, fetcher: relayFetcher(src.url, false),
