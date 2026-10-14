@@ -26,11 +26,11 @@
     if (/一部区間|一部制限/.test(ty) && !/大型/.test(ty)) return { status: '一部規制', scope: 'partial' };
     const t = ty + ' ' + clean(section);
     if (/大型/.test(t) && !/全面|全線通行止/.test(t)) return { status: '一部規制', scope: 'partial', note: '大型車のみ等(自転車の扱いは記載なし)' };
-    if (/全面通行止|全線.*通行止|通行止.*全線/.test(t)) return { status: '通行止め', scope: 'whole' };
+    if (/全面通行止|全面通行禁止|全面閉鎖|全線.*(通行止|通行禁止|閉鎖)|(通行止|通行禁止|閉鎖).*全線/.test(t)) return { status: '通行止め', scope: 'whole' };
     if (/車両通行止/.test(t)) return { status: '通行止め', scope: /全線/.test(t) ? 'whole' : 'unknown', note: '「車両」に自転車が含まれるかは記載なし' };
     if (/一部区間|一部制限|一部/.test(t)) return { status: '一部規制', scope: 'partial' };
     if (/全線/.test(clean(section)) && /通行止/.test(t)) return { status: '通行止め', scope: 'whole' };
-    if (/通行止/.test(t)) return { status: '通行止め', scope: 'unknown' };
+    if (/通行止|通行禁止|閉鎖|立入禁止/.test(t)) return { status: '通行止め', scope: 'unknown' };
     return { status: '不明', scope: 'unknown' };
   }
 

@@ -57,11 +57,16 @@
   const kmNum = '(\\d+(?:\\.\\d+)?)\\s*(?:km|ｋｍ|㎞|キロ(?:メートル)?)';
   const dash = '[～〜~\\-ー−―から]+';
   function parseSection(text, scope) {
-    const t = squash(text || '').replace(/[０-９．]/g, (c) => (c === '．' ? '.' : String.fromCharCode(c.charCodeAt(0) - 0xfee0)));
-    if (scope === 'whole' || /^(全線|全区間|全面)/.test(t)) return { type: 'whole' };
+    let t = squash(text || '').replace(/[０-９．]/g, (c) => (c === '．' ? '.' : String.fromCharCode(c.charCodeAt(0) - 0xfee0)));
+    t = t.split('※')[0]; // 「※…までは通行可」などの注記は区間ではない
+    // 複数の区間が書かれている(「1km～2km及び4km～5km」「A～B、C～D」)場合は、一部だけを採用すると残りを見落とすため扱わない
+    const ranges = (t.match(/[～〜~]/g) || []).length;
+    const kms = (t.match(new RegExp(kmNum, 'g')) || []).length;
+    const multi = ranges >= 2 || (/(及び|並びに|、|,|と)/.test(t) && kms >= 2) || (ranges >= 1 && /(及び|並びに)/.test(t));
     let m;
-    // 起点より3.5km～終点 / 起点から3.5kmまで? / 起点より3km～5km
-    if ((m = t.match(new RegExp(`起点(?:側)?(?:より|から)${kmNum}${dash}(?:終点|${kmNum})`)))) {
+    if (multi && !/^全線/.test(t)) return { type: 'unknown', multi: true, raw: t, why: '複数の区間が書かれているため、自動では位置を付けません' };
+    // 起点より3.5km～終点 / 起点より3.5km地点から終点・以降・先 / 起点より3km～5km
+    if ((m = t.match(new RegExp(`起点(?:側)?(?:より|から)${kmNum}(?:地点)?(?:${dash}|以降|より先|から先|以遠)(?:終点|まで)?(?:${kmNum})?`)))) {
       return { type: 'km', from: 'start', fromKm: +m[1], toKm: m[2] ? +m[2] : null, raw: t };
     }
     if ((m = t.match(new RegExp(`起点(?:側)?(?:より|から)${kmNum}(?:まで|区間|地点)?`)))) {
@@ -70,6 +75,7 @@
     if ((m = t.match(new RegExp(`終点(?:側)?(?:より|から)${kmNum}`)))) {
       return { type: 'km', from: 'end', fromKm: 0, toKm: +m[1], raw: t };
     }
+    if (scope === 'whole' || /^(全線|全区間|全面)/.test(t)) return { type: 'whole' };
     // 目印: AからB / A～B / AとBの間 (どちらも数字でない名前)
     if ((m = t.match(/([^\s～〜~\-、,。]{2,}?(?:橋|峠|トンネル|隧道|ダム|ゲート|分岐|入口|出口))(?:から|より|～|〜|~|-|と)([^\s～〜~\-、,。]{2,}?(?:橋|峠|トンネル|隧道|ダム|ゲート|分岐|入口|出口))(?:の間|まで|間)?/))) {
       return { type: 'landmark', a: m[1], b: m[2], raw: t };
@@ -181,7 +187,7 @@
     }
     if (sec.type === 'landmark') {
       const find = (name) => {
-        const n = norm(name); const hits = (landmarks || []).filter((l) => norm(l.name) === n || norm(l.name).includes(n) || n.includes(norm(l.name)));
+        const n = norm(name); const hits = (landmarks || []).filter((l) => norm(stripParen(l.name)) === norm(stripParen(name))); // 一致は完全一致のみ(「久保橋」と「大久保橋」の取り違えを防ぐ)
         const near = hits.map((l) => ({ l, ...project(path, [l.lat, l.lon]) })).filter((h) => h.off <= 150);
         return near;
       };
@@ -199,7 +205,7 @@
       const d0 = Math.min(A[0].along, B[0].along), d1 = Math.max(A[0].along, B[0].along);
       return [mk(d0, d1, '推定', '中', `「${sec.a}」と「${sec.b}」のOSM上の位置(道からそれぞれ約${Math.round(A[0].off)}m・${Math.round(B[0].off)}m)で区間を切り出しました`)];
     }
-    return [{ pts: [], level: '不明', confidence: '低', basis: '区間の文言を読み取れませんでした(' + (sec.raw || '記載なし') + ')' }];
+    return [{ pts: [], level: '不明', confidence: '低', basis: sec.why ? sec.why + '(' + (sec.raw || '') + ')' : '区間の文言を読み取れませんでした(' + (sec.raw || '記載なし') + ')' }];
   }
 
   // ---------- 本体 ----------

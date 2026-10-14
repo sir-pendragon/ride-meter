@@ -24,7 +24,10 @@ const gj=C.exportGeoJSON();const g=gj.features[0].geometry;
 eq([gj.type,g.type,g.coordinates[0][0]],['FeatureCollection','MultiLineString',[139,35.9]],'GeoJSON(EPSG:4326, 経度緯度の順)');
 eq(gj.features[0].properties.route,'旧線','属性に出典・路線名を保持');
 // 不明(区間なし)の道は、除外せず警告のみ
-eq(C.warnings(cross),[],'未取得時は警告なし');
+eq(C.warnings(cross),[],'(取得前)警告なし');
 // 除外追加(再計算用)
-C.addBoost(C.hits(cross));eq(C.samplePoints(5)[0].lat>35.89,true,'検証で見つかった交差点を優先して除外');
+C.addBoost([{route:'x',points:[{lat:36.5,lon:140.5}]}]);eq(C.samplePoints(5)[0],{lat:36.5,lon:140.5},'検証で見つかった交差点を最優先で除外に加える');C.resetBoost();
+eq(C.samplePoints(5).every(p=>p.lat<36),true,'リセット後は消える');
+eq(C.hits([]),[],'空のルートでも例外にならない');
+const K=C._internal.keyOf;eq(K({sourceName:'S',route:'R',municipality:'M',section:'A～B'})!==K({sourceName:'S',route:'R',municipality:'M',section:'C～D'}),true,'同じ路線の別区間は別の確定として扱う');
 console.log('\n全',n,'件OK');

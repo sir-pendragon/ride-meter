@@ -1,0 +1,15 @@
+import w from '../relay/worker.js';import assert from 'assert';
+const mkReq=(u,o={})=>new Request('https://relay.test/?url='+encodeURIComponent(u),{headers:o.origin===null?{}:{Origin:o.origin||'https://sir-pendragon.github.io'},method:o.method||'GET'});
+let n=0;const ok=(c,m)=>{assert(c,m);console.log('ok',m);n++};
+const real=globalThis.fetch;
+globalThis.fetch=async(u)=>{u=String(u);if(u.endsWith('/r1'))return new Response('',{status:302,headers:{Location:'https://www.pref.saitama.lg.jp/r2'}});if(u.endsWith('/r2'))return new Response('',{status:302,headers:{Location:'https://www.pref.saitama.lg.jp/r3'}});if(u.endsWith('/r3'))return new Response('ok',{status:200,headers:{ETag:'"abc"'}});if(u.endsWith('/evil'))return new Response('',{status:302,headers:{Location:'https://evil.example/x'}});if(u.endsWith('/nf'))return new Response('no',{status:404});if(u.endsWith('/loop'))return new Response('',{status:302,headers:{Location:'/loop'}});return new Response('<html>',{status:200})};
+let r=await w.fetch(mkReq('https://evil.example/'));ok(r.status===403,'許可外ホストは拒否');
+r=await w.fetch(mkReq('http://www.pref.saitama.lg.jp/'));ok(r.status===403,'httpは拒否');
+r=await w.fetch(mkReq('https://www.pref.saitama.lg.jp/',{origin:'https://evil.example'}));ok(r.status===403,'他オリジンは拒否');
+r=await w.fetch(mkReq('https://www.pref.saitama.lg.jp/',{origin:null}));ok(r.status===403,'Originなしは拒否');
+r=await w.fetch(mkReq('https://www.pref.saitama.lg.jp/',{method:'POST'}));ok(r.status===405,'POSTは拒否');
+r=await w.fetch(mkReq('https://www.pref.saitama.lg.jp/r1'));ok(r.status===200&&await r.text()==='ok'&&r.headers.get('X-Upstream-Etag')==='"abc"','許可ドメイン内の2回のリダイレクトは追う・ETagを返す');
+r=await w.fetch(mkReq('https://www.pref.saitama.lg.jp/evil'));ok(r.status===403,'許可外へのリダイレクトは拒否');
+r=await w.fetch(mkReq('https://www.pref.saitama.lg.jp/loop'));ok(r.status===502,'リダイレクトの無限ループは打ち切る');
+r=await w.fetch(mkReq('https://www.pref.saitama.lg.jp/nf'));ok(r.headers.get('X-Upstream-Status')==='404','上流の404をヘッダーで伝える');
+console.log('\n全',n,'件OK');globalThis.fetch=real;

@@ -25,7 +25,7 @@ const eq=(a,b,m)=>{assert.deepStrictEqual(a,b,m);console.log('ok',m);t++};
  sleeps=[];clock+=11*60e3;let n=0;
  r=await s.load({key:'u',label:'L',fetcher:async()=>{if(n++<2){const e=new Error('x');e.status=503;throw e}return{data:'a,b,c,d',meta:{}}},parse});
  eq([r.status,r.records.length,n,sleeps.length],['更新',4,3,2],'503は再試行して成功');
- assert(sleeps[1]>sleeps[0]);eq(true,true,'待ち時間が増える(指数バックオフ)');
+ assert(sleeps[1]>sleeps[0]);eq(sleeps[1]>sleeps[0],true,'待ち時間が増える(指数バックオフ)');
  // 6 通信エラーが続く: 古い内容を「情報期限切れ」として返す
  sleeps=[];clock+=11*60e3;
  r=await s.load({key:'u',label:'L',fetcher:async()=>{const e=new Error('boom');e.status=503;throw e},parse});
@@ -44,5 +44,16 @@ const eq=(a,b,m)=>{assert.deepStrictEqual(a,b,m);console.log('ok',m);t++};
  eq(s2.getLog().at(-1).result,'解析失敗','構造変更は「解析失敗」として記録');
  // 9 429は再試行対象 / 403は対象外
  eq([FC.isRetryable({status:429}),FC.isRetryable({status:403}),FC.isRetryable({status:404}),FC.isRetryable({})],[true,false,false,true],'再試行の対象');
+ // 追加(レビュー指摘): 古すぎる内容は使わない/解析失敗後は古い内容を使わない/解析プログラム更新で再解析
+ {const s3=mk();clock+=1e6;await s3.load({key:'z',label:'L',fetcher:fetcher('a'),parse});
+  clock+=8*24*3600e3; // 8日後に通信失敗
+  await assert.rejects(()=>s3.load({key:'z',label:'L',fetcher:async()=>{const e=new Error('x');e.status=503;throw e},parse}),/一時的に応答/);
+  eq(true,true,'7日を超えた古い内容は、失敗時でも返さない');}
+ {const s4=mk();clock+=1e6;await s4.load({key:'y',label:'L',fetcher:fetcher('a'),parse});clock+=11*60e3;
+  await assert.rejects(()=>s4.load({key:'y',label:'L',fetcher:fetcher('b'),parse:async()=>{const e=new Error('構造変更');e.kind='parse';throw e}}));
+  clock+=11*60e3;await assert.rejects(()=>s4.load({key:'y',label:'L',fetcher:async()=>{const e=new Error('x');e.status=503;throw e},parse}),/一時的に応答/);
+  eq(true,true,'解析失敗のあと通信失敗が来ても、構造変更前の内容は返さない');}
+ {const s5=mk();clock+=1e6;let pc=0;const pp=async d=>{pc++;return[{d}]};await s5.load({key:'v',ver:'1',label:'L',fetcher:fetcher('a'),parse:pp});clock+=11*60e3;
+  await s5.load({key:'v',ver:'2',label:'L',fetcher:fetcher('a'),parse:pp});eq(pc,2,'解析プログラムの版が変わったら、同じ本文でも再解析');}
  console.log('\n全',t,'件OK');
 })().catch(e=>{console.error('FAIL',e.message);process.exit(1)});

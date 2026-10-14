@@ -13,6 +13,7 @@
   const UNSUPPORTED = { 11: ['埼玉県 川越農林振興センター管内: 公開されているのは地図画像(PDF)が中心のため未対応(公式ページで確認してください)'] };
   const PDFJS = ['https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'];
   const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+  const PARSER_VER = 'p4'; // 解析プログラムを変えたら上げる(保存済みの解析結果を使い回さないため)
   const rad = Math.PI / 180, R = 6371000;
   const hav = (a, b) => { const dl = (b[0] - a[0]) * rad, dg = (b[1] - a[1]) * rad; const s = Math.sin(dl / 2) ** 2 + Math.cos(a[0] * rad) * Math.cos(b[0] * rad) * Math.sin(dg / 2) ** 2; return 2 * R * Math.asin(Math.min(1, Math.sqrt(s))); };
 
@@ -24,13 +25,20 @@
   // 保存形式は GeoJSON(EPSG:4326 / [経度,緯度] の LineString・MultiLineString)。旧形式(rt-confirmed)は読み込み時に変換する
   const toFeature = (c) => ({ type: 'Feature', geometry: { type: 'MultiLineString', coordinates: c.lines.map((l) => l.map((p) => [+p[1].toFixed(6), +p[0].toFixed(6)])) }, properties: { key: c.key, route: c.route, status: c.status, position: c.position, basis: c.basis || null, confidence: c.confidence || null, section: c.section || null, period: c.period || null, reason: c.reason || null, sourceName: c.sourceName, sourceUrl: c.sourceUrl, fetchedAt: c.fetchedAt, officialUpdated: c.officialUpdated || null, bicycle: c.bicycle == null ? null : c.bicycle } });
   const fromFeature = (f) => { const g = f.geometry || {}; const ls = g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : []; return { ...f.properties, lines: ls.map((l) => l.map((q) => [q[1], q[0]])).filter((l) => l.length > 1) }; };
+  const okLine = (l) => Array.isArray(l) && l.length > 1 && l.every((q) => Array.isArray(q) && isFinite(q[0]) && isFinite(q[1]));
+  let migrated = false;
   try {
     const gj = JSON.parse(localStorage.getItem(LS_GJ) || 'null');
-    if (gj && gj.type === 'FeatureCollection') confirmed = gj.features.map(fromFeature);
-    else confirmed = JSON.parse(localStorage.getItem(LS_CONF) || '[]').map((c) => ({ ...c, lines: (c.ways || []).map((w) => w.pts) }));
+    if (gj && gj.type === 'FeatureCollection' && Array.isArray(gj.features)) confirmed = gj.features.filter((f) => f && f.geometry && f.properties).map(fromFeature).filter((c) => c.lines.length);
+    else {
+      // 旧形式。区間の確認が無いまま全体を保存していたため、その旨を記録する
+      confirmed = JSON.parse(localStorage.getItem(LS_CONF) || '[]').filter(Boolean).map((c) => ({ ...c, basis: c.basis || '旧形式から移行(区間の確認なし)', lines: (c.ways || []).map((w) => w && w.pts).filter(okLine) })).filter((c) => c.lines.length);
+      migrated = confirmed.length > 0;
+    }
   } catch (e) { confirmed = []; }
   const toGeoJSON = () => ({ type: 'FeatureCollection', crs: undefined, features: confirmed.map(toFeature) });
   const saveConf = () => { try { localStorage.setItem(LS_GJ, JSON.stringify(toGeoJSON())); } catch (e) {} };
+  if (migrated) saveConf(); // 旧データ(rt-confirmed)は削除せず残す
   const relayUrl = () => { try { return (localStorage.getItem(LS_RELAY) || '').replace(/\/+$/, ''); } catch (e) { return ''; } };
 
   async function viaRelay(url, asBuffer) {
@@ -53,7 +61,7 @@
   async function fetchSource(src) {
     if (src.kind === 'table') {
       const r = await fc().load({
-        key: src.url, label: src.name, fetcher: relayFetcher(src.url, false),
+        key: src.url, ver: PARSER_VER, label: src.name, fetcher: relayFetcher(src.url, false),
         parse: async (body, meta) => {
           const doc = new DOMParser().parseFromString(body, 'text/html');
           const recs = ClosureParse.parseClosureTables(doc, src.url, meta.fetchedAt || new Date().toISOString());
@@ -65,7 +73,7 @@
     }
     // 東京都: ページ内のPDFリンクを見つけ、PDFを取得して文字を取り出す
     const pg = await fc().load({
-      key: src.url, label: src.name + '(ページ)', fetcher: relayFetcher(src.url, false),
+      key: src.url, ver: PARSER_VER, label: src.name + '(ページ)', fetcher: relayFetcher(src.url, false),
       parse: async (body) => {
         const a = new DOMParser().parseFromString(body, 'text/html').querySelector('a[href$=".pdf"]');
         if (!a) throw perr('PDFのリンクが見つかりません(ページの構造が変わった可能性)');
@@ -74,7 +82,7 @@
     });
     const pdfUrl = pg.records[0].pdfUrl;
     const r = await fc().load({
-      key: pdfUrl, label: src.name + '(PDF)', fetcher: relayFetcher(pdfUrl, true),
+      key: pdfUrl, ver: PARSER_VER, label: src.name + '(PDF)', fetcher: relayFetcher(pdfUrl, true),
       parse: async (buf, meta) => {
         await loadScript(PDFJS[0]);
         root.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS[1];
@@ -101,7 +109,7 @@
   async function overpass(q) {
     let err;
     for (const h of OVERPASS) {
-      try { const r = await fetch(h, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }); if (!r.ok) throw new Error('HTTP ' + r.status); return (await r.json()).elements || []; } catch (e) { err = e; }
+      try { const r = await fetch(h, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }); if (!r.ok) throw new Error('HTTP ' + r.status); const j = await r.json(); if (j.remark && /error|timed out|timeout|memory/i.test(j.remark)) throw new Error('OSM検索が途中で打ち切られました'); return j.elements || []; } catch (e) { err = e; }
     }
     throw err;
   }
@@ -131,6 +139,7 @@
         try { results.push(...(await fetchSource(s))); } catch (e) { fails.push(`${s.name}: ${e.message}`); }
       }
     }
+    const unk = results.filter((r) => r.status === '不明'); if (unk.length) notes.push(`種類を分類できなかった行が${unk.length}件あります(${unk.slice(0, 3).map((r) => r.route).join('・')}${unk.length > 3 ? ' ほか' : ''})。公式ページで確認してください`);
     // 規制のあるものだけを位置付けの対象にする(「特になし」等は位置を付けない)
     const targets = results.filter((r) => r.status === '通行止め' || r.status === '一部規制');
     let located = [];
@@ -144,8 +153,8 @@
         }
         let loc = ClosureLocate.locate(targets, els, { landmarks });
         // 同名の道が複数ある場合だけ、候補の場所の市町村を調べて絞り込む
-        if (loc.some((r) => r.candidates && new Set(r.candidates.map((c) => c.comp)).size > 1)) {
-          say('同名の道が複数あるため、市町村で絞り込んでいます…');
+        if (loc.some((r) => r.candidates && r.candidates.length && (r.municipality || /地内/.test(r.section || '')))) {
+          say('市町村を確認しています…');
           const muniOf = await muniResolver(loc.flatMap((r) => (r.candidates || []).flatMap((c) => c.samples || [c.center])));
           loc = ClosureLocate.locate(targets, els, { landmarks, muniOf });
         }
@@ -158,7 +167,7 @@
     return { near, total: results.length, regulated: targets.length, outside, fails, notes };
   }
 
-  const keyOf = (r) => r.sourceName + '|' + r.route + '|' + (r.municipality || '');
+  const keyOf = (r) => r.sourceName + '|' + r.route + '|' + (r.municipality || '') + '|' + (r.section || '');
   const COL = { confirmed: '#B3261E', est: '#C25A12', unk: '#6B6B6B' };
   function densify(line, step) { const out = [line[0]]; for (let i = 1; i < line.length; i++) { const d = hav(line[i - 1], line[i]); const n = Math.max(1, Math.ceil(d / step)); for (let k = 1; k <= n; k++) out.push([line[i - 1][0] + (line[i][0] - line[i - 1][0]) * k / n, line[i - 1][1] + (line[i][1] - line[i - 1][1]) * k / n]); } return out; }
   const lenOfLines = (ls) => ls.reduce((t, l) => { for (let i = 1; i < l.length; i++) t += hav(l[i - 1], l[i]); return t; }, 0);
@@ -285,21 +294,23 @@
     return near;
   }
   function hits(routePts) {
-    const res = []; const rd = densify(routePts, 25);
+    const res = []; if (!routePts || routePts.length < 2) return res; const rd = densify(routePts, 25);
     for (const c of confirmed) {
       const near = c.lines.flatMap((l) => nearLine(rd, densify(l, 25), 30));
       if (near.length) res.push({ route: c.route, points: near });
     }
     return res;
   }
-  // 規制はあるが区間を特定できていない道(不明): 通れるとは判断せず、通る場合は注意として知らせる(除外はできない)
+  // まだ「避ける」を確定していない規制の道をルートが通る場合の注意。
+  //   kind 'unknown'  : 区間を特定できていない(通れるとは判断しない・除外もできない)
+  //   kind 'candidate': 位置の候補はあるが、ユーザーが確定していない
   function warnings(routePts) {
-    const res = []; const rd = densify(routePts, 25);
+    const res = []; if (!routePts || routePts.length < 2) return res; const rd = densify(routePts, 25);
     for (const r of found) {
       if (confirmed.some((c) => c.key === keyOf(r))) continue;
-      if (r.selected || (r.usable && r.usable.length)) continue; // 位置の候補があるものは一覧で確認する
+      const kind = (r.selected || (r.usable && r.usable.length)) ? 'candidate' : 'unknown';
       const near = (r.ways || []).flatMap((w) => nearLine(rd, densify(w.pts, 25), 30));
-      if (near.length) res.push({ route: r.route, status: r.status });
+      if (near.length) res.push({ route: r.route, status: r.status, kind });
     }
     return res;
   }
@@ -308,5 +319,5 @@
   function active() { return confirmed.length > 0; }
   const exportGeoJSON = () => toGeoJSON();
 
-  root.Closures = { init, samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _internal: { run, SOURCES, keyOf, densify, nearLine } };
+  root.Closures = { init, samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _internal: { run, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
 })(typeof globalThis !== "undefined" ? globalThis : self);

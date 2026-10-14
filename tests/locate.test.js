@@ -79,3 +79,21 @@ const W={type:'way',id:1,tags:{name:'林道御岳山線'},geometry:Array.from({l
 const muniOf=(la,lo)=>lo<139+d(3000)?'秩父市':'小鹿野町'; // 西3kmだけ秩父市、中央・東は小鹿野町
 const r=L.locate([{route:'御岳山線',municipality:'',scope:'whole',section:'全線（秩父市大滝地内)'}],[W],{muniOf})[0];
 assert(r.selected,'除外されない');console.log('ok 市町村をまたぐ長い道を中央点だけで除外しない');}
+
+// 追加(レビュー指摘への対応)
+{const p=L.parseSection;
+ let x=p('起点より3.5km地点から終点まで');assert.deepStrictEqual([x.type,x.fromKm,x.toKm],['km',3.5,null]);console.log('ok 「3.5km地点から終点まで」は3.5km～終点(補集合にしない)');
+ x=p('起点より3.5km以降');assert.deepStrictEqual([x.fromKm,x.toKm],[3.5,null]);console.log('ok 「3.5km以降」');
+ x=p('起点より1km～2km及び4km～5km');assert.strictEqual(x.type,'unknown');assert(x.multi);console.log('ok 複数区間は一部だけ採用せず不明にする');
+ x=p('大久保橋～矢久峠、土坂峠～三峰橋');assert.strictEqual(x.type,'unknown');console.log('ok 目印の複数組も不明');
+ x=p('土坂峠～矢久峠 ※国道299号分岐～矢久峠までは通行可');assert.deepStrictEqual([x.type,x.a,x.b],['landmark','土坂峠','矢久峠']);console.log('ok 「※…通行可」の注記は区間に含めない');
+ x=p('起点より3.5km～終点','whole');assert.strictEqual(x.type,'km');console.log('ok 全線と区間が混在しても、距離指定を優先(避けすぎない)');
+ x=p('全線（秩父市中津川地内）','whole');assert.strictEqual(x.type,'whole');console.log('ok 全線');
+}
+{ // 橋名は完全一致のみ: 「久保橋」で「大久保橋」に当てない
+ const d=(m)=>m/(111320*Math.cos(35.9*Math.PI/180));
+ const W={type:'way',id:1,tags:{name:'林道テスト線'},geometry:Array.from({length:11},(_,i)=>({lat:35.9,lon:139+d(i*200)}))};
+ const lm=L.parseLandmarks([{type:'way',id:2,tags:{name:'大久保橋',bridge:'yes'},center:{lat:35.9,lon:139+d(1000)}}]);
+ const r=L.locate([{route:'テスト線',municipality:'',scope:'partial',section:'久保橋通行不可'}],[W],{landmarks:lm})[0];
+ assert.strictEqual(r.position.level,'不明');console.log('ok 橋名は完全一致のみ');
+}

@@ -4,6 +4,7 @@
   const LS_CACHE = 'rt-fcache', LS_LOG = 'rt-flog';
   const TTL_MS = 10 * 60 * 1000;          // この時間内の再取得はキャッシュを使う
   const LOG_MAX = 100;
+  const STALE_MAX_MS = 7 * 24 * 3600 * 1000; // 取得に失敗したときに前回の内容を使ってよい期間(これを超えたら使わない)
 
   const defaultStorage = () => { try { return root.localStorage; } catch (e) { return null; } };
   function makeStore(storage) {
@@ -56,9 +57,10 @@
     const getLog = () => store.get(LS_LOG, []);
 
     // key: キャッシュのキー(URL等) / fetcher: async()=>({data: string|ArrayBuffer, meta}) / parse: async(data, meta)=>records
-    async function load({ key, label, fetcher, parse, ttl }) {
+    async function load({ key, label, fetcher, parse, ttl, ver }) {
       const cache = store.get(LS_CACHE, {});
-      const c = cache[key];
+      let c = cache[key];
+      if (c && (c.ver || null) !== (ver || null)) c = null; // 解析プログラムを変えたら、保存済みの解析結果は使わず再解析する
       const t0 = now();
       if (c && now() - c.checkedAt < (ttl ?? TTL_MS)) {
         log({ key, label, result: 'キャッシュ', detail: '10分以内の再取得のため公式サイトへアクセスしません' });
@@ -69,7 +71,8 @@
         const msg = describeError(e);
         if (e && (e.status === 404 || e.status === 410)) { delete cache[key]; store.set(LS_CACHE, cache); } // 公式ページが無いなら、古い内容を使い続けない
         log({ key, label, result: '失敗', detail: msg, ms: now() - t0 });
-        if (c && !(e && (e.status === 404 || e.status === 410))) {
+        if (c && now() - c.fetchedAtMs >= STALE_MAX_MS) { delete cache[key]; store.set(LS_CACHE, cache); }
+        if (c && !(e && (e.status === 404 || e.status === 410)) && now() - c.fetchedAtMs < STALE_MAX_MS) {
           return { records: c.records, status: '情報期限切れ', fetchedAt: c.fetchedAt, hash: c.hash, stale: true, error: msg };
         }
         const err = new Error(msg); err.status = e && e.status; throw err;
@@ -77,7 +80,7 @@
       const hash = await sha256Hex(got.data);
       const fetchedAt = (got.meta && got.meta.fetchedAt) || new Date(now()).toISOString();
       if (c && c.hash === hash) {
-        c.checkedAt = now(); c.fetchedAt = fetchedAt; store.set(LS_CACHE, cache);
+        c.checkedAt = now(); c.fetchedAt = fetchedAt; c.fetchedAtMs = now(); store.set(LS_CACHE, cache);
         log({ key, label, result: '変更なし', detail: '本文のハッシュが前回と同じため再解析を省略', ms: now() - t0 });
         return { records: c.records, status: '変更なし', fetchedAt, hash, stale: false };
       }
@@ -85,9 +88,10 @@
       try { records = await parse(got.data, got.meta || {}); } catch (e) {
         const msg = e && e.kind === 'parse' ? e.message : '解析に失敗しました: ' + ((e && e.message) || e);
         log({ key, label, result: '解析失敗', detail: msg, ms: now() - t0 });
+        delete cache[key]; store.set(LS_CACHE, cache); // 構造が変わった可能性があるため、古い解析結果も使わない
         const err = new Error(msg); err.kind = 'parse'; throw err; // 構造が変わった可能性。古い内容は使わない
       }
-      cache[key] = { hash, etag: (got.meta && got.meta.etag) || null, lastModified: (got.meta && got.meta.lastModified) || null, fetchedAt, checkedAt: now(), records };
+      cache[key] = { ver: ver || null, fetchedAtMs: now(), hash, etag: (got.meta && got.meta.etag) || null, lastModified: (got.meta && got.meta.lastModified) || null, fetchedAt, checkedAt: now(), records };
       store.set(LS_CACHE, cache);
       log({ key, label, result: '成功', detail: records.length + '件を解析', ms: now() - t0 });
       return { records, status: '更新', fetchedAt, hash, stale: false };

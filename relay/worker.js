@@ -47,17 +47,20 @@ export default {
     const t0 = Date.now();
     let r;
     try {
-      r = await fetch(u.toString(), { headers: { 'User-Agent': UA }, redirect: 'manual', cf: { cacheTtl: 300 } });
+      r = await fetch(u.toString(), { headers: { 'User-Agent': UA }, redirect: 'manual', cf: { cacheTtlByStatus: { '200-299': 300, '300-599': 0 } } });
     } catch (e) {
       return json({ ok: false, error: 'fetch failed', detail: String(e) }, 502, origin);
     }
-    // リダイレクト先も許可ドメインに限る(手動で1回だけ追う)
-    if (r.status >= 300 && r.status < 400) {
+    // リダイレクト先も許可ドメインに限る(手動で最大3回まで追う)
+    for (let hop = 0; hop < 3 && r.status >= 300 && r.status < 400; hop++) {
       const loc = r.headers.get('Location');
+      if (!loc) return json({ ok: false, error: 'bad redirect' }, 502, origin);
       let l; try { l = new URL(loc, u); } catch { return json({ ok: false, error: 'bad redirect' }, 502, origin); }
       if (l.protocol !== 'https:' || !ALLOWED_HOSTS.has(l.hostname)) return json({ ok: false, error: 'redirect not allowed' }, 403, origin);
+      u = l;
       try { r = await fetch(l.toString(), { headers: { 'User-Agent': UA }, redirect: 'manual' }); } catch (e) { return json({ ok: false, error: 'fetch failed' }, 502, origin); }
     }
+    if (r.status >= 300 && r.status < 400) return json({ ok: false, error: 'too many redirects' }, 502, origin);
     const len = Number(r.headers.get('Content-Length') || 0);
     if (len > MAX_BYTES) return json({ ok: false, error: 'too large' }, 413, origin);
     const body = await r.arrayBuffer();
