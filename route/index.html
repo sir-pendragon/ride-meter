@@ -48,8 +48,8 @@ a{color:var(--acc)}
  <div class="row" style="margin-top:8px"><button class="btn sm" id="swap">出発↔目的地を入れ替え</button><button class="btn sm" id="clr">地点をすべて消す</button></div>
 </section>
 <section id="s-opt"><h2>② ルートを計算</h2>
- <div class="row"><label>獲得標高 <select id="obj"><option value="min" selected>最小獲得標高</option><option value="max">最大獲得標高</option></select></label><label>迂回の上限 <select id="detour"><option value="1.2">最短の1.2倍まで</option><option value="1.5" selected>最短の1.5倍まで</option><option value="2">最短の2倍まで</option></select></label></div>
- <div class="row" style="margin-top:8px"><button class="btn pri" id="go">ルートを計算</button></div>
+ <div class="row"><label>獲得標高 <select id="obj"><option value="min" selected>最小獲得標高</option><option value="max">最大獲得標高</option></select></label><button class="btn pri" id="go">ルートを計算</button></div>
+ <div class="row" style="margin-top:8px"><label>迂回の上限 <select id="detour"><option value="1.2">最短の1.2倍まで</option><option value="1.5" selected>最短の1.5倍まで</option><option value="2">最短の2倍まで</option></select></label></div>
  <div class="bar" id="bar" hidden><i></i></div><p class="hint" id="st"></p>
 </section>
 <div id="map" style="margin:0 0 12px;border-radius:10px;overflow:hidden"></div>
