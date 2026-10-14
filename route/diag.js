@@ -79,7 +79,10 @@
       const okc = ts.filter((c) => c.status === 200).length;
       const miss = REQUIRED.filter((k) => !A.present[k]), optMiss = OPTIONAL.filter((k) => !A.present[k]);
       let res = 'OK', d = `応答 ${okc}/${ts.length} 件が200。辺 ${A.edges} 本(${r3(A.km)} km)`;
+      const bad = ts.filter((c) => c.status !== 200);
+      if (bad.length) { res = 'NG'; d += `。失敗 ${bad.length} 件(` + [...new Set(bad.map((c) => (c.status || c.err) + (c.error && c.error.error_code ? '/code' + c.error.error_code : '')))].join(',') + ')'; }
       if (!okc || !A.edges) res = 'NG';
+      else if (res === 'NG') { /* 失敗あり */ }
       else if (miss.length) { res = 'NG'; d += `。必須の属性が1本も出ない: ${miss.join(',')}`; }
       else if (optMiss.length) { res = '一部未確認'; d += `。出現しなかった属性(その道に無いだけの可能性): ${optMiss.join(',')}`; }
       add('trace.format', '1', res, d);
@@ -201,6 +204,7 @@
     function candInfo(c) {
       const o = { auto: !!c.auto, km: r3(c.len / 1000), gain: c.gain == null ? null : Math.round(c.gain) };
       if (c.m && c.m.fixed != null) o.fixedPts = c.m.fixed;
+      try { if (c.zraw && c.D && root.__rt && root.__rt.metrics) { const g = root.__rt.metrics(c.D, c.zraw).gain; o.gainRaw = g == null ? null : Math.round(g); } } catch (e) { }
       if (c.cmf && !c.cmf.excluded) { const m = c.cmf; o.Q = r3(m.Q); o.H = r3(m.H); o.V = m.V == null ? null : r3(m.V); o.S = r3(m.S); o.unk = r3(m.unk); o.walkM = m.walkM == null ? null : Math.round(m.walkM); if (m.g) o.steep = { m: Math.round(m.g.steep || 0), n15: m.g.n15, m15: Math.round(m.g.m15 || 0), anomalies: m.g.anom }; }
       else if (c.cmf && c.cmf.excluded) o.excluded = c.cmf.excluded;
       if (c.cyc != null) o.cyc = r3(c.cyc);

@@ -40,6 +40,8 @@ C = D.buildChecks(rep({ calls: [{ svc: 'valhalla', path: '/trace_attributes', st
 ok(get(C, 'trace.format').result === 'NG' && /road_class/.test(get(C, 'trace.format').detail), '必須の属性が出なければNG');
 C = D.buildChecks(rep({ calls: [{ svc: 'valhalla', path: '/route', status: 500 }], schemas: {} }));
 ok(get(C, 'route.format').result === 'NG', '/route が200でなければNG');
+C = D.buildChecks(rep({ calls: [{ svc: 'valhalla', path: '/trace_attributes', status: 200 }, { svc: 'valhalla', path: '/trace_attributes', status: 400, error: { error_code: 443 } }], traceAttrs: A2 }));
+ok(get(C, 'trace.format').result === 'NG' && /code443/.test(get(C, 'trace.format').detail), '/trace_attributes に失敗があればNG(実機で error 443 が出た)');
 // 条件・経由地・橋
 const best = (fit) => ({ km: 10, gain: 100, edgeFit: fit, legs: 'single' });
 const sc1 = (id, extra) => Object.assign({ kind: 'mode', id, cands: 2, auto: 0, sel: 0, ms: 100, valhalla: 5, best: best(1), fixedCands: 0 }, extra || {});

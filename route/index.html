@@ -139,7 +139,7 @@ async function routeVariant(v,alts,opt){opt=opt||{};const body={locations:opt.lo
 const PAVED=new Set(['paved_smooth','paved','paved_rough']);
 /* 道路の属性(舗装・種別・車線数・橋・トンネルなど)。経由地つきでも、区間が分かれていても、ルートの形状(pts)から作り直して問い合わせる。
    長いルートは、公開サーバーの制限が未確認のため、約60kmごとに分けて問い合わせる */
-async function attrsOf(c){try{const pts=c.pts;if(!pts||pts.length<2)return null;let edges=[];for(const ch of Comfort.chunkPts(pts,60000)){const j=await vpost('/trace_attributes',{encoded_polyline:Comfort.enc6(ch),costing:'bicycle',shape_match:'edge_walk',filters:{attributes:Comfort.ATTRS,action:'include'}},1);edges=edges.concat(j.edges||[])}return edges.length?edges:null}catch(e){return null}}
+async function attrsOf(c){try{const pts=c.pts;if(!pts||pts.length<2)return null;let edges=[];for(const ch of Comfort.chunkPts(pts,60000)){const j=await vpost('/trace_attributes',{encoded_polyline:Comfort.enc6(ch),costing:'bicycle',shape_match:'walk_or_snap',filters:{attributes:Comfort.ATTRS,action:'include'}},1);edges=edges.concat(j.edges||[])}return edges.length?edges:null}catch(e){return null}}
 function surfaceFrom(edges){if(!edges)return null;let tot=0,pv=0;const by={};for(const e of edges){const s=e.surface||'unknown',l=+e.length||0;by[s]=(by[s]||0)+l;tot+=l;if(PAVED.has(s))pv+=l}return tot>0?{paved:pv/tot,by,km:tot}:null}
 async function surfaceOf(c){const edges=c.edges||await attrsOf(c);c.edges=edges;return surfaceFrom(edges)}
 function sig(pts){const n=pts.length,o=[];for(let i=0;i<12;i++){const p=pts[Math.floor(i*(n-1)/11)];o.push(p[0].toFixed(3)+','+p[1].toFixed(3))}return o.join('|')}
@@ -222,7 +222,8 @@ async function cmfAttach(cs){st.cmfErr=[];let feat=null;try{feat=await sceneFeat
   for(const c of pool)cmfEval(c,feat);Comfort.scoreAll(pool)}
 /* Overpass(公開API)。結果は、端末のCache APIに7日間保存する(同じ範囲の再検索では通信しない) */
 async function overpassJ(q,key,reduce){let c=null;const url='https://rt.invalid/scn/'+key;try{c=await caches.open('rt-scn');const m=await c.match(url);if(m){const o=await m.json();if(Date.now()-o.t<6048e5)return o.d}}catch(e){c=null}
-  let err;for(const ep of CYC_EP){try{const r=await fetch(ep,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'content-type':'application/x-www-form-urlencoded'}});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();const d=reduce(j.elements||[]);if(c){try{await c.put(url,new Response(JSON.stringify({t:Date.now(),d})))}catch(e){}}return d}catch(e){err=e}}
+  /* 1接続先あたり30秒で打ち切る(実機の診断で、2番目の接続先が103秒後に504だったため) */
+  const ms=window.__rtOvpMs||30000;let err;for(const ep of CYC_EP){const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),ms);try{const r=await fetch(ep,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'content-type':'application/x-www-form-urlencoded'},signal:ac.signal});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();const d=reduce(j.elements||[]);if(c){try{await c.put(url,new Response(JSON.stringify({t:Date.now(),d})))}catch(e){}}clearTimeout(tm);return d}catch(e){clearTimeout(tm);err=ac.signal.aborted?new Error('時間切れ('+Math.round(ms/1000)+'秒)'):e}}
   throw err}
 function gridBB(pts,pad,g){g=g||0.05;let a=90,b=180,c2=-90,d=-180;for(const p of pts){if(p[0]<a)a=p[0];if(p[1]<b)b=p[1];if(p[0]>c2)c2=p[0];if(p[1]>d)d=p[1]}return[Math.floor((a-pad)/g)*g,Math.floor((b-pad)/g)*g,Math.ceil((c2+pad)/g)*g,Math.ceil((d+pad)/g)*g].map(v=>+v.toFixed(2))}
 /* 景観のデータ: 展望地・山頂・峠(点)と、川・湖・海岸(線)。範囲が広いときは点だけ(水域は未評価)。森林・山並みは対象外 */
