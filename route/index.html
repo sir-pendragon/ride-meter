@@ -137,7 +137,8 @@ function nearClosure(pts){const hits=[];for(const c of st.closures){let m=1e9;fo
 function setProg(f,t){$('#bar').hidden=f==null;if(f!=null)$('#bar i').style.width=Math.round(f*100)+'%';$('#st').textContent=t||''}
 let busy=false;
 async function compute(){if(busy)return;if(!compute._r)Closures.resetBoost();if(st.points.length<2){setProg(null,'出発地と目的地を入れてください');return}busy=true;$('#go').disabled=true;$('#s-res').hidden=true;st.cands=[];
-  try{const raw=[];const total=VARIANTS.length;for(let i=0;i<total;i++){setProg(i/(total+4)*0.5,`ルート候補を作成中 ${i+1}/${total}`);try{const r=await routeVariant(VARIANTS[i],i===0?2:0);raw.push(...r)}catch(e){if(i===0){throw e}}await sleep(150)}
+  try{if(!compute._r){setProg(0.02,'通行止め情報を自動取得しています(最大60秒。失敗しても計算は続けます)');try{await Closures.autoFetch(60000)}catch(e){}}
+  const raw=[];const total=VARIANTS.length;for(let i=0;i<total;i++){setProg(i/(total+4)*0.5,`ルート候補を作成中 ${i+1}/${total}`);try{const r=await routeVariant(VARIANTS[i],i===0?2:0);raw.push(...r)}catch(e){if(i===0){throw e}}await sleep(150)}
     const seen=new Map();for(const r of raw){const k=sig(r.pts);if(!seen.has(k))seen.set(k,r)}const cs=[...seen.values()];
     if(!cs.length)throw new Error('ルートが見つかりませんでした');
     {const hh=cs.flatMap(c=>Closures.hits(c.pts));if(hh.length&&(compute._r||0)<2){compute._r=(compute._r||0)+1;setProg(null,`「避ける」を確定した規制を通るため、除外を追加して再計算します(${compute._r}/2)`);Closures.addBoost(hh);busy=false;return compute()}}

@@ -17,6 +17,7 @@
   const rad = Math.PI / 180, R = 6371000;
   const hav = (a, b) => { const dl = (b[0] - a[0]) * rad, dg = (b[1] - a[1]) * rad; const s = Math.sin(dl / 2) ** 2 + Math.cos(a[0] * rad) * Math.cos(b[0] * rad) * Math.sin(dg / 2) ** 2; return 2 * R * Math.asin(Math.min(1, Math.sqrt(s))); };
 
+  let autoFn = null;
   let ctx = null; // {map, L, esc, getPoints, getPrefCodes, onChange}
   let found = [];  // 今回取得した結果(位置付き)
   let confirmed = []; // 「避ける」を確定したもの(localStorageに保存)
@@ -250,19 +251,28 @@
     const $ = (s) => document.querySelector(s);
     $('#ac-relay').value = relayUrl();
     $('#ac-save').onclick = () => { const v = $('#ac-relay').value.trim(); try { localStorage.setItem(LS_RELAY, v); } catch (e) {} setStatus(v ? '中継のURLを保存しました' : '中継のURLを消しました'); };
-    $('#ac-go').onclick = async () => {
-      const pts = ctx.getPoints(); if (!pts.length) { setStatus('先に出発地と目的地を入れてください'); return; }
+    let lastAuto = null;
+    let running = false;
+    async function fetchNow(auto) {
+      if (running) return null; running = true; try { return await fetchNow2(auto); } finally { running = false; }
+    }
+    async function fetchNow2(auto) {
+      const pts = ctx.getPoints(); if (!pts.length) { setStatus('先に出発地と目的地を入れてください'); return null; }
       setStatus('通る県を調べています…'); const codes = await ctx.getPrefCodes(); const known = codes.filter((k) => SOURCES[k]);
-      if (!known.length) { setStatus('通過する県の自動取得にはまだ対応していません(対応: 埼玉県・東京都)'); return; }
+      if (!known.length) { setStatus('通過する県の自動取得にはまだ対応していません(対応: 埼玉県・東京都)'); return null; }
       const m = 0.08; const bbox = [Math.min(...pts.map((p) => p.lat)) - m, Math.min(...pts.map((p) => p.lon)) - m, Math.max(...pts.map((p) => p.lat)) + m, Math.max(...pts.map((p) => p.lon)) + m].map((v) => +v.toFixed(4));
+      const sig = bbox.join(',') + '|' + known.join(',');
+      if (auto && lastAuto && lastAuto.sig === sig && Date.now() - lastAuto.t < 600000) { setStatus('直前に取得済みのため再取得しません(10分以内)'); return null; }
       $('#ac-go').disabled = true;
       try {
-        const res = await run(bbox, known, setStatus); renderList(res);
+        const res = await run(bbox, known, setStatus); renderList(res); lastAuto = { sig, t: Date.now() };
         const log = root.FetchCore ? fc().getLog().slice(-6).map((l) => `${l.label}:${l.result}`).join(' / ') : '';
         setStatus(`取得: 規制あり ${res.regulated}路線(全${res.total}行)のうち、この範囲でOSMに同名の道がある ${res.near.length}路線を表示。範囲外/道が見つからない ${res.outside}路線は表示しません。` + (res.fails.length ? ' 失敗: ' + res.fails.join(' / ') : '') + (res.notes.length ? ' 未対応・注意: ' + res.notes.join(' / ') : '') + (log ? ' 〔取得状況 ' + log + '〕' : ''));
       } catch (e) { setStatus('取得できませんでした: ' + e.message); }
       $('#ac-go').disabled = false;
-    };
+    }
+    $('#ac-go').onclick = () => fetchNow(false);
+    autoFn = (timeoutMs) => Promise.race([fetchNow(true), new Promise((r) => setTimeout(() => r('timeout'), timeoutMs || 60000))]).catch(() => null);
     $('#ac-list').onclick = (e) => {
       const b = e.target.closest('button[data-a]'); if (!b) return; const r = found[+b.dataset.i]; if (!r) return;
       const cand = b.dataset.c != null ? r.usable[+b.dataset.c] : null;
@@ -320,5 +330,5 @@
   function active() { return confirmed.length > 0; }
   const exportGeoJSON = () => toGeoJSON();
 
-  root.Closures = { init, samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _internal: { run, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
+  root.Closures = { init, autoFetch: (ms) => (autoFn ? autoFn(ms) : Promise.resolve(null)), samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _internal: { run, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
 })(typeof globalThis !== "undefined" ? globalThis : self);
