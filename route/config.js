@@ -6,5 +6,6 @@
 //   - アプリケーションの制限: ウェブサイト(HTTPリファラー) = https://sir-pendragon.github.io/*
 //   - APIの制限: Maps JavaScript API(+ Geocoding API を使う場合のみ)
 //   - 予算アラート、または1日あたりの上限(クォータ)
-// relayUrl: Cloudflare Worker 中継のURL(例 https://xxxx.workers.dev)。空欄なら端末に保存した値だけを使います。
+// relayUrl: ここには書かないでください。中継のURLが公開されると、誰でもこの中継(Geminiの呼び出しを含む)を使えてしまいます。
+//   中継のURLは、各端末の「⚙ 設定」→「中継」に入力します(端末内に保存されます)。
 window.RT_CONFIG = { gmapsKey: 'AIzaSyB8uREokpOgsqmJvePp7IZpGjgZjy93XNI', relayUrl: '' };

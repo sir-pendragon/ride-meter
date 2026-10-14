@@ -648,5 +648,5 @@
   function active() { return confirmed.length > 0; }
   const exportGeoJSON = () => toGeoJSON();
 
-  root.Closures = { init, revGeo, rgSave, muniRaw: getMuniRaw, gapText, lastRun: () => lastRun, autoFetch: (ms) => (autoFn ? autoFn(ms) : Promise.resolve(null)), samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _internal: { run, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
+  root.Closures = { init, hasRelay: () => !!relayUrl(), revGeo, rgSave, muniRaw: getMuniRaw, gapText, lastRun: () => lastRun, autoFetch: (ms) => (autoFn ? autoFn(ms) : Promise.resolve(null)), samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _internal: { run, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
 })(typeof globalThis !== "undefined" ? globalThis : self);
