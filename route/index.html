@@ -157,7 +157,7 @@ async function compute(){if(busy)return;if(!compute._r)Closures.resetBoost();nor
     st.cands=cs;compute._r=0;choose();setProg(null,'');render();{const gn=document.getElementById('gap-note');if(gn)gn.textContent=Closures.gapText()}ensureSurface(st.sel)}
   catch(e){setProg(null,'計算できませんでした: '+(e&&e.message||e)+(e&&e.code===171?'(地点が道路から遠すぎます)':''));}
   busy=false;$('#go').disabled=false}
-function choose(){const cs=st.cands;const minLen=Math.min(...cs.map(c=>c.len));const lim=+$('#detour').value;const ok=cs.filter(c=>c.len<=minLen*lim);st.pool=ok;const mx=objective()==='max';
+function choose(){const cs=st.cands;const minLen=Math.min(...cs.map(c=>c.len));const mx=objective()==='max';const lim=mx?Infinity:+$('#detour').value;const ok=cs.filter(c=>c.len<=minLen*lim);st.pool=ok;
   const withG=ok.filter(c=>c.gain!=null);st.best=withG.length?withG.reduce((a,b)=>((mx?b.gain>a.gain:b.gain<a.gain)||(b.gain===a.gain&&b.len<a.len))?b:a):null;
   st.sel=st.best||ok[0]}
 /* 舗装率は選んだルートだけ調べる(全候補を調べると時間がかかるため)。結果は候補ごとに保存 */
