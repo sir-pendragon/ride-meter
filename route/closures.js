@@ -10,6 +10,7 @@
       { id: 'sai-yorii', name: '埼玉県 寄居林業事務所', url: 'https://www.pref.saitama.lg.jp/b0923/tuukoudome.html', kind: 'table' },
     ],
     9: [{ id: 'tochigi-yaita', name: '栃木県 矢板森林管理事務所', url: 'https://www.pref.tochigi.lg.jp/d56/tuukoudome/2025rindo.html', kind: 'table', closedTable: true, brSep: true }],
+    14: [{ id: 'kanagawa-keneirin', name: '神奈川県 自然環境保全センター(県営林道)', url: 'https://www.pref.kanagawa.jp/docs/f4y/03shinrin/seibi/keneirin/rinndou.html', kind: 'kanagawa' }],
     19: [{ id: 'yamanashi', name: '山梨県 県営林道通行規制情報', url: 'https://www.pref.yamanashi.jp/rindoujyouhou/list.php', kind: 'yamanashi' }],
     13: [{ id: 'tokyo', name: '東京都 森林事務所', url: 'https://forestry-office.metro.tokyo.lg.jp/about/rin/rin_kisei/index.html', kind: 'tokyo' }],
   };
@@ -17,10 +18,10 @@
   const PREF_ALL = ['北海道','青森県','岩手県','宮城県','秋田県','山形県','福島県','茨城県','栃木県','群馬県','埼玉県','千葉県','東京都','神奈川県','新潟県','富山県','石川県','福井県','山梨県','長野県','岐阜県','静岡県','愛知県','三重県','滋賀県','京都府','大阪府','兵庫県','奈良県','和歌山県','鳥取県','島根県','岡山県','広島県','山口県','徳島県','香川県','愛媛県','高知県','福岡県','佐賀県','長崎県','熊本県','大分県','宮崎県','鹿児島県','沖縄県'];
   const prefName = (k) => PREF_ALL[k - 1] || ('県コード' + k);
   let lastGaps = null;
-  const PREF_NAMES = { 11: '埼玉県', 13: '東京都', 19: '山梨県', 9: '栃木県(矢板のみ)' };
+  const PREF_NAMES = { 11: '埼玉県', 13: '東京都', 14: '神奈川県(県営林道)', 19: '山梨県', 9: '栃木県(矢板のみ)' };
   const PDFJS = ['https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'];
   const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
-  const PARSER_VER = 'p6'; // 解析プログラムを変えたら上げる(保存済みの解析結果を使い回さないため)
+  const PARSER_VER = 'p7'; // 解析プログラムを変えたら上げる(保存済みの解析結果を使い回さないため)
   const rad = Math.PI / 180, R = 6371000;
   const hav = (a, b) => { const dl = (b[0] - a[0]) * rad, dg = (b[1] - a[1]) * rad; const s = Math.sin(dl / 2) ** 2 + Math.cos(a[0] * rad) * Math.cos(b[0] * rad) * Math.sin(dg / 2) ** 2; return 2 * R * Math.asin(Math.min(1, Math.sqrt(s))); };
 
@@ -99,6 +100,19 @@
   const rawText = {}; // ページ本文(解析が走ったときだけ入る。AI二重チェック用)
   async function fetchSource(src) {
     if (src.kind === 'yamanashi') { const r = await fetchYamanashi(src); if (r.failed.length) src._partial = `詳細ページ${r.failed.length}/${r.total}件を取得できませんでした(${r.failed.slice(0, 3).join('・')}${r.failed.length > 3 ? ' ほか' : ''})`; else src._partial = null; const ys = r.records; ys._ai = { key: src.url + '#details', text: ys.filter((x) => x.reason && x.rid && !/^L/.test(x.rid)).map((x) => `【${x.route}】(${x.municipality || ''}) ${x.reason}`).join('\n').slice(0, 39000) }; return ys; }
+    if (src.kind === 'kanagawa') {
+      const r = await fc().load({
+        key: src.url, ver: PARSER_VER, label: src.name, fetcher: relayFetcher(src.url, false),
+        parse: async (body, meta) => {
+          const doc = new DOMParser().parseFromString(body, 'text/html');
+          const recs = ClosureKanagawa.parseKanagawa(doc, src.url, meta.fetchedAt || new Date().toISOString());
+          if (!recs.length) throw perr('表を読み取れませんでした(ページの構造が変わった可能性)');
+          rawText[src.url] = (doc.body.textContent || '').replace(/\s+/g, ' ').slice(0, 39000);
+          return recs.map((x) => ({ ...x, sourceName: src.name }));
+        },
+      });
+      const tr = tag(r); tr._ai = { key: src.url, hash: r.hash, text: rawText[src.url] || null }; return tr;
+    }
     if (src.kind === 'table') {
       const r = await fc().load({
         key: src.url, ver: PARSER_VER, label: src.name, fetcher: relayFetcher(src.url, false),
