@@ -41,6 +41,13 @@ with sync_playwright() as p:
     add('西武秩父駅','v');ok(pts()==['s:飯能','v:十石峠','v:西武秩父駅','g:秩父駅'],pts());ok(badges()==['Sスタート','1経由','2経由','Gゴール'],badges())
     # 4) 入れ替え: 出発と目的地だけが入れ替わる
     pg.click('#swap');pg.wait_for_timeout(150);ok(pts()==['s:秩父駅','v:西武秩父駅','v:十石峠','g:飯能'],pts())
+    # 4b) 経由地の並べ替え: 経由1の「↓」で2つが入れ替わる。端は押せない。スタート・ゴールに矢印は無い
+    ok(pg.evaluate("[...document.querySelectorAll('#pts li')].map(li=>li.querySelectorAll('button[data-mv]').length)")==[0,2,2,0],'矢印は経由地だけ')
+    ok(pg.evaluate("[document.querySelector('#pts li:nth-child(2) button[data-mv=\"-1\"]').disabled,document.querySelector('#pts li:nth-child(3) button[data-mv=\"1\"]').disabled]")==[True,True],'先頭の↑・末尾の↓は無効')
+    pg.click('#pts li:nth-child(2) button[data-mv="1"]');pg.wait_for_timeout(150)
+    ok(pts()==['s:秩父駅','v:十石峠','v:西武秩父駅','g:飯能'],pts());ok(badges()==['Sスタート','1経由','2経由','Gゴール'],badges())
+    pg.click('#pts li:nth-child(3) button[data-mv="-1"]');pg.wait_for_timeout(150)
+    ok(pts()==['s:秩父駅','v:西武秩父駅','v:十石峠','g:飯能'],pts())
     # 5) 保存と再読み込み
     pg.reload();pg.wait_for_function('typeof __rt!=="undefined"',timeout=20000);ok(pts()==['s:秩父駅','v:西武秩父駅','v:十石峠','g:飯能'],pts())
     # 6) 印のない古い保存データ: 先頭=出発、末尾=目的地、間=経由
