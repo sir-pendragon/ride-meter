@@ -64,6 +64,11 @@ a{color:var(--acc)}
  <ul class="cl" id="cl"></ul>
  <div class="row" style="margin-top:8px"><a class="btn sm" id="official" href="https://www.road-info-prvs.mlit.go.jp/roadinfo/content.php?mode=pc&lang=jp&area=00&page=10&table=0&zoom=11&legned=1" target="_blank" rel="noopener">国交省の通行規制マップ(この周辺)を開く ↗</a><a class="btn sm" href="https://www.jartic.or.jp/" target="_blank" rel="noopener">日本道路交通情報センター ↗</a><a class="btn sm" href="https://www.mlit.go.jp/road/" target="_blank" rel="noopener">国土交通省 道路 ↗</a><a class="btn sm" id="gsrch" href="#" target="_blank" rel="noopener">この周辺の通行止めを検索 ↗</a></div>
 </section>
+<section id="s-map"><h2>地図(Googleマップ)</h2>
+ <p class="hint" style="margin:0 0 6px">Googleマップを使うには、あなたのAPIキーが必要です。キーはこの端末だけに保存され、サーバーには送りません。未設定のときは、これまでの地理院地図を使います。</p>
+ <div class="row"><input type="password" id="gk-key" class="grow" placeholder="Google Maps APIキー(AIza…)" autocomplete="off"><button class="btn sm" id="gk-save">保存</button><button class="btn sm" id="gk-del">削除</button></div>
+ <p class="hint" id="gk-st"></p>
+</section>
 <section id="s-auto"><h2>通行規制の自動取得(試験中)</h2>
  <p class="hint" style="margin:0 0 6px">ボタンを押したときだけ、通る県の公式ページ(埼玉県・東京都)を取得します。定期取得はしません。位置はOpenStreetMapの同名の道に当てはめた<b>推定</b>です。地図で確認して「避ける」を押したものだけ、ルート計算で避けます。情報がない道を「通行可能」とは判定しません。</p>
  <div class="row"><input type="text" id="ac-relay" class="grow" placeholder="中継のURL(例: https://….workers.dev)"><button class="btn sm" id="ac-save">保存</button></div>
@@ -77,9 +82,9 @@ a{color:var(--acc)}
 </section>
 <p class="hint" style="margin-top:14px">地図: 国土地理院タイル / © OpenStreetMap contributors。ルート計算: Valhalla(公開サーバー・OpenStreetMapデータ)。標高: 国土地理院 標高タイル(DEM10B)。場所検索: Nominatim。獲得標高・舗装率は推定値です。実際の道路状況・通行止め・冬期閉鎖は必ず公式情報で確認してください。</p>
 </main>
-<script src="leaflet/leaflet.js"></script>
+<script src="leaflet/leaflet.js"></script><script src="gm-shim.js"></script>
 <script src="fetchcore.js"></script><script src="parse-tables.js"></script><script src="parse-tokyo-pdf.js"></script><script src="locate.js"></script><script src="closures.js"></script>
-<script>
+<script type="text/plain" id="main-src">
 (()=>{
 const $=s=>document.querySelector(s);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const VAL='https://valhalla1.openstreetmap.de';
@@ -240,5 +245,18 @@ listPts();listCl();if(st.points.length){const b=L.latLngBounds(st.points.map(p=>
 Closures.init({map,L,esc,getPoints:()=>st.points,getPrefCodes:async()=>{let ps=st.sel&&st.sel.pts?st.sel.pts:null;if(!ps){ps=[];for(let i=0;i<st.points.length;i++){const b=st.points[i];ps.push([b.lat,b.lon]);const n=st.points[i+1];if(n){const d=hav([b.lat,b.lon],[n.lat,n.lon]),k=Math.floor(d/3000);for(let j=1;j<=k;j++)ps.push([b.lat+(n.lat-b.lat)*j/(k+1),b.lon+(n.lon-b.lon)*j/(k+1)])}}}return detectPrefs(ps)},onChange:()=>clearResults()});
 window.__rt={st,compute,metrics,densify,elevations,zigzag};
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+</script>
+<script>
+(async()=>{
+const src=document.getElementById('main-src');let key='';try{key=localStorage.getItem('rt-gkey')||''}catch(e){}
+window.__map={kind:'leaflet',error:null};
+if(key){try{const gm=await GMShim.load(key,10000);window.L=GMShim.create(gm);window.__map={kind:'google',error:null}}catch(e){window.__map={kind:'leaflet',error:e.message}}}
+const sc=document.createElement('script');sc.textContent=src.textContent;document.body.appendChild(sc);
+const st=document.getElementById('gk-st');
+const show=()=>{st.textContent=window.__map.kind==='google'?'表示中: Googleマップ':(key?'Googleマップを読み込めなかったため、地理院地図を表示しています。'+(window.__map.error?'('+window.__map.error+')':''):'表示中: 地理院地図(APIキー未設定)')};show();
+window.__onGmAuthFail=()=>{st.textContent='Googleマップの認証に失敗しました。APIキー・請求先・「HTTPリファラー」の制限(https://sir-pendragon.github.io/*)を確認するか、キーを削除して地理院地図に戻してください。'};
+document.getElementById('gk-save').onclick=()=>{const v=document.getElementById('gk-key').value.trim();if(!v){st.textContent='キーを入力してください';return}try{localStorage.setItem('rt-gkey',v)}catch(e){st.textContent='保存できませんでした';return}st.textContent='保存しました。再読み込みします…';setTimeout(()=>location.reload(),600)};
+document.getElementById('gk-del').onclick=()=>{try{localStorage.removeItem('rt-gkey')}catch(e){}st.textContent='削除しました。再読み込みします…';setTimeout(()=>location.reload(),600)};
 })();
 </script></body></html>
