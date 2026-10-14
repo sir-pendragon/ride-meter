@@ -98,6 +98,20 @@
     throw err;
   }
 
+  // 国土地理院の逆ジオコーダで市町村名を調べる(失敗したら null を返し、候補は除外しない)
+  async function muniResolver(centers) {
+    const cache = new Map(); const kk = (p) => p[0].toFixed(5) + ',' + p[1].toFixed(5);
+    let table = null;
+    try { const t = await (await fetch('https://maps.gsi.go.jp/js/muni.js')).text(); table = {}; for (const m of t.matchAll(/MUNI_ARRAY\["(\d+)"\]\s*=\s*'([^']*)'/g)) table[m[1]] = m[2].split(',')[3]; } catch (e) { table = null; }
+    if (table) {
+      const uniq = []; for (const c of centers) if (!cache.has(kk(c))) { cache.set(kk(c), null); uniq.push(c); }
+      await Promise.all(uniq.slice(0, 20).map(async (c) => {
+        try { const j = await (await fetch(`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${c[0]}&lon=${c[1]}`)).json(); const cd = j.results && j.results.muniCd; cache.set(kk(c), (cd && table[String(cd).padStart(5, '0')]) || table[cd] || null); } catch (e) { /* 判定できない候補は除外しない */ }
+      }));
+    }
+    return (lat, lon) => cache.get(kk([lat, lon])) || null;
+  }
+
   async function run(bbox, codes, say) {
     const results = []; const fails = []; const notes = [];
     for (const code of codes) {
@@ -116,7 +130,18 @@
       say('OpenStreetMapで同名の道を探しています…');
       try {
         const els = await overpass(ClosureLocate.buildQuery(targets, bbox));
-        located = ClosureLocate.match(targets, els);
+        let landmarks = [];
+        if (targets.some((t) => /橋|峠|トンネル|隧道|ダム/.test(t.section || ''))) {
+          try { landmarks = ClosureLocate.parseLandmarks(await overpass(ClosureLocate.buildLandmarkQuery(bbox))); } catch (e) { notes.push('橋・峠の位置の取得に失敗したため、橋名・峠名で示された区間は位置不明になります'); }
+        }
+        let loc = ClosureLocate.locate(targets, els, { landmarks });
+        // 同名の道が複数ある場合だけ、候補の場所の市町村を調べて絞り込む
+        if (loc.some((r) => r.candidates && new Set(r.candidates.map((c) => c.comp)).size > 1)) {
+          say('同名の道が複数あるため、市町村で絞り込んでいます…');
+          const muniOf = await muniResolver(loc.flatMap((r) => (r.candidates || []).map((c) => c.center)));
+          loc = ClosureLocate.locate(targets, els, { landmarks, muniOf });
+        }
+        located = loc;
       } catch (e) { fails.push('OpenStreetMap検索: ' + e.message); located = targets.map((t) => ({ ...t, position: { level: 'なし', reason: 'OSM検索に失敗したため位置なし' }, ways: [] })); }
     }
     // 範囲内(bbox)に道がないものは一覧から外す(遠い県内の路線を並べない)
@@ -185,6 +210,7 @@
       const b = e.target.closest('button[data-a]'); if (!b) return; const r = found[+b.dataset.i]; if (!r) return;
       if (b.dataset.a === 'show') showOne(r);
       else if (b.dataset.a === 'avoid') {
+        if (!r.selected) { window.alert('この規制は位置の候補が複数、または区間を特定できていないため、まだ「避ける」を確定できません。\n地図で候補を確かめてください(区間ごとの確定は次の更新で対応します)。'); return; }
         if (r.position.level === '要確認' && !window.confirm('この規制は「一部区間」です。OSMの同名の道の全体を避けると、止まっていない部分も避けます。それでも避けますか?')) return;
         if (!window.confirm('地図で「' + r.route + '」の位置を確認しましたか?\n名前が同じ道を当てはめた推定です。違う場所の可能性があります。')) return;
         confirmed = confirmed.filter((c) => c.key !== keyOf(r));
