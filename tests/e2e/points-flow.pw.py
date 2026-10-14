@@ -53,5 +53,9 @@ with sync_playwright() as p:
     # 6) 印のない古い保存データ: 先頭=出発、末尾=目的地、間=経由
     pg.evaluate("localStorage.setItem('rt-state',JSON.stringify({points:[{lat:35.85,lon:139.31,name:'A'},{lat:35.9,lon:139.2,name:'B'},{lat:35.99,lon:139.08,name:'C'}],closures:[]}))");pg.reload();pg.wait_for_function('typeof __rt!=="undefined"',timeout=20000)
     ok(pts()==['s:A','v:B','g:C'],pts())
+    # 7) 地点は最大10つ。11個目は追加しない(スタート・ゴールの置き換えは可能)
+    pg.evaluate("__rt.st.points=[{lat:35.85,lon:139.31,name:'A',k:'s'}].concat(Array.from({length:8},(_,i)=>({lat:35.9+i*0.01,lon:139.2,name:'V'+i,k:'v'})),[{lat:35.99,lon:139.08,name:'E',k:'g'}])")
+    pg.evaluate("__rt.addPoint('v',35.95,139.1,'X')");ok(len(pts())==10 and 'v:X' not in pts(),pts());ok('最大10' in pg.inner_text('#st'),pg.inner_text('#st'))
+    pg.evaluate("__rt.addPoint('g',35.96,139.07,'Z')");ok(len(pts())==10 and pts()[-1]=='g:Z',pts())
     ok(errs==[],errs);b.close()
 print('全 %d 件OK (points-flow)'%n)
