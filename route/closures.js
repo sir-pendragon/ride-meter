@@ -228,6 +228,29 @@
         if (targets.some((t) => /橋|峠|トンネル|隧道|ダム/.test(t.section || ''))) {
           try { landmarks = ClosureLocate.parseLandmarks(await overpass(ClosureLocate.buildLandmarkQuery(bbox))); } catch (e) { notes.push('橋・峠の位置の取得に失敗したため、橋名・峠名で示された区間は位置不明になります'); }
         }
+        // OSMに無い橋名・峠名は、Googleマップの検索(Geocoding)で位置を補う(Google地図のときだけ。座標は保存せず、この実行中だけ使う)
+        if (ctx.geocode) {
+          const strip = (s) => String(s || '').replace(/[(（][^)）]*[)）]/g, '').replace(/\s+/g, '');
+          const have = new Set(landmarks.map((l) => strip(l.name)));
+          const need = new Map();
+          for (const t of targets) {
+            const sec = ClosureLocate.parseSection(t.section || '', t.scope);
+            if (sec.type !== 'landmark') continue;
+            for (const nm of [sec.a, sec.b].filter(Boolean)) if (!have.has(strip(nm)) && !need.has(strip(nm))) need.set(strip(nm), { name: nm, hint: t.municipality || '' });
+          }
+          if (need.size) {
+            say(`橋名・峠名 ${Math.min(need.size, 30)}件をGoogleマップで検索しています…`);
+            let added = 0, denied = false;
+            for (const { name, hint } of [...need.values()].slice(0, 30)) {
+              const q = String(hint || '').replace(/[ 　]*[→→].*$/, '').replace(/大字.*$/, '').trim();
+              const p = await ctx.geocode(`${name} ${q}`.trim(), bbox);
+              if (p && p.denied) { denied = true; break; }
+              if (p) { landmarks.push({ name, lat: p.lat, lon: p.lon, kind: 'google', src: 'google' }); added++; }
+            }
+            if (denied) notes.push('Googleの住所検索(Geocoding API)が許可されていないため、OSMに無い橋名・峠名の位置は補えませんでした');
+            else if (added) notes.push(`OSMに無い橋名・峠名のうち${added}件はGoogleマップの検索で位置が得られました(道から150m以内の場合だけ使い、座標は保存しません)`);
+          }
+        }
         let loc = ClosureLocate.locate(targets, els, { landmarks });
         // 同名の道が複数ある場合だけ、候補の場所の市町村を調べて絞り込む
         if (loc.some((r) => r.candidates && r.candidates.length && (r.municipality || /地内/.test(r.section || '')))) {

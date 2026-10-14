@@ -197,13 +197,13 @@
         return [{ pts: [], level: '不明', confidence: '低', basis: why + '。位置は特定できません' }];
       }
       if (!sec.b && sec.at) { // 橋そのものが通れない: 橋の前後60mだけを区間とする(橋の長さはOSMの中心点しかないため幅は推定)
-        const c = A[0].along; return [mk(Math.max(0, c - 60), Math.min(L, c + 60), '推定', '中', `「${sec.a}」が通行不可との記載のため、OSM上の橋の位置(道から約${Math.round(A[0].off)}m)の前後60mを区間としました(橋の範囲は推定)`)];
+        const c = A[0].along; return [mk(Math.max(0, c - 60), Math.min(L, c + 60), '推定', '中', `「${sec.a}」が通行不可との記載のため、${A[0].l.src === 'google' ? 'Googleマップの検索結果' : 'OSM上の橋'}の位置(道から約${Math.round(A[0].off)}m)の前後60mを区間としました(橋の範囲は推定)`)];
       }
       if (!sec.b) { // 目印の1点のみ: 区間は不明(「付近」など)
         return [{ pts: [], level: '不明', confidence: '低', basis: `「${sec.a}」の位置は分かりましたが、そこからどこまでかが文言から読み取れません`, point: [A[0].l.lat, A[0].l.lon] }];
       }
       const d0 = Math.min(A[0].along, B[0].along), d1 = Math.max(A[0].along, B[0].along);
-      return [mk(d0, d1, '推定', '中', `「${sec.a}」と「${sec.b}」のOSM上の位置(道からそれぞれ約${Math.round(A[0].off)}m・${Math.round(B[0].off)}m)で区間を切り出しました`)];
+      return [mk(d0, d1, '推定', '中', `「${sec.a}」と「${sec.b}」の位置(${A[0].l.src === 'google' || B[0].l.src === 'google' ? 'Googleマップの検索とOSM' : 'OSM'}。道からそれぞれ約${Math.round(A[0].off)}m・${Math.round(B[0].off)}m)で区間を切り出しました`)];
     }
     return [{ pts: [], level: '不明', confidence: '低', basis: sec.why ? sec.why + '(' + (sec.raw || '') + ')' : '区間の文言を読み取れませんでした(' + (sec.raw || '記載なし') + ')' }];
   }

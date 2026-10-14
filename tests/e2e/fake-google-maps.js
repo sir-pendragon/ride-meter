@@ -14,6 +14,6 @@ class Circ extends Evt{constructor(o){super();this.o=o;log.push(['Circle',o.radi
 class IW extends Evt{constructor(o){super();this.o=o||{};this.content=o&&o.content}setContent(c){this.content=c}setPosition(p){this.pos=p}open(a){log.push(['iw.open',!!(a&&a.anchor)]);this.opened=true;window.__lastIW=this}close(){this.opened=false;log.push(['iw.close'])}}
 class AME extends Evt{constructor(o){super();this.position=o.position;this.content=o.content;this.gmpDraggable=o.gmpDraggable;this._map=null;log.push(['AME',o.gmpDraggable]);(window.__mk=window.__mk||[]).push(this)}
  set map(m){this._map=m;log.push(['ame.map',!!m])}get map(){return this._map}}
-window.google={maps:{Map,LatLngBounds:Bounds,Polyline:Poly,Circle:Circ,InfoWindow:IW,event:{addListenerOnce(m,e,f){f()}},marker:{AdvancedMarkerElement:AME},importLibrary:async()=>({})}};
+window.google={maps:{Map,LatLngBounds:Bounds,Polyline:Poly,Circle:Circ,InfoWindow:IW,event:{addListenerOnce(m,e,f){f()}},marker:{AdvancedMarkerElement:AME},importLibrary:async(n)=>n==='geocoding'?{Geocoder:class{async geocode(req){return (window.__geocodeFake||(()=>({results:[]})))(req)}}}:({})}};
 setTimeout(()=>window.__gmReady&&window.__gmReady(),10);
 })();
