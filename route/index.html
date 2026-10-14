@@ -124,16 +124,11 @@ function metrics(D,z0){if(!z0)return{gain:null};const z=med3(z0);const tp=zigzag
 
 /* ---------- ルート計算(Valhalla) ---------- */
 /* 目的ごとの探索設定。最小: 坂を避ける設定、最大: 坂を好む設定。候補は同時に問い合わせる */
+/* 条件ごとに、Valhallaへの問い合わせは1回だけ(代替ルートを最大2本つけて、合計最大3候補)。以前の「3種類の自転車設定を同時に問い合わせる」方式は廃止 */
 const VAR={
- min:[{bicycle_type:'Road',use_hills:0,avoid_bad_surfaces:1,use_roads:0.3},
-  {bicycle_type:'Hybrid',use_hills:0,avoid_bad_surfaces:0.5,use_roads:0.3},
-  {bicycle_type:'Mountain',use_hills:0,avoid_bad_surfaces:0,use_roads:0.2}],
- max:[{bicycle_type:'Road',use_hills:1,avoid_bad_surfaces:1,use_roads:0.8},
-  {bicycle_type:'Hybrid',use_hills:1,avoid_bad_surfaces:0.5,use_roads:0.8},
-  {bicycle_type:'Mountain',use_hills:1,avoid_bad_surfaces:0,use_roads:0.5}],
- cyc:[{bicycle_type:'Road',use_hills:0.5,avoid_bad_surfaces:1,use_roads:0.1},
-  {bicycle_type:'Hybrid',use_hills:0.5,avoid_bad_surfaces:0.5,use_roads:0.1},
-  {bicycle_type:'Mountain',use_hills:0.5,avoid_bad_surfaces:0,use_roads:0.1}]};
+ min:[{bicycle_type:'Hybrid',use_hills:0,avoid_bad_surfaces:0.5,use_roads:0.3}],
+ max:[{bicycle_type:'Hybrid',use_hills:1,avoid_bad_surfaces:0.5,use_roads:0.5}],
+ cyc:[{bicycle_type:'Hybrid',use_hills:0.5,avoid_bad_surfaces:0.5,use_roads:0.1}]};
 const objective=()=>{const v=$('#obj').value;return v==='max'||v==='cyc'?v:'min'};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function vpost(path,body,tries=2){let err;for(let t=0;t<tries;t++){try{const r=await fetch(VAL+path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});const j=await r.json();if(r.ok)return j;err=new Error(j.error||('HTTP '+r.status));err.code=j.error_code;if(r.status<500&&r.status!==429)throw err}catch(e){err=e;if(e.code)throw e}await sleep(800)}throw err}
@@ -149,7 +144,7 @@ let busy=false;
 async function compute(){if(busy)return;if(!compute._r)Closures.resetBoost();normPts();if(!st.points.some(p=>p.k==='s')||!st.points.some(p=>p.k==='g')){setProg(null,'スタートとゴールを入れてください(経由地だけでは計算できません)');return}busy=true;$('#go').disabled=true;$('#s-res').hidden=$('#s-prof').hidden=true;st.cands=[];
   try{const first=!compute._r;
   const closureP=first?Closures.autoFetch(60000).catch(()=>{}):Promise.resolve();
-  const vs=VAR[objective()];setProg(0.05,first?`通行止め情報を取得しながら、ルート候補を作成しています(${vs.length}通りを同時に問い合わせ)`:`ルート候補を作り直しています(${vs.length}通りを同時に問い合わせ)`);
+  const vs=VAR[objective()];setProg(0.05,first?'通行止め情報を取得しながら、ルート候補を作成しています':'ルート候補を作り直しています');
   const res=await Promise.allSettled(vs.map((v,i)=>routeVariant(v,i===0?2:0)));
   const raw=[];let firstErr=null;for(const r of res){if(r.status==='fulfilled')raw.push(...r.value);else if(!firstErr)firstErr=r.reason}
   if(!raw.length)throw firstErr||new Error('ルートが見つかりませんでした');

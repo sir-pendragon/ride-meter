@@ -72,7 +72,7 @@ with sync_playwright() as p:
         t=time.time();pg.click('#go');pg.wait_for_selector('#cards .card',timeout=30000);pg.wait_for_function('document.querySelector("#cards .stats")',timeout=30000);pg.wait_for_timeout(600)
         return time.time()-t
     t1=run('min')
-    ok(len(routes)==3 and all(v['use_hills']==0 for v in routes),('最小は坂を避ける3通り',routes))
+    ok(len(routes)==1 and routes[0]['use_hills']==0,('最小は坂を避ける1回の問い合わせ',routes))
     r=pg.evaluate("({cards:document.querySelectorAll('#cards .card').length,title:document.querySelector('#cards .t').textContent,sel:__rt.st.sel&&__rt.st.sel.gain,cands:__rt.st.cands.map(c=>c.gain),pav:document.querySelector('#cards .stats').textContent})")
     print('min:',r,'trace_attributes calls:',len(tr),'time %.1fs'%t1)
     ok(r['cards']==1 and '最小獲得標高' in r['title'],r)
@@ -80,7 +80,7 @@ with sync_playwright() as p:
     ok(len(tr)==1,('舗装率は選んだルートだけ調べる',len(tr)))
     ok('100%' in r['pav'],r['pav'])
     t2=run('max')
-    ok(len(routes)==3 and all(v['use_hills']==1 for v in routes),('最大は坂を好む3通り',routes))
+    ok(len(routes)==1 and routes[0]['use_hills']==1,('最大は坂を好む1回の問い合わせ',routes))
     r2=pg.evaluate("({cards:document.querySelectorAll('#cards .card').length,title:document.querySelector('#cards .t').textContent,sel:__rt.st.sel.gain,cands:__rt.st.cands.map(c=>c.gain),tb:!!document.getElementById('tb'),notes:!!document.getElementById('notes')})")
     print('max:',r2,'time %.1fs'%t2)
     ok(r2['cards']==1 and '最大獲得標高' in r2['title'],r2)
@@ -88,7 +88,7 @@ with sync_playwright() as p:
     ok(not r2['tb'] and not r2['notes'],'候補の表と注意書きは出さない(ルートは1本)')
     # 自転車ルートを優先: 登録された自転車ルートに沿う候補を選ぶ。取得に失敗したら警告を出す
     t3=run('cyc')
-    ok(len(routes)==3 and all(v['use_roads']==0.1 for v in routes),('自転車ルートは車道を避ける3通り',routes))
+    ok(len(routes)==1 and routes[0]['use_roads']==0.1,('自転車ルートは車道を避ける1回の問い合わせ',routes))
     r3=pg.evaluate("({title:document.querySelector('#cards .t').textContent,cyc:__rt.st.cands.map(c=>c.cyc),sel:__rt.st.sel.cyc,gain:__rt.st.sel.gain,txt:document.querySelector('#cards').textContent})")
     print('cyc:',r3)
     ok('自転車ルート優先' in r3['title'] and r3['sel']==max(r3['cyc']) and r3['sel']>0.9,r3)
