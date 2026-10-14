@@ -101,7 +101,7 @@
       for (const tr of tbl.rows) {
         [...tr.cells].filter((c) => c.tagName === 'TD').forEach((td, ci) => {
           if (!td.classList.contains('kisei')) return;
-          const text = clean(td.innerHTML.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, ''));
+          const tdc = td.cloneNode(true); tdc.querySelectorAll('br').forEach((b) => b.replaceWith(' ')); const text = clean(tdc.textContent);
           if (!text) return;
           const kind = kinds[ci] || '';
           const it = interpret(text, kind, today);

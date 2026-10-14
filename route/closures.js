@@ -485,19 +485,26 @@
     }
     for (const [i, r] of found.entries()) {
       const isC = confirmed.some((c) => c.key === keyOf(r));
-      const li = document.createElement('li'); li.style.flexWrap = 'wrap';
-      const lvl = r.position.level;
-      const badge = `<span class="badge" style="background:${r.status === '通行止め' ? '#B3261E' : '#B58900'};width:auto;border-radius:12px;padding:0 8px">${ctx.esc(r.status)}</span>`;
+      const li = document.createElement('li'); li.className = 'ac';
+      const lvl = r.position.level; const e = ctx.esc;
+      const badge = `<span class="badge" style="background:${r.status === '通行止め' ? '#B3261E' : '#B58900'};width:auto;border-radius:12px;padding:0 8px">${e(r.status)}</span>`;
       const multi = r.usable && r.usable.length > 1;
-      li.innerHTML = `${badge}<div class="grow"><div class="nm" style="white-space:normal"><b>${ctx.esc(r.route)}</b> <span class="hint">${ctx.esc(r.municipality || '')}</span></div>`
-        + `<div class="hint">区間: ${ctx.esc(r.section || r.typeText || '記載なし')}${r.period ? ' ・期間: ' + ctx.esc(r.period) : ''}${r.reason ? ' ・事由: ' + ctx.esc(r.reason) : ''}</div>`
-        + `<div class="hint">位置: <b>${ctx.esc(lvl)}</b>(${ctx.esc(r.position.reason)}) ・ 自転車の通行可否: ${r.bicycle == null ? '記載なし' : r.bicycle ? '可' : '不可'}${r.note ? ' ・ ' + ctx.esc(r.note) : ''}${r.stale ? ' ・ <b>情報期限切れ(取得に失敗したため前回の内容)</b>' : ''}</div>`
-        + (r.ai ? `<div class="hint">AI二重チェック(参考): <b>${ctx.esc(r.ai.state)}</b>${r.ai.aiStatus ? ' ・ AI: ' + ctx.esc(r.ai.aiStatus) : ''}${r.ai.quote ? ' ・ 引用「' + ctx.esc(r.ai.quote) + '」' : ''}</div>` : '')
-        + `<div class="hint">出典: <a href="${ctx.esc(r.sourceUrl)}" target="_blank" rel="noopener">${ctx.esc(r.sourceName)}</a> ・ 公式の更新: ${ctx.esc(r.officialUpdated || '不明')} ・ 取得: ${ctx.esc((r.fetchedAt || '').slice(0, 16).replace('T', ' '))}</div>`
-        + (multi ? `<div class="hint">候補:</div>` + r.usable.map((u, k) => `<div style="margin:2px 0"><span class="hint">${ctx.esc(candLabel(r, u, k))}${u.muni ? ' ・' + ctx.esc(u.muni) : ''}</span> <button class="btn sm" data-a="show" data-i="${i}" data-c="${k}">地図で見る</button> ${isC ? '' : `<button class="btn sm pri" data-a="avoid" data-i="${i}" data-c="${k}">この案で避ける</button>`}</div>`).join('') : '')
-        + `</div>`
-        + (multi ? `<button class="btn sm" data-a="show" data-i="${i}">全候補を見る</button>${isC ? `<button class="btn sm" data-a="unavoid" data-i="${i}">避けるを解除</button>` : ''}`
-          : `<button class="btn sm" data-a="show" data-i="${i}">地図で見る</button>` + (isC ? `<button class="btn sm" data-a="unavoid" data-i="${i}">避けるを解除</button>` : r.selected ? `<button class="btn sm pri" data-a="avoid" data-i="${i}">確認して避ける</button>` : ''));
+      const row = (k, v) => v ? `<dt>${k}</dt><dd>${v}</dd>` : '';
+      const rows = [
+        row('区間', e(r.section || r.typeText || '記載なし')),
+        row('期間', r.period ? e(r.period) : ''),
+        row('事由', r.reason ? e(r.reason) : ''),
+        row('位置', `<b>${e(lvl)}</b>(${e(r.position.reason)})`),
+        row('自転車', r.bicycle == null ? '通行可否の記載なし' : r.bicycle ? '通行可と記載' : '通行不可と記載'),
+        row('備考', r.note ? e(r.note) : ''),
+        row('注意', r.stale ? '<b>情報期限切れ(取得に失敗したため前回の内容)</b>' : ''),
+        row('AI(参考)', r.ai ? `<b>${e(r.ai.state)}</b>${r.ai.aiStatus ? ' ・ AI: ' + e(r.ai.aiStatus) : ''}${r.ai.quote ? ' ・ 引用「' + e(r.ai.quote) + '」' : ''}` : ''),
+        row('出典', `<a href="${e(r.sourceUrl)}" target="_blank" rel="noopener">${e(r.sourceName)}</a> ・ 公式の更新 ${e(r.officialUpdated || '不明')} ・ 取得 ${e((r.fetchedAt || '').slice(0, 16).replace('T', ' '))}`),
+      ].join('');
+      const cands = multi ? '<div class="hint" style="margin-top:4px">候補:</div>' + r.usable.map((u, k) => `<div class="ac-c"><span class="hint">${e(candLabel(r, u, k))}${u.muni ? ' ・' + e(u.muni) : ''}</span><span class="ac-b"><button class="btn sm" data-a="show" data-i="${i}" data-c="${k}">地図で見る</button>${isC ? '' : `<button class="btn sm pri" data-a="avoid" data-i="${i}" data-c="${k}">この案で避ける</button>`}</span></div>`).join('') : '';
+      const btns = multi ? `<button class="btn sm" data-a="show" data-i="${i}">全候補を見る</button>${isC ? `<button class="btn sm" data-a="unavoid" data-i="${i}">避けるを解除</button>` : ''}`
+        : `<button class="btn sm" data-a="show" data-i="${i}">地図で見る</button>` + (isC ? `<button class="btn sm" data-a="unavoid" data-i="${i}">避けるを解除</button>` : r.selected ? `<button class="btn sm pri" data-a="avoid" data-i="${i}">確認して避ける</button>` : '');
+      li.innerHTML = `<div class="ac-h">${badge}<b>${e(r.route)}</b><span class="hint">${e(r.municipality || '')}</span></div><dl class="ac-d">${rows}</dl>${cands}<div class="ac-b">${btns}</div>`;
       ul.appendChild(li);
     }
     if (!found.length) ul.innerHTML = '<li class="hint">この範囲で位置が見つかった規制はありませんでした(位置が分からない規制は地図に出しません)</li>';
