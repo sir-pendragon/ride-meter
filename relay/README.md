@@ -6,7 +6,7 @@
 ## できること / しないこと
 - 取得先は `worker.js` の `ALLOWED_HOSTS`(登録した県の公式ドメイン)だけ。それ以外は取得しません。
 - 呼び出せるのは `https://sir-pendragon.github.io` のページだけ(`ALLOWED_ORIGINS`)。
-- 解析はしません(Workers無料プランは1リクエストのCPU時間が10msのため)。表の解析は `parse-tables.js` がアプリ側で行います。
+- 解析はしません(Workers無料プランは1リクエストのCPU時間が10msのため)。表の解析は `route/parse-tables.js` がアプリ側で行います。
 - 返す内容: 取得元のそのままのデータ + 取得時刻(`X-Fetched-At`)+ 取得元の更新日(`X-Upstream-Last-Modified`、あれば)。
 
 ## 無料枠(公式ドキュメントで確認した値)
