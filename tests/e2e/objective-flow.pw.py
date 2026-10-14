@@ -36,7 +36,7 @@ def tile(x,y):
 n=0
 def ok(c,m):
     global n;assert c,m;n+=1
-routes=[];tr=[]
+routes=[];tr=[];OV={'mode':'hill','n':0}
 with sync_playwright() as p:
     b=p.chromium.launch();pg=b.new_page(viewport={'width':412,'height':915});errs=[]
     pg.on('pageerror',lambda e:errs.append(str(e)));pg.on('dialog',lambda d:d.accept())
@@ -51,6 +51,11 @@ with sync_playwright() as p:
             return route.fulfill(json=j)
         if 'valhalla' in u and 'trace_attributes' in u:
             tr.append(1);return route.fulfill(json={'edges':[{'surface':'paved_smooth','length':3}]})
+        if 'overpass' in u:
+            OV['n']+=1
+            if OV['mode']=='fail':return route.fulfill(status=500,body='err')
+            way=HILL if OV['mode']=='hill' else FLAT
+            return route.fulfill(json={'elements':[{'type':'way','geometry':[{'lat':la,'lon':lo} for la,lo in way]}]},headers={'access-control-allow-origin':'*'})
         if 'mreversegeocoder' in u:return route.fulfill(json={'results':{'muniCd':'11201'}})
         if '/xyz/dem/' in u:
             parts=u.split('/dem/13/')[1].replace('.txt','').split('/');return route.fulfill(content_type='text/plain',body=tile(int(parts[0]),int(parts[1])))
@@ -58,7 +63,7 @@ with sync_playwright() as p:
     pg.route('**/*',h)
     pg.goto('http://127.0.0.1:%d/index.html'%srv.server_address[1]);pg.wait_for_function('typeof __rt!=="undefined"',timeout=20000)
     ok(pg.inner_text('#go')=='ルートを計算','ボタン名')
-    ok(pg.evaluate("[...document.querySelectorAll('#obj option')].map(o=>o.textContent)")==['最小獲得標高','最大獲得標高'],'プルダウンの選択肢')
+    ok(pg.evaluate("[...document.querySelectorAll('#obj option')].map(o=>o.textContent)")==['最小獲得標高','最大獲得標高','自転車ルートを優先'],'プルダウンの選択肢')
     pg.evaluate("__rt.st.points=[{lat:%f,lon:%f,name:'S'},{lat:%f,lon:%f,name:'G'}]"%(S+G))
     def run(obj):
         routes.clear();tr.clear()
@@ -81,6 +86,18 @@ with sync_playwright() as p:
     ok(r2['cards']==1 and '最大獲得標高' in r2['title'],r2)
     ok(r2['sel']==max(c for c in r2['cands'] if c is not None) and r2['sel']>r['sel'],r2)
     ok(not r2['tb'] and not r2['notes'],'候補の表と注意書きは出さない(ルートは1本)')
+    # 自転車ルートを優先: 登録された自転車ルートに沿う候補を選ぶ。取得に失敗したら警告を出す
+    t3=run('cyc')
+    ok(len(routes)==3 and all(v['use_roads']==0.1 for v in routes),('自転車ルートは車道を避ける3通り',routes))
+    r3=pg.evaluate("({title:document.querySelector('#cards .t').textContent,cyc:__rt.st.cands.map(c=>c.cyc),sel:__rt.st.sel.cyc,gain:__rt.st.sel.gain,txt:document.querySelector('#cards').textContent})")
+    print('cyc:',r3)
+    ok('自転車ルート優先' in r3['title'] and r3['sel']==max(r3['cyc']) and r3['sel']>0.9,r3)
+    ok(r3['gain']>0,'登録ルート(丘越え)の候補が選ばれる')
+    ok('登録済み自転車ルート沿い' in r3['txt'] and '実際に走られている量ではありません' in r3['txt'],'割合と注意書き')
+    n_ov=OV['n'];run('cyc');ok(OV['n']==n_ov,'同じ範囲の2回目はOSMに問い合わせない(端末に保存)')
+    pg.evaluate("caches.delete('rt-cyc')");OV['mode']='fail'
+    run('cyc');r4=pg.evaluate("document.querySelector('#cards').textContent")
+    ok('自転車ルートのデータを取得できませんでした' in r4 and '登録済み自転車ルート沿い' not in r4,r4)
     # 目的を変えたら結果を消す(候補の作り方が違うため)
     pg.select_option('#obj','min');pg.wait_for_timeout(200)
     ok(pg.evaluate("document.getElementById('s-res').hidden"),'目的を変えたら結果を消す')

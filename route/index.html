@@ -48,7 +48,7 @@ a{color:var(--acc)}
  <ul class="pts" id="pts"></ul>
 </section>
 <section id="s-opt"><h2>② ルートを計算</h2>
- <div class="row"><label>獲得標高 <select id="obj"><option value="min" selected>最小獲得標高</option><option value="max">最大獲得標高</option></select></label><button class="btn pri" id="go">ルートを計算</button></div>
+ <div class="row"><label>条件 <select id="obj"><option value="min" selected>最小獲得標高</option><option value="max">最大獲得標高</option><option value="cyc">自転車ルートを優先</option></select></label><button class="btn pri" id="go">ルートを計算</button></div>
  <input type="hidden" id="detour" value="1.5">
  <div class="bar" id="bar" hidden><i></i></div><p class="hint" id="st"></p>
 </section>
@@ -130,8 +130,11 @@ const VAR={
   {bicycle_type:'Mountain',use_hills:0,avoid_bad_surfaces:0,use_roads:0.2}],
  max:[{bicycle_type:'Road',use_hills:1,avoid_bad_surfaces:1,use_roads:0.8},
   {bicycle_type:'Hybrid',use_hills:1,avoid_bad_surfaces:0.5,use_roads:0.8},
-  {bicycle_type:'Mountain',use_hills:1,avoid_bad_surfaces:0,use_roads:0.5}]};
-const objective=()=>$('#obj').value==='max'?'max':'min';
+  {bicycle_type:'Mountain',use_hills:1,avoid_bad_surfaces:0,use_roads:0.5}],
+ cyc:[{bicycle_type:'Road',use_hills:0.5,avoid_bad_surfaces:1,use_roads:0.1},
+  {bicycle_type:'Hybrid',use_hills:0.5,avoid_bad_surfaces:0.5,use_roads:0.1},
+  {bicycle_type:'Mountain',use_hills:0.5,avoid_bad_surfaces:0,use_roads:0.1}]};
+const objective=()=>{const v=$('#obj').value;return v==='max'||v==='cyc'?v:'min'};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function vpost(path,body,tries=2){let err;for(let t=0;t<tries;t++){try{const r=await fetch(VAL+path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});const j=await r.json();if(r.ok)return j;err=new Error(j.error||('HTTP '+r.status));err.code=j.error_code;if(r.status<500&&r.status!==429)throw err}catch(e){err=e;if(e.code)throw e}await sleep(800)}throw err}
 function locs(){return st.points.map((p,i)=>({lat:p.lat,lon:p.lon,type:(i===0||i===st.points.length-1)?'break':'through'}))}
@@ -154,6 +157,7 @@ async function compute(){if(busy)return;if(!compute._r)Closures.resetBoost();nor
     const seen=new Map();for(const r of raw){const k=sig(r.pts);if(!seen.has(k))seen.set(k,r)}const cs=[...seen.values()];
     {const hh=cs.flatMap(c=>Closures.hits(c.pts));if(hh.length&&(compute._r||0)<2){compute._r=(compute._r||0)+1;setProg(null,`自動で避ける規制を通るため、除外を追加して再計算します(${compute._r}/2)`);Closures.addBoost(hh);busy=false;return compute()}}
     let done=0;await Promise.all(cs.map(async c=>{const D=densify(c.pts,25);c.D=D;c.len=D.total;const z=await elevations(D);c.m=metrics(D,z);c.sf=null;c.paved=null;c.sfDone=false;c.gain=c.m.gain;c.closed=nearClosure(c.pts);c.hitsAuto=Closures.hits(c.pts);c.unkAuto=Closures.warnings(c.pts);done++;setProg(0.5+0.5*done/cs.length,`標高を調べています ${done}/${cs.length}`)}));
+    if(objective()==='cyc'){setProg(0.9,'自転車ルートのデータを調べています');await cycAttach(cs)}
     st.cands=cs;compute._r=0;choose();setProg(null,'');render();saveLast();{const gn=document.getElementById('gap-note');if(gn)gn.textContent=Closures.gapText()}ensureSurface(st.sel)}
   catch(e){setProg(null,'計算できませんでした: '+(e&&e.message||e)+(e&&e.code===171?'(地点が道路から遠すぎます)':''));}
   busy=false;$('#go').disabled=false}
@@ -162,12 +166,28 @@ const lastKey=()=>st.points.map(p=>p.k+p.lat.toFixed(5)+','+p.lon.toFixed(5)).jo
 function saveLast(){try{if(st.sel&&st.sel.pts)localStorage.setItem('rt-last',JSON.stringify({key:lastKey(),pts:st.sel.pts.map(q=>[+q[0].toFixed(5),+q[1].toFixed(5)])}))}catch(e){}}
 async function restoreLast(){if(busy||st.cands.length)return;let o=null;try{o=JSON.parse(localStorage.getItem('rt-last')||'null')}catch(e){}
   if(!o||!Array.isArray(o.pts)||o.pts.length<2||o.key!==lastKey())return;busy=true;$('#go').disabled=true;
-  try{const c={pts:o.pts};const D=densify(c.pts,25);c.D=D;c.len=D.total;const z=await elevations(D);if(st.cands.length)return;c.m=metrics(D,z);c.sf=null;c.paved=null;c.sfDone=false;c.gain=c.m.gain;c.closed=nearClosure(c.pts);c.hitsAuto=[];c.unkAuto=[];
+  try{const c={pts:o.pts};const D=densify(c.pts,25);c.D=D;c.len=D.total;const z=await elevations(D);if(st.cands.length)return;c.m=metrics(D,z);c.sf=null;c.paved=null;c.sfDone=false;c.gain=c.m.gain;c.closed=nearClosure(c.pts);c.hitsAuto=[];c.unkAuto=[];if(objective()==='cyc')await cycAttach([c]);
     st.cands=[c];choose();render();ensureSurface(st.sel);Closures.autoFetch(60000).catch(()=>{}).then(()=>{if(st.sel===c){c.hitsAuto=Closures.hits(c.pts);c.unkAuto=Closures.warnings(c.pts);render(true)}})}
   catch(e){}finally{busy=false;$('#go').disabled=false}}
-function choose(){const cs=st.cands;const minLen=Math.min(...cs.map(c=>c.len));const mx=objective()==='max';const lim=mx?Infinity:+$('#detour').value;const ok=cs.filter(c=>c.len<=minLen*lim);st.pool=ok;
+function choose(){const cs=st.cands;const minLen=Math.min(...cs.map(c=>c.len));const o=objective(),mx=o==='max';const lim=mx?Infinity:+$('#detour').value;const ok=cs.filter(c=>c.len<=minLen*lim);st.pool=ok;
+  if(o==='cyc'){const w=ok.filter(c=>c.cyc!=null);st.best=w.length?w.reduce((a,b)=>(b.cyc>a.cyc||(b.cyc===a.cyc&&b.len<a.len))?b:a):null;st.sel=st.best||ok[0];return}
   const withG=ok.filter(c=>c.gain!=null);st.best=withG.length?withG.reduce((a,b)=>((mx?b.gain>a.gain:b.gain<a.gain)||(b.gain===a.gain&&b.len<a.len))?b:a):null;
   st.sel=st.best||ok[0]}
+/* 自転車ルート: OSMに「自転車ルート(route=bicycle)」として登録された道を取得し、各候補がその道に沿う割合を出す(登録の有無であり、走行量ではない) */
+const CYC_EP=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
+async function cycWays(bb){const g=0.05,b=[Math.floor(bb[0]/g)*g,Math.floor(bb[1]/g)*g,Math.ceil(bb[2]/g)*g,Math.ceil(bb[3]/g)*g].map(v=>+v.toFixed(2));const url='https://rt.invalid/cyc/'+b.join(',');let c=null;
+  try{c=await caches.open('rt-cyc');const m=await c.match(url);if(m){const o=await m.json();if(Date.now()-o.t<6048e5)return o.w}}catch(e){c=null}
+  const q=`[out:json][timeout:25];relation["route"="bicycle"](${b.join(',')});way(r);out geom qt;`;let err;
+  for(const ep of CYC_EP){try{const r=await fetch(ep,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'content-type':'application/x-www-form-urlencoded'}});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();
+    const w=(j.elements||[]).filter(e=>e.geometry&&e.geometry.length>1).map(e=>e.geometry.map(p=>[+p.lat.toFixed(5),+p.lon.toFixed(5)]));
+    if(c){try{await c.put(url,new Response(JSON.stringify({t:Date.now(),w})))}catch(e){}}return w}catch(e){err=e}}
+  throw err}
+function cycCover(cs,ways){const G=0.0004,cell=(la,lo)=>Math.floor(la/G)+','+Math.floor(lo/G),idx=new Map();
+  for(const w of ways){const d=densify(w,10);for(let i=0;i<d.la.length;i++){const k=cell(d.la[i],d.lo[i]);(idx.get(k)||idx.set(k,[]).get(k)).push([d.la[i],d.lo[i]])}}
+  for(const c of cs){const D=c.D||densify(c.pts,25);let hit=0;for(let i=0;i<D.la.length;i++){const a=Math.floor(D.la[i]/G),b=Math.floor(D.lo[i]/G);let f=false;
+    for(let x=-1;x<=1&&!f;x++)for(let y=-1;y<=1&&!f;y++){const l=idx.get((a+x)+','+(b+y));if(l)for(const q of l)if(hav([D.la[i],D.lo[i]],q)<25){f=true;break}}if(f)hit++}
+    c.cyc=D.la.length?hit/D.la.length:0}}
+async function cycAttach(cs){st.cycErr='';try{const all=cs.flatMap(c=>c.pts);const bb=[Math.min(...all.map(q=>q[0]))-0.002,Math.min(...all.map(q=>q[1]))-0.002,Math.max(...all.map(q=>q[0]))+0.002,Math.max(...all.map(q=>q[1]))+0.002];cycCover(cs,await cycWays(bb))}catch(e){st.cycErr='自転車ルートのデータを取得できませんでした('+(e&&e.message||e)+')';for(const c of cs)c.cyc=null}}
 /* 舗装率は選んだルートだけ調べる(全候補を調べると時間がかかるため)。結果は候補ごとに保存 */
 async function ensureSurface(c){if(!c||c.sfDone||c._sf)return;c._sf=true;const sf=await surfaceOf(c);c.sf=sf;c.paved=sf?sf.paved:null;c.sfDone=true;c._sf=false;if(st.sel===c&&st.cands.includes(c))render(true)}
 
@@ -177,7 +197,7 @@ const gsi=(id,ext,maxZ,att)=>L.tileLayer(`https://cyberjapandata.gsi.go.jp/xyz/$
 const base={'標準':gsi('std','png',18).addTo(map),'淡色':gsi('pale','png',18),'写真':gsi('seamlessphoto','jpg',18),'色別標高':gsi('relief','png',15)};
 L.control.layers(base,null,{collapsed:true}).addTo(map);
 const gPts=L.layerGroup().addTo(map),gRt=L.layerGroup().addTo(map),gCl=L.layerGroup().addTo(map);let hoverMk=null;
-const HEX={min:'#2E7D4F',max:'#C25A12'};
+const HEX={min:'#2E7D4F',max:'#C25A12',cyc:'#1F6FB5'};
 function pinIcon(t,c){return L.divIcon({className:'',html:`<div class="pin ${c||''}">${t}</div>`,iconSize:[26,26],iconAnchor:[13,13]})}
 /* 地点の役割(スタート s / 経由 v / ゴール g)を、位置ではなく印で持つ。並びは常に [スタート, 経由…, ゴール]。
    印の無い地点(古い保存データ)は、先頭=スタート、末尾=ゴール(2点以上のとき)、間=経由とみなす */
@@ -230,13 +250,13 @@ $('#qgo').onclick=search;$('#q').addEventListener('keydown',e=>{if(e.key==='Ente
 $('#sr').onclick=e=>{const b=e.target.closest('button[data-k]');if(!b)return;const li=b.closest('li');const lat=+li.dataset.lat,lon=+li.dataset.lon,nm=li.dataset.nm;const k=b.dataset.k;if(k==='s')setStart(lat,lon,nm);else if(k==='g')setGoal(lat,lon,nm);else addPoint('v',lat,lon,nm);map.setView([lat,lon],Math.max(map.getZoom(),12));$('#sr').innerHTML=''};
 
 /* ---------- 結果の表示 ---------- */
-const NAMES={min:'最小獲得標高',max:'最大獲得標高'};
+const NAMES={min:'最小獲得標高',max:'最大獲得標高',cyc:'自転車ルート優先'};
 const f1=v=>v==null?'—':v.toFixed(1),pc=v=>v==null?'—':Math.round(v*100)+'%';
-function statsHTML(c){const m=c.m||{};return `<div class="stats"><div><b>${(c.len/1000).toFixed(1)} km</b><span>距離</span></div><div><b>${m.gain==null?'—':'↑'+m.gain+' m'}</b><span>獲得標高</span></div><div><b>${m.gain==null?'—':f1(m.avgClimb*100)+'%'}</b><span>登りの平均勾配</span></div><div><b>${m.gain==null?'—':f1(m.maxGrade*100)+'%'}</b><span>最大勾配(200m)</span></div><div><b>${c.sfDone?pc(c.paved):'調べ中…'}</b><span>舗装率(推定)</span></div></div>${m.gradeExcl?`<p class="hint" style="margin:2px 0 0;font-size:11px">※勾配30%超の${m.gradeExcl}区間は、トンネル・橋など標高データの誤りの可能性があるため、最大勾配から除外</p>`:''}`}
+function statsHTML(c){const m=c.m||{};return `<div class="stats"><div><b>${(c.len/1000).toFixed(1)} km</b><span>距離</span></div><div><b>${m.gain==null?'—':'↑'+m.gain+' m'}</b><span>獲得標高</span></div><div><b>${m.gain==null?'—':f1(m.avgClimb*100)+'%'}</b><span>登りの平均勾配</span></div><div><b>${m.gain==null?'—':f1(m.maxGrade*100)+'%'}</b><span>最大勾配(200m)</span></div><div><b>${c.sfDone?pc(c.paved):'調べ中…'}</b><span>舗装率(推定)</span></div>${c.cyc!=null?`<div><b>${Math.round(c.cyc*100)}%</b><span>登録済み自転車ルート沿い</span></div>`:''}</div>${m.gradeExcl?`<p class="hint" style="margin:2px 0 0;font-size:11px">※勾配30%超の${m.gradeExcl}区間は、トンネル・橋など標高データの誤りの可能性があるため、最大勾配から除外</p>`:''}`}
 function render(noFit){renderClFound();$('#s-res').hidden=$('#s-prof').hidden=false;const cards=$('#cards');cards.innerHTML='';const obj=objective();
   const c=st.sel;const d=document.createElement('div');d.className='card sel';
   if(!c||!c.m||c.gain==null){d.innerHTML=`<div class="t"><i class="sw" style="background:${HEX[obj]}"></i>${NAMES[obj]}</div><p class="hint" style="margin:4px 0 0">獲得標高を計算できませんでした(標高データが取れませんでした)。</p>`;cards.appendChild(d)}
-  else{const isBest=c===st.best;d.innerHTML=`<div class="t"><i class="sw" style="background:${HEX[obj]}"></i>${isBest?NAMES[obj]:'選んだ候補 #'+(st.cands.indexOf(c)+1)}${isBest?'':' <span class="hint">('+NAMES[obj]+'ではありません)</span>'}</div>${statsHTML(c)}${c.closed&&c.closed.length?`<p class="warn" style="margin:6px 0 0">⚠ 登録した通行止め地点(${c.closed.length}件)の近くを通ります</p>`:''}${c.hitsAuto&&c.hitsAuto.length?`<p class="warn" style="margin:6px 0 0">⚠ 自動で避ける規制(${c.hitsAuto.map(h=>esc(h.route)).join('・')})を通ります。避けるルートが見つかりませんでした</p>`:''}`;cards.appendChild(d)}
+  else{const isBest=c===st.best;d.innerHTML=`<div class="t"><i class="sw" style="background:${HEX[obj]}"></i>${isBest?NAMES[obj]:'選んだ候補 #'+(st.cands.indexOf(c)+1)}${isBest?'':' <span class="hint">('+NAMES[obj]+'ではありません)</span>'}</div>${statsHTML(c)}${objective()==='cyc'?(st.cycErr?`<p class="warn" style="margin:4px 0 0">⚠ ${esc(st.cycErr)}。自転車ルートを考慮できていません</p>`:'<p class="hint" style="margin:2px 0 0;font-size:11px">※OSMに自転車ルートとして登録された道に沿う割合です。実際に走られている量ではありません</p>'):''}${c.closed&&c.closed.length?`<p class="warn" style="margin:6px 0 0">⚠ 登録した通行止め地点(${c.closed.length}件)の近くを通ります</p>`:''}${c.hitsAuto&&c.hitsAuto.length?`<p class="warn" style="margin:6px 0 0">⚠ 自動で避ける規制(${c.hitsAuto.map(h=>esc(h.route)).join('・')})を通ります。避けるルートが見つかりませんでした</p>`:''}`;cards.appendChild(d)}
   drawRoutes(!noFit);drawProfile();updatePrefs()}
 function drawRoutes(fit){gRt.clearLayers();const sel=st.sel;if(!sel)return;L.polyline(sel.pts,{color:HEX[objective()],weight:7,opacity:1}).addTo(gRt);
   if(fit){map.fitBounds(L.polyline(sel.pts).getBounds(),{padding:[30,30]})}}
