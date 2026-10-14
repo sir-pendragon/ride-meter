@@ -56,3 +56,10 @@ eq(r.position.level,'推定','ケ/ヶの表記ゆれ');
 const path=[[0,0],[0,0.01]];const cut=L.cutPath(path,0,500);
 eq(Math.abs(L.project(path,[0.0001,0.005]).along-555.9)<2,true,'投影の距離');
 console.log('\n全',n,'件OK');
+// 追加: 橋が通行不可
+{const e2=(id,name,geom)=>({type:'way',id,tags:{name,highway:'track'},geometry:geom});
+const lonA=139.0;const d=(m)=>m/(111320*Math.cos(35.9*Math.PI/180));
+const W=e2(31,'林道太田部峠2号線',Array.from({length:11},(_,i)=>({lat:35.9,lon:lonA+d(i*200)})));
+const lmk=L.parseLandmarks([{type:'way',id:5,tags:{name:'大久保橋',bridge:'yes'},center:{lat:35.9,lon:lonA+d(1000)}}]);
+const r=L.locate([{route:'太田部峠2号線',municipality:'秩父市',scope:'partial',section:'大久保橋通行不可'}],[W],{landmarks:lmk})[0];
+assert(r.selected&&Math.abs(r.selected.d1-r.selected.d0-120)<3);console.log('ok 橋の通行不可は前後60mの区間');}

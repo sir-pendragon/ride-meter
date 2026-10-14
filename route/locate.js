@@ -74,6 +74,9 @@
     if ((m = t.match(/([^\s～〜~\-、,。]{2,}?(?:橋|峠|トンネル|隧道|ダム|ゲート|分岐|入口|出口))(?:から|より|～|〜|~|-|と)([^\s～〜~\-、,。]{2,}?(?:橋|峠|トンネル|隧道|ダム|ゲート|分岐|入口|出口))(?:の間|まで|間)?/))) {
       return { type: 'landmark', a: m[1], b: m[2], raw: t };
     }
+    if ((m = t.match(/([^\s、,。]{1,10}?橋)(?:が|は)?(?:通行不可|通行止め|通行できません|崩落|損壊|落橋)/))) {
+      return { type: 'landmark', a: m[1], b: null, at: true, raw: t };
+    }
     if ((m = t.match(/([^\s、,。]{1,10}?(?:橋|峠|トンネル|隧道|ダム))(?:付近|地点|から先|より先|から|より)/))) {
       return { type: 'landmark', a: m[1], b: null, raw: t };
     }
@@ -178,6 +181,9 @@
       if (A.length !== 1 || (sec.b && B.length !== 1)) {
         const why = !A.length ? `「${sec.a}」がこの道の近く(150m以内)のOSMデータにありません` : A.length > 1 ? `「${sec.a}」が複数見つかりました` : !B.length ? `「${sec.b}」がこの道の近く(150m以内)のOSMデータにありません` : `「${sec.b}」が複数見つかりました`;
         return [{ pts: [], level: '不明', confidence: '低', basis: why + '。位置は特定できません' }];
+      }
+      if (!sec.b && sec.at) { // 橋そのものが通れない: 橋の前後60mだけを区間とする(橋の長さはOSMの中心点しかないため幅は推定)
+        const c = A[0].along; return [mk(Math.max(0, c - 60), Math.min(L, c + 60), '推定', '中', `「${sec.a}」が通行不可との記載のため、OSM上の橋の位置(道から約${Math.round(A[0].off)}m)の前後60mを区間としました(橋の範囲は推定)`)];
       }
       if (!sec.b) { // 目印の1点のみ: 区間は不明(「付近」など)
         return [{ pts: [], level: '不明', confidence: '低', basis: `「${sec.a}」の位置は分かりましたが、そこからどこまでかが文言から読み取れません`, point: [A[0].l.lat, A[0].l.lon] }];
