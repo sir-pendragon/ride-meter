@@ -73,3 +73,9 @@ assert.strictEqual(r.usable.length,2);
 const lens=r.usable.map(u=>Math.round(u.d1-u.d0));assert(lens.every(x=>Math.abs(x-2150)<80),lens.join());console.log('ok 3.5km～終点は約2.2km(全長約5.7km)',lens.join());
 const r2=L.locate([{route:'定峰線',municipality:'',scope:'whole',section:'全線（秩父市定峰地内）'}],[{type:'way',id:1,tags:{name:'林道定峰線'},geometry:[{lat:35.9,lon:139},{lat:35.9,lon:139.01}]}],{muniOf:()=>'秩父市'})[0];
 assert.strictEqual(r2.municipality,'秩父市');console.log('ok 市町村が空なら区間の文言（○○市…地内）から補う');}
+// 追加: 市町村をまたぐ長い林道は、中央が別の市でも除外しない
+{const d=(m)=>m/(111320*Math.cos(35.9*Math.PI/180));
+const W={type:'way',id:1,tags:{name:'林道御岳山線'},geometry:Array.from({length:11},(_,i)=>({lat:35.9,lon:139+d(i*1000)}))};
+const muniOf=(la,lo)=>lo<139+d(3000)?'秩父市':'小鹿野町'; // 西3kmだけ秩父市、中央・東は小鹿野町
+const r=L.locate([{route:'御岳山線',municipality:'',scope:'whole',section:'全線（秩父市大滝地内)'}],[W],{muniOf})[0];
+assert(r.selected,'除外されない');console.log('ok 市町村をまたぐ長い道を中央点だけで除外しない');}

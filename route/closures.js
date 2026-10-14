@@ -113,7 +113,7 @@
     try { const t = await (await fetch('https://maps.gsi.go.jp/js/muni.js')).text(); table = {}; for (const m of t.matchAll(/MUNI_ARRAY\["(\d+)"\]\s*=\s*'([^']*)'/g)) table[m[1]] = m[2].split(',')[3]; } catch (e) { table = null; }
     if (table) {
       const uniq = []; for (const c of centers) if (!cache.has(kk(c))) { cache.set(kk(c), null); uniq.push(c); }
-      await Promise.all(uniq.slice(0, 20).map(async (c) => {
+      await Promise.all(uniq.slice(0, 60).map(async (c) => {
         try { const j = await (await fetch(`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${c[0]}&lon=${c[1]}`)).json(); const cd = j.results && j.results.muniCd; cache.set(kk(c), (cd && table[String(cd).padStart(5, '0')]) || table[cd] || null); } catch (e) { /* 判定できない候補は除外しない */ }
       }));
     }
@@ -146,7 +146,7 @@
         // 同名の道が複数ある場合だけ、候補の場所の市町村を調べて絞り込む
         if (loc.some((r) => r.candidates && new Set(r.candidates.map((c) => c.comp)).size > 1)) {
           say('同名の道が複数あるため、市町村で絞り込んでいます…');
-          const muniOf = await muniResolver(loc.flatMap((r) => (r.candidates || []).map((c) => c.center)));
+          const muniOf = await muniResolver(loc.flatMap((r) => (r.candidates || []).flatMap((c) => c.samples || [c.center])));
           loc = ClosureLocate.locate(targets, els, { landmarks, muniOf });
         }
         located = loc;

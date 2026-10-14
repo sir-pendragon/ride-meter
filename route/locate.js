@@ -218,14 +218,16 @@
       if (!ways.length) return { ...r, candidates: [], ways: [], selected: null, position: { level: 'なし', reason: 'OSMに同名の道が見つかりません(位置は表示しません)' } };
       const sec = parseSection(r.section, r.scope);
       if (!r.municipality) { const mm = squash(r.section || '').match(/([\u4e00-\u9fff]{1,5}[市町村])[^（）()]{0,12}地内/); if (mm) r = { ...r, municipality: mm[1], municipalityFrom: '区間の文言' }; }
-      let comps = components(ways).map((ws) => { const main = mainPath(ws); const c0 = main.path[Math.floor(main.path.length / 2)] || ws[0].pts[0]; return { ways: ws, main, center: c0 }; });
+      let comps = components(ways).map((ws) => { const main = mainPath(ws); const c0 = main.path[Math.floor(main.path.length / 2)] || ws[0].pts[0]; const samples = main.total ? [0, 0.2, 0.4, 0.6, 0.8, 1].map((f) => { const q = cutPath(main.path, f * main.total, Math.min(main.total, f * main.total + 1)); return q[0] || c0; }) : [c0]; return { ways: ws, main, center: c0, samples }; });
       const notes = [];
       if (r.municipality && opts.muniOf) {
         const tag = norm(r.municipality.replace(/地内$/, ''));
         const kept = []; let unknown = 0;
         for (const c of comps) {
-          const m = opts.muniOf(c.center[0], c.center[1]);
-          if (!m) { unknown++; kept.push({ ...c, muni: null }); } else if (norm(m) && (tag.includes(norm(m)) || norm(m).includes(tag))) kept.push({ ...c, muni: m }); else notes.push(`${m}の同名の道を除外(規制は${r.municipality})`);
+          // 長い林道は市町村をまたぐため、道に沿った複数の地点で調べ、1つでも一致すれば残す
+          const ms = c.samples.map((q) => opts.muniOf(q[0], q[1])).filter(Boolean);
+          const hit = ms.find((m) => norm(m) && (tag.includes(norm(m)) || norm(m).includes(tag)));
+          if (!ms.length) { unknown++; kept.push({ ...c, muni: null }); } else if (hit) kept.push({ ...c, muni: hit }); else notes.push(`${[...new Set(ms)].join('・')}の同名の道を除外(規制は${r.municipality})`);
         }
         if (unknown) notes.push('市町村を判定できない候補があり、除外せず残しています');
         comps = kept;
@@ -234,7 +236,7 @@
       const candidates = [];
       comps.forEach((c, ci) => {
         const secs = c.main.path.length ? sectionsFor(sec, c, opts.landmarks) : [];
-        secs.forEach((s, si) => candidates.push({ id: `${ci}-${si}`, comp: ci, center: c.center, ways: c.ways, muni: c.muni || null, lengthM: Math.round(c.main.total), branched: c.main.branched, ...s, basis: s.basis + (c.main.branched ? '(分岐があるため、最長の1本を対象にしています)' : '') }));
+        secs.forEach((s, si) => candidates.push({ id: `${ci}-${si}`, comp: ci, center: c.center, samples: c.samples, ways: c.ways, muni: c.muni || null, lengthM: Math.round(c.main.total), branched: c.main.branched, ...s, basis: s.basis + (c.main.branched ? '(分岐があるため、最長の1本を対象にしています)' : '') }));
       });
       const usable = candidates.filter((c) => c.pts && c.pts.length > 1);
       let position, selected = null;
