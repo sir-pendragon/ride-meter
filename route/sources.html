@@ -9,6 +9,7 @@ h1{font-size:20px;margin:0 0 4px}p.s{color:var(--mut);margin:0 0 12px;font-size:
 .w{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:720px}th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top;font-size:13px}
 td:first-child{white-space:nowrap;font-weight:600}a{color:var(--a);word-break:break-all}
 .tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;white-space:nowrap}.tag.ok{background:var(--okbg);color:var(--ok)}.tag.inv{background:var(--invbg);color:var(--inv)}.tag.none{background:var(--nobg);color:var(--no)}
+details.pf{border:1px solid var(--line);border-radius:8px;margin:6px 0;background:var(--bg)}details.pf>summary{cursor:pointer;padding:10px 12px;font-weight:600;font-size:15px}details.pf>summary .c{font-weight:400;color:var(--mut);font-size:13px;margin-left:8px}details.pf .w{padding:0 8px 8px}.tag.un{background:var(--nobg);color:var(--no)}
 </style></head><body>
 <h1>通行止め情報の取得元(都道府県別)</h1>
 <p class="s">ルート画面が自動取得している公式ページの一覧です。確認日 2026-10-14。「未調査」は、まだ公式ページを探していない県です。ここに無い県の通行止めは、アプリには反映されません。</p>
@@ -63,5 +64,36 @@ td:first-child{white-space:nowrap;font-weight:600}a{color:var(--a);word-break:br
 <tr><td>鹿児島県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
 <tr><td>沖縄県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
 </tbody></table></div>
+<h2 style="font-size:17px;margin:24px 0 4px">市町村の公式の規制ページ(関東1都6県・調査途中)</h2>
+<p class="s">県をクリックすると市町村の一覧が開きます。「未確認」は、まだ確認できていない(または探していない)という意味で、規制ページが無いという意味ではありません。通行止めが無いことの保証でもありません。ルート画面は、ルートが通る市町村のうち確認済みのページへのリンクを表示します(内容の自動取得は、上の表の「自動取得中」の市町村のみ)。</p>
+<div id="muni"><p class="s">読み込み中…</p></div>
+<script>
+(function(){
+var PF=[['茨城県','ibaraki'],['栃木県','tochigi'],['群馬県','gunma'],['埼玉県','saitama'],['千葉県','chiba'],['東京都','tokyo'],['神奈川県','kanagawa']];
+var LAB={found:['一覧あり','ok'],found_empty:['今は規制の記載なし','ok'],index_only:['専用の一覧なし(案内ページ)','inv']};
+var CONF={found:1,found_empty:1,index_only:1};
+var root=document.getElementById('muni');
+function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
+function ok(x){return CONF[x.status]&&/^https?:\/\//.test(x.url||'')}
+function fill(box,rows){
+  var w=el('div','w'),t=el('table'),h=el('thead'),hr=el('tr');
+  ['市町村','状態','該当ページ','備考'].forEach(function(k){hr.appendChild(el('th',null,k))});h.appendChild(hr);t.appendChild(h);
+  var b=el('tbody');
+  rows.slice().sort(function(a,c){return (ok(c)?1:0)-(ok(a)?1:0)||a.name.localeCompare(c.name,'ja')}).forEach(function(x){
+    var tr=el('tr');tr.appendChild(el('td',null,x.name));
+    var td=el('td'),l=ok(x)?LAB[x.status]:['未確認','un'];td.appendChild(el('span','tag '+l[1],l[0]));tr.appendChild(td);
+    td=el('td');if(ok(x)){var a=el('a',null,x.page_title||x.url);a.href=x.url;a.target='_blank';a.rel='noopener';td.appendChild(a);td.appendChild(el('div','s',x.url))}else td.textContent='—';tr.appendChild(td);
+    var n=[];if(ok(x)){n.push(x.covers_forest_road===true?'林道を含む':'林道の記載は未確認');if(x.updated_hint)n.push('更新 '+x.updated_hint)}
+    tr.appendChild(el('td',null,n.join(' / ')));b.appendChild(tr)});
+  t.appendChild(b);w.appendChild(t);box.appendChild(w)}
+root.textContent='';
+PF.forEach(function(p){
+  var d=el('details','pf'),sm=el('summary',null,p[0]),cnt=el('span','c','…');sm.appendChild(cnt);d.appendChild(sm);root.appendChild(d);
+  var rows=null,done=false;
+  fetch('../data/muni-inventory/'+p[1]+'.json').then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(j){rows=j;cnt.textContent='確認済み '+j.filter(ok).length+' / 全 '+j.length+' 市町村';if(d.open&&!done){done=true;fill(d,rows)}}).catch(function(){cnt.textContent='(読み込めませんでした)'});
+  d.addEventListener('toggle',function(){if(d.open&&rows&&!done){done=true;fill(d,rows)}});
+});
+})();
+</script>
 <p class="s"><a href="./">ルート画面へ戻る</a></p>
 </body></html>
