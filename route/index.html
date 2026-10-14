@@ -49,7 +49,7 @@ a{color:var(--acc)}
 </section>
 <section id="s-opt"><h2>② ルートを計算</h2>
  <div class="row"><label>獲得標高 <select id="obj"><option value="min" selected>最小獲得標高</option><option value="max">最大獲得標高</option></select></label><button class="btn pri" id="go">ルートを計算</button></div>
- <div class="row" style="margin-top:8px"><label>迂回の上限 <select id="detour"><option value="1.2">最短の1.2倍まで</option><option value="1.5" selected>最短の1.5倍まで</option><option value="2">最短の2倍まで</option></select></label></div>
+ <input type="hidden" id="detour" value="1.5">
  <div class="bar" id="bar" hidden><i></i></div><p class="hint" id="st"></p>
 </section>
 <div id="map" style="margin:0 0 12px;border-radius:10px;overflow:hidden"></div>
@@ -92,7 +92,7 @@ const $=s=>document.querySelector(s);const esc=s=>String(s??'').replace(/[&<>"']
 const VAL='https://valhalla1.openstreetmap.de';
 const DEM_Z=13;
 const st={points:[],closures:[],cands:[],sel:null,best:null};
-try{const o=JSON.parse(localStorage.getItem('rt-state')||'{}');if(Array.isArray(o.points))st.points=o.points.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));if(Array.isArray(o.closures))st.closures=o.closures.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));if(o.detour)$('#detour').value=o.detour;if(o.obj==='min'||o.obj==='max')$('#obj').value=o.obj}catch(e){}
+try{const o=JSON.parse(localStorage.getItem('rt-state')||'{}');if(Array.isArray(o.points))st.points=o.points.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));if(Array.isArray(o.closures))st.closures=o.closures.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));if(o.obj==='min'||o.obj==='max')$('#obj').value=o.obj}catch(e){}
 const save=()=>{try{localStorage.setItem('rt-state',JSON.stringify({points:st.points,closures:st.closures,detour:$('#detour').value,obj:$('#obj').value}))}catch(e){}};
 
 /* ---------- geo ---------- */
