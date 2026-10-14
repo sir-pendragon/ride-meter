@@ -227,7 +227,7 @@
       else if (usable.length === 1 && comps.length === 1) { selected = usable[0]; position = { level: selected.level, reason: selected.basis, confidence: selected.confidence }; }
       else position = { level: '要確認', reason: `候補が${usable.length}件あり、自動では確定しません(同名の道${comps.length}か所/区間の案${usable.length}件)。地図で確かめて選んでください`, confidence: '低', multiple: true };
       if (notes.length) position.reason += ' / ' + notes.join(' ');
-      return { ...r, candidates, usable, selected, ways: selected ? selected.ways : usable.length ? [...new Set(usable.flatMap((u) => u.ways))] : [], section_parsed: sec, position };
+      return { ...r, candidates, usable, selected, ways: selected ? selected.ways : usable.length ? [...new Set(usable.flatMap((u) => u.ways))] : [...new Set(comps.flatMap((c) => c.ways))], section_parsed: sec, position };
     });
   }
   // 旧API(互換): locate() の薄いラッパー
