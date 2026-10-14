@@ -9,8 +9,10 @@ with sync_playwright() as p:
     assert pg.evaluate("document.querySelectorAll('details.pf table').length")==0,'閉じている間は表を作らない'
     cs=pg.evaluate("[...document.querySelectorAll('details.pf summary')].map(s=>s.textContent)");print(cs)
     assert all('確認済み' in c for c in cs),cs
-    pg.click("details.pf:nth-of-type(7) summary");time.sleep(0.5)
+    pg.click("details.pf[data-k=kanagawa] summary");time.sleep(0.5)
     assert pg.evaluate("document.querySelectorAll('details.pf[open] table').length")==1
+    assert pg.evaluate("document.querySelectorAll('h2').length")==0,'独立セクションは無い'
+    assert pg.evaluate("!!document.querySelector('details.pf[data-k=kanagawa]').closest('table')"),'県の表の中にある'
     t=pg.evaluate("document.querySelector('details.pf[open]').innerText");assert '相模原市' in t and '未確認' in t
     first=pg.evaluate("document.querySelector('details.pf[open] tbody tr td').textContent");print('先頭(確認済みが先):',first)
     assert pg.evaluate("document.documentElement.scrollWidth<=window.innerWidth+1"),'横スクロールなし'

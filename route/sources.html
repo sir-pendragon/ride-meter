@@ -9,10 +9,10 @@ h1{font-size:20px;margin:0 0 4px}p.s{color:var(--mut);margin:0 0 12px;font-size:
 .w{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:720px}th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top;font-size:13px}
 td:first-child{white-space:nowrap;font-weight:600}a{color:var(--a);word-break:break-all}
 .tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;white-space:nowrap}.tag.ok{background:var(--okbg);color:var(--ok)}.tag.inv{background:var(--invbg);color:var(--inv)}.tag.none{background:var(--nobg);color:var(--no)}
-details.pf{border:1px solid var(--line);border-radius:8px;margin:6px 0;background:var(--bg)}details.pf>summary{cursor:pointer;padding:10px 12px;font-weight:600;font-size:15px}details.pf>summary .c{font-weight:400;color:var(--mut);font-size:13px;margin-left:8px}details.pf .w{padding:0 8px 8px}.tag.un{background:var(--nobg);color:var(--no)}
+tr.mrow>td{padding:4px 8px;white-space:normal;font-weight:400}details.pf{border:1px solid var(--line);border-radius:8px;background:var(--bg)}details.pf>summary{cursor:pointer;padding:10px 12px;font-weight:600;font-size:15px}details.pf>summary .c{font-weight:400;color:var(--mut);font-size:13px;margin-left:8px}details.pf .w{padding:0 8px 8px}.tag.un{background:var(--nobg);color:var(--no)}
 </style></head><body>
 <h1>通行止め情報の取得元(都道府県別)</h1>
-<p class="s">ルート画面が自動取得している公式ページの一覧です。確認日 2026-10-14。「未調査」は、まだ公式ページを探していない県です。ここに無い県の通行止めは、アプリには反映されません。</p>
+<p class="s">ルート画面が自動取得している公式ページの一覧です。関東1都6県と福島県は、県の行の下の「市町村の公式ページ」をクリックすると市町村の一覧が開きます(台帳は調査途中。「未確認」は、まだ確認できていない、または探していないという意味で、規制ページが無いという意味でも、通行止めが無いことの保証でもありません。市町村ページの内容を自動で読むのは「自動取得中」の市町村のみで、他はリンクだけを示します)。確認日 2026-10-14。「未調査」は、まだ公式ページを探していない県です。ここに無い県の通行止めは、アプリには反映されません。</p>
 <div class="w"><table><thead><tr><th>都道府県</th><th>状態</th><th>該当ページ</th><th>URL</th><th>備考</th></tr></thead><tbody>
 <tr><td>北海道</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
 <tr class="ok"><td>青森県</td><td><span class="tag ok">自動取得中(国道・県道のみ)</span></td><td>青森県管理道路 通行規制情報</td><td><a href="https://www.koutsu-aomori.com/tukodome_map/" target="_blank" rel="noopener">https://www.koutsu-aomori.com/tukodome_map/</a><br>データ: <a href="https://www.koutsu-aomori.com/tukodome_map/data/traffic_regulation.json5" target="_blank" rel="noopener">https://www.koutsu-aomori.com/tukodome_map/data/traffic_regulation.json5</a></td><td>林道の記載は現在なし。載ったら同じ一覧から読む。公式の代表地点(座標)と延長から位置を推定</td></tr>
@@ -21,15 +21,23 @@ details.pf{border:1px solid var(--line);border-radius:8px;margin:6px 0;backgroun
 <tr><td>秋田県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
 <tr><td>山形県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
 <tr class="ok"><td>福島県</td><td><span class="tag ok">自動取得中(国道・県道のみ)</span></td><td>福島県 道路通行規制情報</td><td><a href="http://www.pref.fukushima.jp/douro/kisei/kisei-list.htm" target="_blank" rel="noopener">http://www.pref.fukushima.jp/douro/kisei/kisei-list.htm</a></td><td>林道の記載は現在なし。区間は住所のみで座標がないため、位置は示さない(件数のみ表示)。サイトが http のみのため、中継でも http で取得</td></tr>
+<tr class="mrow"><td colspan="5"><details class="pf" data-k="fukushima"><summary>福島県の市町村の公式ページ<span class="c">…</span></summary></details></td></tr>
 <tr><td>茨城県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr class="mrow"><td colspan="5"><details class="pf" data-k="ibaraki"><summary>茨城県の市町村の公式ページ<span class="c">…</span></summary></details></td></tr>
 <tr class="ok"><td>栃木県</td><td><span class="tag ok">自動取得中(矢板のみ)</span></td><td>矢板森林管理事務所 林道通行止め情報</td><td><a href="https://www.pref.tochigi.lg.jp/d56/tuukoudome/2025rindo.html" target="_blank" rel="noopener">https://www.pref.tochigi.lg.jp/d56/tuukoudome/2025rindo.html</a></td><td>6路線。表の基準日が古い場合あり。他の森林管理事務所は未調査(※公開前:中継の更新が必要)</td></tr>
+<tr class="mrow"><td colspan="5"><details class="pf" data-k="tochigi"><summary>栃木県の市町村の公式ページ<span class="c">…</span></summary></details></td></tr>
 <tr class="ok"><td>群馬県</td><td><span class="tag ok">自動取得中(国道・県道のみ)</span></td><td>群馬県 道路規制情報</td><td><a href="https://www.kendobousai-gunma.jp/kisei/RegulationList.htm" target="_blank" rel="noopener">https://www.kendobousai-gunma.jp/kisei/RegulationList.htm</a></td><td>林道の記載は現在なし。一覧に規制の内容がないため通行止めとは判断せず「不明」。区間は地名のみで、位置は示さない</td></tr>
+<tr class="mrow"><td colspan="5"><details class="pf" data-k="gunma"><summary>群馬県の市町村の公式ページ<span class="c">…</span></summary></details></td></tr>
 <tr class="ok"><td>埼玉県</td><td><span class="tag ok">自動取得中</span></td><td>秩父農林振興センター 林道通行規制</td><td><a href="https://www.pref.saitama.lg.jp/b0904/tukoseigen/index.html" target="_blank" rel="noopener">https://www.pref.saitama.lg.jp/b0904/tukoseigen/index.html</a></td><td></td></tr>
 <tr class="ok"><td></td><td><span class="tag ok">自動取得中</span></td><td>川越農林振興センター 林道通行止め</td><td><a href="https://www.pref.saitama.lg.jp/b0902/forestry/road-closed.html" target="_blank" rel="noopener">https://www.pref.saitama.lg.jp/b0902/forestry/road-closed.html</a></td><td>表(8路線)。地図PDFは未使用</td></tr>
 <tr class="ok"><td></td><td><span class="tag ok">自動取得中</span></td><td>寄居林業事務所 通行止め</td><td><a href="https://www.pref.saitama.lg.jp/b0923/tuukoudome.html" target="_blank" rel="noopener">https://www.pref.saitama.lg.jp/b0923/tuukoudome.html</a></td><td></td></tr>
+<tr class="mrow"><td colspan="5"><details class="pf" data-k="saitama"><summary>埼玉県の市町村の公式ページ<span class="c">…</span></summary></details></td></tr>
 <tr><td>千葉県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr class="mrow"><td colspan="5"><details class="pf" data-k="chiba"><summary>千葉県の市町村の公式ページ<span class="c">…</span></summary></details></td></tr>
 <tr class="ok"><td>東京都</td><td><span class="tag ok">自動取得中</span></td><td>東京都 森林事務所 林道規制</td><td><a href="https://forestry-office.metro.tokyo.lg.jp/about/rin/rin_kisei/index.html" target="_blank" rel="noopener">https://forestry-office.metro.tokyo.lg.jp/about/rin/rin_kisei/index.html</a></td><td></td></tr>
+<tr class="mrow"><td colspan="5"><details class="pf" data-k="tokyo"><summary>東京都の市町村の公式ページ<span class="c">…</span></summary></details></td></tr>
 <tr class="ok"><td>神奈川県</td><td><span class="tag ok">自動取得中(県営林道のみ)</span></td><td>県営林道(自然環境保全センター管轄)の通行情報</td><td><a href="https://www.pref.kanagawa.jp/docs/f4y/03shinrin/seibi/keneirin/rinndou.html" target="_blank" rel="noopener">https://www.pref.kanagawa.jp/docs/f4y/03shinrin/seibi/keneirin/rinndou.html</a></td><td>通行止め1路線+ゲート規制9路線。ゲート規制は「承認を受けた車両以外は通行不可」。自転車の扱いは記載なし。市町村営・他の管理者の林道は未調査</td></tr>
+<tr class="mrow"><td colspan="5"><details class="pf" data-k="kanagawa"><summary>神奈川県の市町村の公式ページ<span class="c">…</span></summary></details></td></tr>
 <tr><td>新潟県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
 <tr><td>富山県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
 <tr><td>石川県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
@@ -64,15 +72,10 @@ details.pf{border:1px solid var(--line);border-radius:8px;margin:6px 0;backgroun
 <tr><td>鹿児島県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
 <tr><td>沖縄県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
 </tbody></table></div>
-<h2 style="font-size:17px;margin:24px 0 4px">市町村の公式の規制ページ(関東1都6県と福島県・調査途中)</h2>
-<p class="s">県をクリックすると市町村の一覧が開きます。「未確認」は、まだ確認できていない(または探していない)という意味で、規制ページが無いという意味ではありません。通行止めが無いことの保証でもありません。ルート画面は、ルートが通る市町村のうち確認済みのページへのリンクを表示します(内容の自動取得は、上の表の「自動取得中」の市町村のみ)。</p>
-<div id="muni"><p class="s">読み込み中…</p></div>
 <script>
 (function(){
-var PF=[['茨城県','ibaraki'],['栃木県','tochigi'],['群馬県','gunma'],['埼玉県','saitama'],['千葉県','chiba'],['東京都','tokyo'],['神奈川県','kanagawa'],['福島県','fukushima']];
 var LAB={found:['一覧あり','ok'],found_empty:['今は規制の記載なし','ok'],index_only:['専用の一覧なし(案内ページ)','inv']};
 var CONF={found:1,found_empty:1,index_only:1};
-var root=document.getElementById('muni');
 function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
 function ok(x){return CONF[x.status]&&/^https?:\/\//.test(x.url||'')}
 function fill(box,rows){
@@ -86,11 +89,9 @@ function fill(box,rows){
     var n=[];if(ok(x)){n.push(x.covers_forest_road===true?'林道を含む':'林道の記載は未確認');if(x.updated_hint)n.push('更新 '+x.updated_hint)}
     tr.appendChild(el('td',null,n.join(' / ')));b.appendChild(tr)});
   t.appendChild(b);w.appendChild(t);box.appendChild(w)}
-root.textContent='';
-PF.forEach(function(p){
-  var d=el('details','pf'),sm=el('summary',null,p[0]),cnt=el('span','c','…');sm.appendChild(cnt);d.appendChild(sm);root.appendChild(d);
-  var rows=null,done=false;
-  fetch('../data/muni-inventory/'+p[1]+'.json').then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(j){rows=j;cnt.textContent='確認済み '+j.filter(ok).length+' / 全 '+j.length+' 市町村';if(d.open&&!done){done=true;fill(d,rows)}}).catch(function(){cnt.textContent='(読み込めませんでした)'});
+[].forEach.call(document.querySelectorAll('details.pf'),function(d){
+  var cnt=d.querySelector('.c'),rows=null,done=false;
+  fetch('../data/muni-inventory/'+d.getAttribute('data-k')+'.json').then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(j){rows=j;cnt.textContent='確認済み '+j.filter(ok).length+' / 全 '+j.length+' 市町村';if(d.open&&!done){done=true;fill(d,rows)}}).catch(function(){cnt.textContent='(読み込めませんでした)'});
   d.addEventListener('toggle',function(){if(d.open&&rows&&!done){done=true;fill(d,rows)}});
 });
 })();
