@@ -1,0 +1,107 @@
+[
+  {
+    "test": "aicheck.test.js",
+    "exit": 0,
+    "seconds": 0.14
+  },
+  {
+    "test": "autoavoid.test.js",
+    "exit": 0,
+    "seconds": 0.11
+  },
+  {
+    "test": "closures.test.js",
+    "exit": 0,
+    "seconds": 0.09
+  },
+  {
+    "test": "comfort.test.js",
+    "exit": 0,
+    "seconds": 0.09
+  },
+  {
+    "test": "diag.test.js",
+    "exit": 0,
+    "seconds": 0.08
+  },
+  {
+    "test": "explore.test.js",
+    "exit": 0,
+    "seconds": 0.14
+  },
+  {
+    "test": "fetchcore.test.js",
+    "exit": 0,
+    "seconds": 0.2
+  },
+  {
+    "test": "locate.test.js",
+    "exit": 0,
+    "seconds": 0.11
+  },
+  {
+    "test": "maxgrade.test.js",
+    "exit": 0,
+    "seconds": 0.09
+  },
+  {
+    "test": "migrate-broken.test.js",
+    "exit": 0,
+    "seconds": 0.09
+  },
+  {
+    "test": "migrate-old.test.js",
+    "exit": 0,
+    "seconds": 0.17
+  },
+  {
+    "test": "muni-registry.test.js",
+    "exit": 0,
+    "seconds": 0.17
+  },
+  {
+    "test": "muni_inventory_test.py",
+    "exit": 0,
+    "seconds": 0.36
+  },
+  {
+    "test": "muni_table_test.py",
+    "exit": 0,
+    "seconds": 0.44
+  },
+  {
+    "test": "parse-tables.test.js",
+    "exit": 0,
+    "seconds": 0.16
+  },
+  {
+    "test": "parse-yamanashi.test.js",
+    "exit": 0,
+    "seconds": 0.14
+  },
+  {
+    "test": "readiness.test.js",
+    "exit": 0,
+    "seconds": 0.31
+  },
+  {
+    "test": "road.test.js",
+    "exit": 0,
+    "seconds": 0.12
+  },
+  {
+    "test": "sources-page.test.js",
+    "exit": 0,
+    "seconds": 0.08
+  },
+  {
+    "test": "worker-ai.test.mjs",
+    "exit": 0,
+    "seconds": 0.24
+  },
+  {
+    "test": "worker.test.mjs",
+    "exit": 0,
+    "seconds": 0.16
+  }
+]

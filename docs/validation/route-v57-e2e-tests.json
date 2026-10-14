@@ -1,0 +1,127 @@
+[
+  {
+    "test": "ai-flow.pw.py",
+    "exit": 0,
+    "seconds": 48.92
+  },
+  {
+    "test": "attrs-fallback.pw.py",
+    "exit": 0,
+    "seconds": 12.22
+  },
+  {
+    "test": "cache-flow.pw.py",
+    "exit": 0,
+    "seconds": 63.62
+  },
+  {
+    "test": "city-dom.pw.py",
+    "exit": 0,
+    "seconds": 1.31
+  },
+  {
+    "test": "cl-none.pw.py",
+    "exit": 0,
+    "seconds": 11.67
+  },
+  {
+    "test": "comfort-flow.pw.py",
+    "exit": 0,
+    "seconds": 42.33
+  },
+  {
+    "test": "diag-flow.pw.py",
+    "exit": 0,
+    "seconds": 11.17
+  },
+  {
+    "test": "explore-flow.pw.py",
+    "exit": 0,
+    "seconds": 22.17
+  },
+  {
+    "test": "geocode-flow.pw.py",
+    "exit": 0,
+    "seconds": 6.22
+  },
+  {
+    "test": "gm-mode.pw.py",
+    "exit": 0,
+    "seconds": 12.73
+  },
+  {
+    "test": "gunma-dom.pw.py",
+    "exit": 0,
+    "seconds": 1.16
+  },
+  {
+    "test": "kanagawa-dom.pw.py",
+    "exit": 0,
+    "seconds": 1.22
+  },
+  {
+    "test": "muni-flow.pw.py",
+    "exit": 0,
+    "seconds": 109.58
+  },
+  {
+    "test": "objective-flow.pw.py",
+    "exit": 0,
+    "seconds": 27.84
+  },
+  {
+    "test": "points-flow.pw.py",
+    "exit": 0,
+    "seconds": 46.78
+  },
+  {
+    "test": "readiness-flow.pw.py",
+    "exit": 0,
+    "seconds": 9.83
+  },
+  {
+    "test": "relay-missing.pw.py",
+    "exit": 0,
+    "seconds": 2.61
+  },
+  {
+    "test": "restore-flow.pw.py",
+    "exit": 0,
+    "seconds": 33.72
+  },
+  {
+    "test": "search-format.pw.py",
+    "exit": 0,
+    "seconds": 12.94
+  },
+  {
+    "test": "sources-muni.pw.py",
+    "exit": 0,
+    "seconds": 3.22
+  },
+  {
+    "test": "store-restore.pw.py",
+    "exit": 0,
+    "seconds": 11.31
+  },
+  {
+    "test": "sw-update.pw.py",
+    "exit": 0,
+    "seconds": 2.5
+  },
+  {
+    "test": "tochigi-dom.pw.py",
+    "exit": 0,
+    "seconds": 1.39
+  },
+  {
+    "test": "yamanashi-dom.pw.py",
+    "exit": 0,
+    "seconds": 1.5
+  },
+  {
+    "test": "yamanashi-flow.pw.py",
+    "exit": 0,
+    "seconds": 48.0
+  }
+]

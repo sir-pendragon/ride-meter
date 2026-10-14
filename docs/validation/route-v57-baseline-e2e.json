@@ -1,0 +1,117 @@
+[
+  {
+    "test": "ai-flow.pw.py",
+    "exit": 1,
+    "seconds": 21.77
+  },
+  {
+    "test": "attrs-fallback.pw.py",
+    "exit": 1,
+    "seconds": 50.23
+  },
+  {
+    "test": "cache-flow.pw.py",
+    "exit": 0,
+    "seconds": 63.64
+  },
+  {
+    "test": "city-dom.pw.py",
+    "exit": 1,
+    "seconds": 1.45
+  },
+  {
+    "test": "cl-none.pw.py",
+    "exit": 1,
+    "seconds": 21.77
+  },
+  {
+    "test": "comfort-flow.pw.py",
+    "exit": 0,
+    "seconds": 44.47
+  },
+  {
+    "test": "diag-flow.pw.py",
+    "exit": 0,
+    "seconds": 14.09
+  },
+  {
+    "test": "explore-flow.pw.py",
+    "exit": 0,
+    "seconds": 22.45
+  },
+  {
+    "test": "geocode-flow.pw.py",
+    "exit": 1,
+    "seconds": 0.36
+  },
+  {
+    "test": "gm-mode.pw.py",
+    "exit": 1,
+    "seconds": 0.69
+  },
+  {
+    "test": "gunma-dom.pw.py",
+    "exit": 1,
+    "seconds": 1.24
+  },
+  {
+    "test": "kanagawa-dom.pw.py",
+    "exit": 1,
+    "seconds": 1.3
+  },
+  {
+    "test": "muni-flow.pw.py",
+    "exit": 1,
+    "seconds": 21.62
+  },
+  {
+    "test": "objective-flow.pw.py",
+    "exit": 0,
+    "seconds": 27.88
+  },
+  {
+    "test": "points-flow.pw.py",
+    "exit": 0,
+    "seconds": 46.78
+  },
+  {
+    "test": "relay-missing.pw.py",
+    "exit": 1,
+    "seconds": 1.89
+  },
+  {
+    "test": "restore-flow.pw.py",
+    "exit": 0,
+    "seconds": 33.62
+  },
+  {
+    "test": "search-format.pw.py",
+    "exit": 0,
+    "seconds": 12.78
+  },
+  {
+    "test": "sources-muni.pw.py",
+    "exit": 1,
+    "seconds": 2.45
+  },
+  {
+    "test": "store-restore.pw.py",
+    "exit": 1,
+    "seconds": 0.47
+  },
+  {
+    "test": "tochigi-dom.pw.py",
+    "exit": 1,
+    "seconds": 1.3
+  },
+  {
+    "test": "yamanashi-dom.pw.py",
+    "exit": 1,
+    "seconds": 1.2
+  },
+  {
+    "test": "yamanashi-flow.pw.py",
+    "exit": 1,
+    "seconds": 21.69
+  }
+]

@@ -50,8 +50,14 @@ async function run(){
   ctx.fetch=async(u,o)=>{calls.push({u,o});return new Response('busy',{status:503});};
   await assert.rejects(vm.runInContext("vpost('/route',{})",ctx));
   ok(calls.length===1,'503の/routeを再試行しない');
+  ok(calls[0].o.headers['X-Client-Id']==='app','通常のValhalla通信にも識別ヘッダーを付与する');
   ctx.compute._routes=4;await assert.rejects(vm.runInContext("vpost('/route',{})",ctx));
   ok(calls.length===1,'通行止め再探索を含めて/route上限を実通信で守る');
+  ctx.compute._routes=0;calls=[];
+  ctx.setTimeout=(fn,ms)=>setTimeout(fn,ms===15000?15:ms);
+  ctx.fetch=async(u,o)=>{calls.push(u);return new Promise((r,j)=>o.signal.addEventListener('abort',()=>j(new Error('abort'))));};
+  await assert.rejects(vm.runInContext("vpost('/route',{})",ctx),/時間切れ/);
+  ok(calls.length===1,'無応答のValhallaを中止し、再送しない');
   let activate;const deleted=[];
   vm.runInNewContext(fs.readFileSync(require.resolve('../route/sw.js'),'utf8'),{self:{addEventListener:(name,fn)=>{if(name==='activate')activate=fn;},clients:{claim:async()=>{}}},caches:{keys:async()=>['route-v56','route-v57','route-v57.1','rt-scn','rt-cyc','meter-v10','note-v8'],delete:async k=>deleted.push(k)}});
   let pending;activate({waitUntil:p=>pending=p});await pending;

@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-15",
+  "region": "青梅・御嶽・奥多摩",
+  "origin": "https://sir-pendragon.github.io",
+  "sourceCommit": "4207ef1",
+  "localPreview": true,
+  "items": [
+    {
+      "rawGain": 1042,
+      "gain": 377,
+      "changedPoints": 165,
+      "changedOutside": 0,
+      "structureRanges": 26,
+      "structureM": 4084,
+      "verifiedEdges": 413,
+      "edges": 413,
+      "Voriginal": 1,
+      "Vintegrated": 0.6816129748979572,
+      "n15": 0,
+      "steepM": {
+        "t1": 1374.9999999999964,
+        "t2": 100,
+        "t4": 0
+      }
+    },
+    {
+      "rawGain": 1203,
+      "gain": 509,
+      "changedPoints": 159,
+      "changedOutside": 0,
+      "structureRanges": 28,
+      "structureM": 3924,
+      "verifiedEdges": 409,
+      "edges": 409,
+      "Voriginal": 1,
+      "Vintegrated": 0.5837854728402806,
+      "n15": 2,
+      "steepM": {
+        "t1": 1125.0000000000027,
+        "t2": 525.0000000000027,
+        "t4": 575.0000000000009
+      }
+    }
+  ]
+}

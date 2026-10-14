@@ -1,0 +1,1170 @@
+{
+  "tool": "ride-meter-diag",
+  "version": 1,
+  "appCache": "route-v57",
+  "at": "2026-10-14T21:39:18.913Z",
+  "client": {
+    "browser": "Chrome/156",
+    "mobile": false
+  },
+  "route": {
+    "preset": "ome-okutama",
+    "customCoords": false,
+    "note": "地点の座標は結果に含めない"
+  },
+  "limits": {
+    "valhallaCap": 40,
+    "gapMs": 1500,
+    "cooldownMs": 60000,
+    "goWaitMs": 60000,
+    "scnTimeoutMs": 150000
+  },
+  "aborted": null,
+  "totals": {
+    "ms": 47592,
+    "valhalla": 24,
+    "perKind": {
+      "valhalla/route": 12,
+      "valhalla/trace_attributes": 9,
+      "overpass": 3,
+      "valhalla/locate": 3,
+      "dem": 7
+    }
+  },
+  "calls": [
+    {
+      "scn": "min",
+      "svc": "valhalla",
+      "path": "/route",
+      "status": 200,
+      "ms": 1152
+    },
+    {
+      "scn": "min",
+      "svc": "valhalla",
+      "path": "/trace_attributes",
+      "status": 200,
+      "ms": 308
+    },
+    {
+      "scn": "min",
+      "svc": "valhalla",
+      "path": "/route",
+      "status": 200,
+      "ms": 360
+    },
+    {
+      "scn": "min",
+      "svc": "valhalla",
+      "path": "/route",
+      "status": 200,
+      "ms": 362
+    },
+    {
+      "scn": "min",
+      "svc": "valhalla",
+      "path": "/trace_attributes",
+      "status": 200,
+      "ms": 291
+    },
+    {
+      "scn": "max",
+      "svc": "valhalla",
+      "path": "/route",
+      "status": 200,
+      "ms": 346
+    },
+    {
+      "scn": "max",
+      "svc": "valhalla",
+      "path": "/trace_attributes",
+      "status": 200,
+      "ms": 293
+    },
+    {
+      "scn": "max",
+      "svc": "overpass",
+      "host": "overpass-api.de",
+      "ms": 19430,
+      "err": "signal is aborted without reason"
+    },
+    {
+      "scn": "cyc",
+      "svc": "valhalla",
+      "path": "/route",
+      "status": 200,
+      "ms": 635
+    },
+    {
+      "scn": "cyc",
+      "svc": "overpass",
+      "host": "overpass-api.de",
+      "status": 200,
+      "ms": 1910
+    },
+    {
+      "scn": "cyc",
+      "svc": "valhalla",
+      "path": "/trace_attributes",
+      "status": 200,
+      "ms": 295
+    },
+    {
+      "scn": "cmf",
+      "svc": "valhalla",
+      "path": "/route",
+      "status": 200,
+      "ms": 643
+    },
+    {
+      "scn": "cmf",
+      "svc": "overpass",
+      "host": "overpass-api.de",
+      "status": 200,
+      "ms": 4313
+    },
+    {
+      "scn": "cmf",
+      "svc": "valhalla",
+      "path": "/trace_attributes",
+      "status": 200,
+      "ms": 293
+    },
+    {
+      "scn": "cmf",
+      "svc": "valhalla",
+      "path": "/locate",
+      "status": 200,
+      "ms": 289
+    },
+    {
+      "scn": "cmf",
+      "svc": "valhalla",
+      "path": "/route",
+      "status": 200,
+      "ms": 352
+    },
+    {
+      "scn": "cmf",
+      "svc": "valhalla",
+      "path": "/route",
+      "status": 200,
+      "ms": 356
+    },
+    {
+      "scn": "cmf",
+      "svc": "valhalla",
+      "path": "/trace_attributes",
+      "status": 200,
+      "ms": 292
+    },
+    {
+      "scn": "cmf",
+      "svc": "valhalla",
+      "path": "/trace_attributes",
+      "status": 200,
+      "ms": 320
+    },
+    {
+      "scn": "cmf",
+      "svc": "valhalla",
+      "path": "/route",
+      "status": 200,
+      "ms": 360
+    },
+    {
+      "scn": "cmf-via",
+      "svc": "valhalla",
+      "path": "/route",
+      "status": 200,
+      "ms": 320
+    },
+    {
+      "scn": "cmf-via",
+      "svc": "valhalla",
+      "path": "/trace_attributes",
+      "status": 200,
+      "ms": 324
+    },
+    {
+      "scn": "cmf-via",
+      "svc": "valhalla",
+      "path": "/locate",
+      "status": 200,
+      "ms": 289
+    },
+    {
+      "scn": "cmf-via",
+      "svc": "valhalla",
+      "path": "/route",
+      "status": 200,
+      "ms": 330
+    },
+    {
+      "scn": "cmf-via",
+      "svc": "valhalla",
+      "path": "/route",
+      "status": 200,
+      "ms": 676
+    },
+    {
+      "scn": "cmf-via",
+      "svc": "valhalla",
+      "path": "/trace_attributes",
+      "status": 200,
+      "ms": 951
+    },
+    {
+      "scn": "probe-locate",
+      "svc": "valhalla",
+      "path": "/locate",
+      "status": 200,
+      "ms": 287
+    }
+  ],
+  "schemas": {
+    "/route": {
+      "trip": {
+        "locations": [
+          {
+            "type": "string",
+            "lat": "number",
+            "lon": "number",
+            "side_of_street": "string",
+            "original_index": "number"
+          }
+        ],
+        "legs": [
+          {
+            "maneuvers": [
+              {
+                "type": "number",
+                "instruction": "string",
+                "verbal_succinct_transition_instruction": "string",
+                "verbal_pre_transition_instruction": "string",
+                "verbal_post_transition_instruction": "string",
+                "bearing_after": "number",
+                "time": "number",
+                "length": "number",
+                "cost": "number",
+                "begin_shape_index": "number",
+                "end_shape_index": "number",
+                "verbal_multi_cue": "boolean",
+                "travel_mode": "string",
+                "travel_type": "string"
+              }
+            ],
+            "summary": {
+              "has_time_restrictions": "boolean",
+              "has_toll": "boolean",
+              "has_highway": "boolean",
+              "has_ferry": "boolean",
+              "min_lat": "number",
+              "min_lon": "number",
+              "max_lat": "number",
+              "max_lon": "number",
+              "time": "number",
+              "length": "number",
+              "cost": "number"
+            },
+            "shape": "string"
+          }
+        ],
+        "summary": {
+          "has_time_restrictions": "boolean",
+          "has_toll": "boolean",
+          "has_highway": "boolean",
+          "has_ferry": "boolean",
+          "min_lat": "number",
+          "min_lon": "number",
+          "max_lat": "number",
+          "max_lon": "number",
+          "time": "number",
+          "length": "number",
+          "cost": "number"
+        },
+        "status_message": "string",
+        "status": "number",
+        "units": "string",
+        "language": "string"
+      }
+    },
+    "/trace_attributes": {
+      "units": "string",
+      "shape": "string",
+      "edges": [
+        {
+          "cycle_lane": "string",
+          "lane_count": "number",
+          "travel_mode": "string",
+          "surface": "string",
+          "bridge": "boolean",
+          "tunnel": "boolean",
+          "use": "string",
+          "end_shape_index": "number",
+          "begin_shape_index": "number",
+          "road_class": "string",
+          "length": "number",
+          "source_percent_along": "number"
+        }
+      ],
+      "alternate_paths": [
+        "empty"
+      ]
+    },
+    "/locate": [
+      {
+        "input_lat": "number",
+        "input_lon": "number",
+        "edges": [
+          {
+            "access_restrictions": [
+              "empty"
+            ],
+            "live_speed": {},
+            "correlated_lat": "number",
+            "correlated_lon": "number",
+            "side_of_street": "string",
+            "bounding_circle": {
+              "lat": "number",
+              "lon": "number",
+              "radius": "number"
+            },
+            "linear_reference": "string",
+            "percent_along": "number",
+            "distance": "number",
+            "shoulder": "boolean",
+            "heading": "number",
+            "outbound_reach": "number",
+            "inbound_reach": "number",
+            "edge_info": {
+              "way_id": "number",
+              "bike_network": {
+                "national": "boolean",
+                "regional": "boolean",
+                "local": "boolean",
+                "mountain": "boolean"
+              },
+              "names": [
+                "empty"
+              ],
+              "shape": "string",
+              "mean_elevation": "number",
+              "speed_limit": "number",
+              "osm_node_ids": [
+                "number"
+              ]
+            },
+            "edge": {
+              "end_node": {
+                "level": "number",
+                "tile_id": "number",
+                "id": "number",
+                "value": "number"
+              },
+              "speeds": {
+                "default": "number",
+                "type": "string",
+                "free_flow": "number",
+                "constrained_flow": "number",
+                "predicted": "boolean"
+              },
+              "access_restriction": "boolean",
+              "start_restriction": {
+                "bicycle": "boolean",
+                "bus": "boolean",
+                "car": "boolean",
+                "emergency": "boolean",
+                "HOV": "boolean",
+                "pedestrian": "boolean",
+                "taxi": "boolean",
+                "truck": "boolean",
+                "wheelchair": "boolean",
+                "moped": "boolean",
+                "motorcycle": "boolean"
+              },
+              "end_restriction": {
+                "bicycle": "boolean",
+                "bus": "boolean",
+                "car": "boolean",
+                "emergency": "boolean",
+                "HOV": "boolean",
+                "pedestrian": "boolean",
+                "taxi": "boolean",
+                "truck": "boolean",
+                "wheelchair": "boolean",
+                "moped": "boolean",
+                "motorcycle": "boolean"
+              },
+              "part_of_complex_restriction": "boolean",
+              "has_sign": "boolean",
+              "toll": "boolean",
+              "destination_only": "boolean",
+              "destination_only_hgv": "boolean",
+              "tunnel": "boolean",
+              "bridge": "boolean",
+              "round_about": "boolean",
+              "traffic_signal": "boolean",
+              "forward": "boolean",
+              "not_thru": "boolean",
+              "stop_sign": "boolean",
+              "yield_sign": "boolean",
+              "cycle_lane": "string",
+              "bike_network": "boolean",
+              "truck_route": "boolean",
+              "lane_count": "number",
+              "country_crossing": "boolean",
+              "sidewalk_left": "boolean",
+              "sidewalk_right": "boolean",
+              "sac_scale": "string",
+              "deadend": "boolean",
+              "geo_attributes": {
+                "length": "number",
+                "weighted_grade": "number",
+                "max_up_slope": "number",
+                "max_down_slope": "number",
+                "curvature": "number"
+              },
+              "access": {
+                "bicycle": "boolean",
+                "bus": "boolean",
+                "car": "boolean",
+                "emergency": "boolean",
+                "HOV": "boolean",
+                "pedestrian": "boolean",
+                "taxi": "boolean",
+                "truck": "boolean",
+                "wheelchair": "boolean",
+                "moped": "boolean",
+                "motorcycle": "boolean"
+              },
+              "classification": {
+                "classification": "string",
+                "use": "string",
+                "surface": "string",
+                "link": "boolean",
+                "internal": "boolean"
+              }
+            },
+            "edge_id": {
+              "level": "number",
+              "tile_id": "number",
+              "id": "number",
+              "value": "number"
+            },
+            "predicted_speeds": [
+              "empty"
+            ]
+          }
+        ],
+        "nodes": [
+          "empty"
+        ]
+      }
+    ]
+  },
+  "traceAttrs": {
+    "traces": 9,
+    "edges": 3550,
+    "km": 207.9,
+    "present": {
+      "length": 3550,
+      "road_class": 3550,
+      "use": 3550,
+      "surface": 3550,
+      "lane_count": 3550,
+      "speed_limit": 2869,
+      "cycle_lane": 3550,
+      "bridge": 3550,
+      "tunnel": 3550,
+      "travel_mode": 3550
+    },
+    "values": {
+      "surface": {
+        "paved_smooth": 3502,
+        "compacted": 38,
+        "dirt": 10
+      },
+      "road_class": {
+        "service_other": 107,
+        "unclassified": 197,
+        "primary": 1982,
+        "trunk": 737,
+        "residential": 375,
+        "secondary": 152
+      },
+      "use": {
+        "parking_aisle": 45,
+        "road": 3423,
+        "ramp": 20,
+        "path": 38,
+        "alley": 14,
+        "track": 10
+      },
+      "travel_mode": {
+        "bicycle": 3550
+      },
+      "cycle_lane": {
+        "none": 3512,
+        "shared": 38
+      }
+    },
+    "bridge": 205,
+    "tunnel": 26
+  },
+  "scenarios": [
+    {
+      "id": "min",
+      "kind": "mode",
+      "mode": "min",
+      "points": 2,
+      "ms": 2816,
+      "valhalla": 5,
+      "cands": 2,
+      "auto": 1,
+      "sel": 1,
+      "best": {
+        "auto": true,
+        "km": 23.077,
+        "gain": 350,
+        "fixedPts": 164,
+        "gainRaw": 1015,
+        "fix": {
+          "source": "shape",
+          "padM": 0,
+          "spans": 25,
+          "structureM": 4065
+        },
+        "edges": 390,
+        "edgeFit": 1.001,
+        "legs": "single"
+      },
+      "all": [
+        {
+          "auto": false,
+          "km": 23.028,
+          "gain": 356,
+          "fixedPts": 168,
+          "gainRaw": 1029,
+          "fix": {
+            "source": "shape",
+            "padM": 0,
+            "spans": 26,
+            "structureM": 4147
+          },
+          "edges": 389,
+          "edgeFit": 1.001,
+          "legs": "single"
+        },
+        {
+          "auto": true,
+          "km": 23.077,
+          "gain": 350,
+          "fixedPts": 164,
+          "gainRaw": 1015,
+          "fix": {
+            "source": "shape",
+            "padM": 0,
+            "spans": 25,
+            "structureM": 4065
+          },
+          "edges": 390,
+          "edgeFit": 1.001,
+          "legs": "single"
+        }
+      ],
+      "fixedCands": 2,
+      "xlog": {
+        "mode": "min",
+        "on": true,
+        "routes": 2,
+        "locate": 0,
+        "ms": 1307,
+        "note": "",
+        "stages": [
+          {
+            "ms": 365,
+            "improved": false
+          }
+        ]
+      },
+      "apiPerKind": {
+        "valhalla/route": 3,
+        "valhalla/trace_attributes": 2,
+        "dem": 6
+      }
+    },
+    {
+      "id": "max",
+      "kind": "mode",
+      "mode": "max",
+      "points": 2,
+      "ms": 20383,
+      "valhalla": 2,
+      "cands": 1,
+      "auto": 0,
+      "sel": 0,
+      "best": {
+        "auto": false,
+        "km": 21.747,
+        "gain": 334,
+        "fixedPts": 136,
+        "gainRaw": 914,
+        "fix": {
+          "source": "shape",
+          "padM": 0,
+          "spans": 24,
+          "structureM": 3326
+        },
+        "edges": 402,
+        "edgeFit": 1.001,
+        "legs": "single"
+      },
+      "all": [
+        {
+          "auto": false,
+          "km": 21.747,
+          "gain": 334,
+          "fixedPts": 136,
+          "gainRaw": 914,
+          "fix": {
+            "source": "shape",
+            "padM": 0,
+            "spans": 24,
+            "structureM": 3326
+          },
+          "edges": 402,
+          "edgeFit": 1.001,
+          "legs": "single"
+        }
+      ],
+      "fixedCands": 1,
+      "xlog": {
+        "mode": "max",
+        "on": true,
+        "routes": 0,
+        "locate": 0,
+        "ms": 20016,
+        "note": "峠のデータを取得できませんでした。追加探索は行っていません(基本ルートを表示しています)",
+        "stages": []
+      },
+      "apiPerKind": {
+        "valhalla/route": 1,
+        "valhalla/trace_attributes": 1,
+        "overpass": 1
+      }
+    },
+    {
+      "id": "cyc",
+      "kind": "mode",
+      "mode": "cyc",
+      "points": 2,
+      "ms": 4053,
+      "valhalla": 2,
+      "cands": 1,
+      "auto": 0,
+      "sel": 0,
+      "best": {
+        "auto": false,
+        "km": 22.612,
+        "gain": 371,
+        "fixedPts": 136,
+        "gainRaw": 945,
+        "cyc": 0,
+        "fix": {
+          "source": "shape",
+          "padM": 0,
+          "spans": 27,
+          "structureM": 3425
+        },
+        "edges": 362,
+        "edgeFit": 1.001,
+        "legs": "single"
+      },
+      "all": [
+        {
+          "auto": false,
+          "km": 22.612,
+          "gain": 371,
+          "fixedPts": 136,
+          "gainRaw": 945,
+          "cyc": 0,
+          "fix": {
+            "source": "shape",
+            "padM": 0,
+            "spans": 27,
+            "structureM": 3425
+          },
+          "edges": 362,
+          "edgeFit": 1.001,
+          "legs": "single"
+        }
+      ],
+      "fixedCands": 1,
+      "xlog": {
+        "mode": "cyc",
+        "on": true,
+        "routes": 0,
+        "locate": 0,
+        "ms": 6,
+        "note": "改善の余地がないため、追加探索なし",
+        "stages": []
+      },
+      "apiPerKind": {
+        "valhalla/route": 1,
+        "overpass": 1,
+        "valhalla/trace_attributes": 1,
+        "dem": 1
+      }
+    },
+    {
+      "id": "cmf",
+      "kind": "mode",
+      "mode": "cmf",
+      "points": 2,
+      "ms": 8490,
+      "valhalla": 8,
+      "cands": 3,
+      "auto": 2,
+      "sel": 2,
+      "best": {
+        "auto": true,
+        "km": 23.305,
+        "gain": 377,
+        "fixedPts": 165,
+        "gainRaw": 1042,
+        "Q": 0.213,
+        "H": 0.73,
+        "V": 0.682,
+        "S": 0.488,
+        "unk": 0,
+        "walkM": 0,
+        "steep": {
+          "m9": 1375,
+          "m12": 100,
+          "m15": 0,
+          "n15": 0,
+          "anomalies": 0
+        },
+        "scenic": {
+          "density": 0.432,
+          "pointScore": 0.579,
+          "waterW": 0.486,
+          "waterScore": 0.75,
+          "share100": 0.433,
+          "points": 16
+        },
+        "fix": {
+          "source": "shape",
+          "padM": 0,
+          "spans": 26,
+          "structureM": 4084
+        },
+        "edges": 413,
+        "edgeFit": 1,
+        "legs": "single"
+      },
+      "all": [
+        {
+          "auto": false,
+          "km": 23.028,
+          "gain": 356,
+          "fixedPts": 168,
+          "gainRaw": 1029,
+          "Q": 0.127,
+          "H": 0.583,
+          "V": 0.707,
+          "S": 0.403,
+          "unk": 0,
+          "walkM": 0,
+          "steep": {
+            "m9": 950,
+            "m12": 325,
+            "m15": 200,
+            "n15": 2,
+            "anomalies": 0
+          },
+          "scenic": {
+            "density": 0.468,
+            "pointScore": 0.608,
+            "waterW": 0.52,
+            "waterScore": 0.774,
+            "share100": 0.481,
+            "points": 16
+          },
+          "fix": {
+            "source": "shape",
+            "padM": 0,
+            "spans": 26,
+            "structureM": 4147
+          },
+          "edges": 389,
+          "edgeFit": 1.001,
+          "legs": "single"
+        },
+        {
+          "auto": true,
+          "km": 22.038,
+          "gain": 355,
+          "fixedPts": 157,
+          "gainRaw": 1025,
+          "Q": 0.172,
+          "H": 0.455,
+          "V": 0.701,
+          "S": 0.377,
+          "unk": 0,
+          "walkM": 0,
+          "steep": {
+            "m9": 1200,
+            "m12": 300,
+            "m15": 300,
+            "n15": 3,
+            "anomalies": 0
+          },
+          "scenic": {
+            "density": 0.489,
+            "pointScore": 0.624,
+            "waterW": 0.488,
+            "waterScore": 0.752,
+            "share100": 0.442,
+            "points": 16
+          },
+          "fix": {
+            "source": "shape",
+            "padM": 0,
+            "spans": 23,
+            "structureM": 3916
+          },
+          "edges": 383,
+          "edgeFit": 1.001,
+          "legs": "single"
+        },
+        {
+          "auto": true,
+          "km": 23.305,
+          "gain": 377,
+          "fixedPts": 165,
+          "gainRaw": 1042,
+          "Q": 0.213,
+          "H": 0.73,
+          "V": 0.682,
+          "S": 0.488,
+          "unk": 0,
+          "walkM": 0,
+          "steep": {
+            "m9": 1375,
+            "m12": 100,
+            "m15": 0,
+            "n15": 0,
+            "anomalies": 0
+          },
+          "scenic": {
+            "density": 0.432,
+            "pointScore": 0.579,
+            "waterW": 0.486,
+            "waterScore": 0.75,
+            "share100": 0.433,
+            "points": 16
+          },
+          "fix": {
+            "source": "shape",
+            "padM": 0,
+            "spans": 26,
+            "structureM": 4084
+          },
+          "edges": 413,
+          "edgeFit": 1,
+          "legs": "single"
+        }
+      ],
+      "fixedCands": 3,
+      "xlog": {
+        "mode": "cmf",
+        "on": true,
+        "routes": 3,
+        "locate": 1,
+        "ms": 1888,
+        "note": "",
+        "stages": [
+          {
+            "ms": 359,
+            "improved": true
+          },
+          {
+            "ms": 361,
+            "improved": false
+          }
+        ]
+      },
+      "apiPerKind": {
+        "valhalla/route": 4,
+        "overpass": 1,
+        "valhalla/trace_attributes": 3,
+        "valhalla/locate": 1
+      }
+    },
+    {
+      "id": "cmf-via",
+      "kind": "mode",
+      "mode": "cmf",
+      "points": 3,
+      "ms": 3318,
+      "valhalla": 6,
+      "cands": 2,
+      "auto": 1,
+      "sel": 0,
+      "best": {
+        "auto": false,
+        "km": 23.305,
+        "gain": 377,
+        "fixedPts": 165,
+        "gainRaw": 1042,
+        "Q": 0.213,
+        "H": 0.73,
+        "V": 0.682,
+        "S": 0.488,
+        "unk": 0,
+        "walkM": 0,
+        "steep": {
+          "m9": 1375,
+          "m12": 100,
+          "m15": 0,
+          "n15": 0,
+          "anomalies": 0
+        },
+        "scenic": {
+          "density": 0.432,
+          "pointScore": 0.579,
+          "waterW": 0.486,
+          "waterScore": 0.75,
+          "share100": 0.433,
+          "points": 16
+        },
+        "fix": {
+          "source": "shape",
+          "padM": 0,
+          "spans": 26,
+          "structureM": 4084
+        },
+        "edges": 413,
+        "edgeFit": 1,
+        "legs": "single"
+      },
+      "all": [
+        {
+          "auto": false,
+          "km": 23.305,
+          "gain": 377,
+          "fixedPts": 165,
+          "gainRaw": 1042,
+          "Q": 0.213,
+          "H": 0.73,
+          "V": 0.682,
+          "S": 0.488,
+          "unk": 0,
+          "walkM": 0,
+          "steep": {
+            "m9": 1375,
+            "m12": 100,
+            "m15": 0,
+            "n15": 0,
+            "anomalies": 0
+          },
+          "scenic": {
+            "density": 0.432,
+            "pointScore": 0.579,
+            "waterW": 0.486,
+            "waterScore": 0.75,
+            "share100": 0.433,
+            "points": 16
+          },
+          "fix": {
+            "source": "shape",
+            "padM": 0,
+            "spans": 26,
+            "structureM": 4084
+          },
+          "edges": 413,
+          "edgeFit": 1,
+          "legs": "single"
+        },
+        {
+          "auto": true,
+          "km": 25.639,
+          "gain": 509,
+          "fixedPts": 159,
+          "gainRaw": 1203,
+          "Q": 0.367,
+          "H": 0.302,
+          "V": 0.584,
+          "S": 0.387,
+          "unk": 0,
+          "walkM": 0,
+          "steep": {
+            "m9": 1125,
+            "m12": 525,
+            "m15": 575,
+            "n15": 2,
+            "anomalies": 1
+          },
+          "scenic": {
+            "density": 0.27,
+            "pointScore": 0.417,
+            "waterW": 0.416,
+            "waterScore": 0.695,
+            "share100": 0.365,
+            "points": 16
+          },
+          "fix": {
+            "source": "shape",
+            "padM": 0,
+            "spans": 28,
+            "structureM": 3924
+          },
+          "edges": 409,
+          "edgeFit": 1.001,
+          "legs": "single"
+        }
+      ],
+      "fixedCands": 2,
+      "xlog": {
+        "mode": "cmf",
+        "on": true,
+        "routes": 2,
+        "locate": 1,
+        "ms": 2319,
+        "note": "",
+        "stages": [
+          {
+            "ms": 682,
+            "improved": false
+          }
+        ]
+      },
+      "apiPerKind": {
+        "valhalla/route": 3,
+        "valhalla/trace_attributes": 2,
+        "valhalla/locate": 1
+      }
+    }
+  ],
+  "xClientId": "allowed",
+  "privacy": {
+    "storageUnchanged": true,
+    "blockedWrites": 5,
+    "usedUserPoints": false,
+    "usedUserClosures": false,
+    "usedApiKeys": false
+  },
+  "terms": "Valhalla(FOSSGIS公開サーバー): 公平利用。アプリ本体はX-Client-Id未付与(診断で通過可否を1回だけ試験)。Overpass: 目安 1日1万回・1GB未満",
+  "checks": [
+    {
+      "id": "route.format",
+      "item": "1",
+      "result": "OK",
+      "detail": "応答 12/12 件が200。trip.legs[].shape=あり(文字列)、trip.summary.length=あり"
+    },
+    {
+      "id": "locate.format",
+      "item": "1",
+      "result": "OK",
+      "detail": "応答 3/3 件が200。edges[].edge.access.bicycle=boolean"
+    },
+    {
+      "id": "trace.format",
+      "item": "1",
+      "result": "OK",
+      "detail": "応答 9/9 件が200。辺 3550 本(207.9 km)"
+    },
+    {
+      "id": "mode.min",
+      "item": "3",
+      "result": "OK",
+      "detail": "候補 2 本(追加 1 本)、距離 23.077 km、獲得 350 m、2816 ms、通信 5 回"
+    },
+    {
+      "id": "mode.max",
+      "item": "3",
+      "result": "OK",
+      "detail": "候補 1 本(追加 0 本)、距離 21.747 km、獲得 334 m、20383 ms、通信 2 回"
+    },
+    {
+      "id": "mode.cyc",
+      "item": "3",
+      "result": "OK",
+      "detail": "候補 1 本(追加 0 本)、距離 22.612 km、獲得 371 m、4053 ms、通信 2 回"
+    },
+    {
+      "id": "mode.cmf",
+      "item": "3",
+      "result": "OK",
+      "detail": "候補 3 本(追加 2 本)、距離 23.305 km、獲得 377 m、8490 ms、通信 8 回"
+    },
+    {
+      "id": "mode.cmf-via",
+      "item": "3",
+      "result": "OK",
+      "detail": "候補 2 本(追加 1 本)、距離 23.305 km、獲得 377 m、3318 ms、通信 6 回"
+    },
+    {
+      "id": "attrs.fit",
+      "item": "2",
+      "result": "OK",
+      "detail": "辺の長さ合計 ÷ ルートの長さ: min=1.001 / max=1.001 / cyc=1.001 / cmf=1 / cmf-via=1(0.75〜1.25を許容。橋・トンネル補正の位置合わせの条件と同じ)"
+    },
+    {
+      "id": "via.attrs",
+      "item": "2",
+      "result": "OK",
+      "detail": "経由地つきでも道路属性を取得できたか: 辺の長さ比 1、1ルートの区間数 single"
+    },
+    {
+      "id": "explore.auto",
+      "item": "2",
+      "result": "OK",
+      "detail": "自動の経由地による追加候補が 4 本できました"
+    },
+    {
+      "id": "explore.locate",
+      "item": "2",
+      "result": "OK",
+      "detail": "探索で /locate を 2 回呼びました"
+    },
+    {
+      "id": "struct.fix",
+      "item": "2",
+      "result": "OK",
+      "detail": "橋/トンネルの辺 231 本。補正が入った候補 9 本"
+    },
+    {
+      "id": "overpass",
+      "item": "5",
+      "result": "OK",
+      "detail": "Overpass 3 回(200: 2、その他: signal is aborted without reason)。取得済みの範囲は端末のキャッシュで再利用"
+    },
+    {
+      "id": "cors.xclientid",
+      "item": "5",
+      "result": "OK",
+      "detail": "ヘッダー X-Client-Id を付けた /locate が通りました(アプリに付けられる見込み。付与は別途判断)"
+    },
+    {
+      "id": "limits",
+      "item": "5",
+      "result": "OK",
+      "detail": "Valhalla 24 回(上限 40 回)。429/503: 0 回。診断全体 47592 ms"
+    },
+    {
+      "id": "storage",
+      "item": "6",
+      "result": "OK",
+      "detail": "診断の前後で端末の保存内容は同じでした。診断中に止めた書き込み 5 回"
+    },
+    {
+      "id": "privacy.scan",
+      "item": "6",
+      "result": "OK",
+      "detail": "出力に座標・APIキーは含まれていません(自己点検)"
+    }
+  ]
+}
