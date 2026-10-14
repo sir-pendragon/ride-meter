@@ -505,7 +505,7 @@
   function listConfirmed() {
     const ul = document.querySelector('#ac-conf'); if (!ul) return; ul.innerHTML = '';
     for (const [i, c] of confirmed.entries()) { const li = document.createElement('li'); li.innerHTML = `<span class="badge" style="background:#B3261E">✕</span><div class="grow"><div class="nm">${ctx.esc(c.route)}(${ctx.esc(c.status)})</div><div class="hint">${ctx.esc(c.position)}${c.basis ? ' ・根拠: ' + ctx.esc(c.basis) : ''} ・ ${ctx.esc(c.sourceName)} ・ 取得 ${ctx.esc((c.fetchedAt || '').slice(0, 10))}</div></div><button class="btn sm" data-a="del" data-i="${i}">解除</button>`; ul.appendChild(li); }
-    if (!confirmed.length) ul.innerHTML = '<li class="hint">「避ける」を確定した規制はありません</li>';
+    const h = document.querySelector('#ac-conf-h'); if (h) h.hidden = !confirmed.length;
   }
   function setStatus(t) { const e = document.querySelector('#ac-st'); if (e) e.textContent = t || ''; }
 
