@@ -14,7 +14,13 @@ const ALLOWED_HOSTS = new Set([
   'www.city.azumino.nagano.jp',
   'www.inacity.jp',
   'www.city.kofu.yamanashi.jp',
+  'www.koutsu-aomori.com',
+  'www.pref.fukushima.jp',
+  'www.kendobousai-gunma.jp',
 ]);
+// 公式サイトが https に対応していないホスト(福島県)だけ、http での取得を許す(取得元は許可ドメインに限る)
+const HTTP_OK_HOSTS = new Set(['www.pref.fukushima.jp']);
+const protoOk = (u) => u.protocol === 'https:' || (u.protocol === 'http:' && HTTP_OK_HOSTS.has(u.hostname));
 // このアプリ(公開ページ)からの呼び出しだけを許可
 const ALLOWED_ORIGINS = new Set(['https://sir-pendragon.github.io']);
 const MAX_BYTES = 8 * 1024 * 1024; // 8MBまで
@@ -97,7 +103,7 @@ export default {
     const target = new URL(request.url).searchParams.get('url');
     let u;
     try { u = new URL(target); } catch { return json({ ok: false, error: 'bad url' }, 400, origin); }
-    if (u.protocol !== 'https:' || !ALLOWED_HOSTS.has(u.hostname)) {
+    if (!protoOk(u) || !ALLOWED_HOSTS.has(u.hostname)) {
       return json({ ok: false, error: 'host not allowed', host: u.hostname }, 403, origin);
     }
 
@@ -113,7 +119,7 @@ export default {
       const loc = r.headers.get('Location');
       if (!loc) return json({ ok: false, error: 'bad redirect' }, 502, origin);
       let l; try { l = new URL(loc, u); } catch { return json({ ok: false, error: 'bad redirect' }, 502, origin); }
-      if (l.protocol !== 'https:' || !ALLOWED_HOSTS.has(l.hostname)) return json({ ok: false, error: 'redirect not allowed' }, 403, origin);
+      if (!protoOk(l) || !ALLOWED_HOSTS.has(l.hostname)) return json({ ok: false, error: 'redirect not allowed' }, 403, origin);
       u = l;
       try { r = await fetch(l.toString(), { headers: { 'User-Agent': UA }, redirect: 'manual' }); } catch (e) { return json({ ok: false, error: 'fetch failed' }, 502, origin); }
     }

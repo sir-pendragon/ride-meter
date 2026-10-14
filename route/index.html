@@ -84,7 +84,7 @@ a{color:var(--acc)}
 <p class="hint" style="margin-top:14px">地図: 国土地理院タイル / © OpenStreetMap contributors。ルート計算: Valhalla(公開サーバー・OpenStreetMapデータ)。標高: 国土地理院 標高タイル(DEM10B)。場所検索: Nominatim。獲得標高・舗装率は推定値です。実際の道路状況・通行止め・冬期閉鎖は必ず公式情報で確認してください。</p>
 </main>
 <script src="leaflet/leaflet.js"></script><script src="gm-shim.js"></script>
-<script src="fetchcore.js"></script><script src="aicheck.js"></script><script src="parse-tables.js"></script><script src="parse-tokyo-pdf.js"></script><script src="parse-yamanashi.js"></script><script src="parse-kanagawa.js"></script><script src="parse-city.js"></script><script src="locate.js"></script><script src="closures.js"></script>
+<script src="fetchcore.js"></script><script src="aicheck.js"></script><script src="parse-tables.js"></script><script src="parse-tokyo-pdf.js"></script><script src="parse-yamanashi.js"></script><script src="parse-kanagawa.js"></script><script src="parse-city.js"></script><script src="parse-road.js"></script><script src="locate.js"></script><script src="closures.js"></script>
 <script type="text/plain" id="main-src">
 (()=>{
 const $=s=>document.querySelector(s);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

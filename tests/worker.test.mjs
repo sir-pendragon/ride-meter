@@ -12,4 +12,6 @@ r=await w.fetch(mkReq('https://www.pref.saitama.lg.jp/r1'));ok(r.status===200&&a
 r=await w.fetch(mkReq('https://www.pref.saitama.lg.jp/evil'));ok(r.status===403,'許可外へのリダイレクトは拒否');
 r=await w.fetch(mkReq('https://www.pref.saitama.lg.jp/loop'));ok(r.status===502,'リダイレクトの無限ループは打ち切る');
 r=await w.fetch(mkReq('https://www.pref.saitama.lg.jp/nf'));ok(r.headers.get('X-Upstream-Status')==='404','上流の404をヘッダーで伝える');
+r=await w.fetch(mkReq('http://www.pref.fukushima.jp/x'));ok(r.status===200,'福島県(httpのみ対応)だけは http を許可');
+r=await w.fetch(mkReq('http://www.pref.saitama.lg.jp/x'));ok(r.status===403,'他の県の http は引き続き拒否');
 console.log('\n全',n,'件OK');globalThis.fetch=real;

@@ -9,6 +9,9 @@
       { id: 'sai-kawagoe', name: '埼玉県 川越農林振興センター', url: 'https://www.pref.saitama.lg.jp/b0902/forestry/road-closed.html', kind: 'table', closedTable: true },
       { id: 'sai-yorii', name: '埼玉県 寄居林業事務所', url: 'https://www.pref.saitama.lg.jp/b0923/tuukoudome.html', kind: 'table' },
     ],
+    2: [{ id: 'aomori-road', name: '青森県 通行規制情報(国道・県道)', url: 'https://www.koutsu-aomori.com/tukodome_map/data/traffic_regulation.json5', kind: 'aomori' }],
+    7: [{ id: 'fukushima-road', name: '福島県 道路通行規制情報(国道・県道)', url: 'http://www.pref.fukushima.jp/douro/kisei/kisei-list.htm', kind: 'fukushima', dataBase: 'http://www.pref.fukushima.jp/douro/kisei/json/' }],
+    10: [{ id: 'gunma-road', name: '群馬県 道路規制情報(国道・県道)', url: 'https://www.kendobousai-gunma.jp/kisei/RegulationList.htm', kind: 'gunma' }],
     9: [{ id: 'tochigi-yaita', name: '栃木県 矢板森林管理事務所', url: 'https://www.pref.tochigi.lg.jp/d56/tuukoudome/2025rindo.html', kind: 'table', closedTable: true, brSep: true }],
     14: [{ id: 'kanagawa-keneirin', name: '神奈川県 自然環境保全センター(県営林道)', url: 'https://www.pref.kanagawa.jp/docs/f4y/03shinrin/seibi/keneirin/rinndou.html', kind: 'kanagawa' }],
     19: [
@@ -26,10 +29,10 @@
   const PREF_ALL = ['北海道','青森県','岩手県','宮城県','秋田県','山形県','福島県','茨城県','栃木県','群馬県','埼玉県','千葉県','東京都','神奈川県','新潟県','富山県','石川県','福井県','山梨県','長野県','岐阜県','静岡県','愛知県','三重県','滋賀県','京都府','大阪府','兵庫県','奈良県','和歌山県','鳥取県','島根県','岡山県','広島県','山口県','徳島県','香川県','愛媛県','高知県','福岡県','佐賀県','長崎県','熊本県','大分県','宮崎県','鹿児島県','沖縄県'];
   const prefName = (k) => PREF_ALL[k - 1] || ('県コード' + k);
   let lastGaps = null;
-  const PREF_NAMES = { 20: '長野県(松本市・安曇野市・伊那市のみ)', 11: '埼玉県', 13: '東京都', 14: '神奈川県(県営林道)', 19: '山梨県', 9: '栃木県(矢板のみ)' };
+  const PREF_NAMES = { 2: '青森県(国道・県道のみ)', 7: '福島県(国道・県道のみ)', 10: '群馬県(国道・県道のみ)', 20: '長野県(松本市・安曇野市・伊那市のみ)', 11: '埼玉県', 13: '東京都', 14: '神奈川県(県営林道)', 19: '山梨県', 9: '栃木県(矢板のみ)' };
   const PDFJS = ['https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'];
   const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
-  const PARSER_VER = 'p8'; // 解析プログラムを変えたら上げる(保存済みの解析結果を使い回さないため)
+  const PARSER_VER = 'p9'; // 解析プログラムを変えたら上げる(保存済みの解析結果を使い回さないため)
   const rad = Math.PI / 180, R = 6371000;
   const hav = (a, b) => { const dl = (b[0] - a[0]) * rad, dg = (b[1] - a[1]) * rad; const s = Math.sin(dl / 2) ** 2 + Math.cos(a[0] * rad) * Math.cos(b[0] * rad) * Math.sin(dg / 2) ** 2; return 2 * R * Math.asin(Math.min(1, Math.sqrt(s))); };
 
@@ -65,7 +68,11 @@
     if (!r.ok) { let m = ''; try { m = (await r.json()).error; } catch (e) {} const e = new Error('中継から取得できません(' + r.status + (m ? ' ' + m : '') + ')'); e.status = r.status === 403 || r.status === 429 || r.status >= 500 ? r.status : undefined; throw e; }
     const meta = { fetchedAt: r.headers.get('X-Fetched-At'), lastModified: r.headers.get('X-Upstream-Last-Modified'), etag: r.headers.get('X-Upstream-Etag'), upstream: r.headers.get('X-Upstream-Status') };
     if (meta.upstream && meta.upstream !== '200') { const e = new Error('公式ページが応答しません(' + meta.upstream + ')'); e.status = +meta.upstream; throw e; }
-    return { body: asBuffer ? await r.arrayBuffer() : await r.text(), meta };
+    if (asBuffer) return { body: await r.arrayBuffer(), meta };
+    // 文字コードが UTF-8 でないページ(群馬県は Shift_JIS 系)は、応答の charset に合わせて読む
+    const cs = ((r.headers.get('Content-Type') || '').match(/charset=([\w-]+)/i) || [])[1];
+    if (cs && !/^utf-?8$/i.test(cs)) { try { return { body: new TextDecoder(cs).decode(await r.arrayBuffer()), meta }; } catch (e) { /* 未対応の文字コード名なら下の既定に */ } }
+    return { body: await r.text(), meta };
   }
   function loadScript(src) { return new Promise((res, rej) => { if (document.querySelector('script[src="' + src + '"]')) return res(); const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('読み込めません: ' + src)); document.head.appendChild(s); }); }
 
@@ -108,6 +115,38 @@
   const rawText = {}; // ページ本文(解析が走ったときだけ入る。AI二重チェック用)
   async function fetchSource(src) {
     if (src.kind === 'yamanashi') { const r = await fetchYamanashi(src); if (r.failed.length) src._partial = `詳細ページ${r.failed.length}/${r.total}件を取得できませんでした(${r.failed.slice(0, 3).join('・')}${r.failed.length > 3 ? ' ほか' : ''})`; else src._partial = null; const ys = r.records; ys._ai = { key: src.url + '#details', text: ys.filter((x) => x.reason && x.rid && !/^L/.test(x.rid)).map((x) => `【${x.route}】(${x.municipality || ''}) ${x.reason}`).join('\n').slice(0, 39000) }; return ys; }
+    if (src.kind === 'aomori' || src.kind === 'fukushima' || src.kind === 'gunma') {
+      // 道路(国道・県道)の規制ページ。林道の規制が後から載っても拾えるよう、一覧全体を読む。日付で現在の規制かを判定するため、日付が変わったら再解析する
+      const ver = PARSER_VER + '@' + new Date().toISOString().slice(0, 10);
+      if (src.kind === 'fukushima') {
+        const KINDS = [['災害', 'listSAIGAI'], ['工事', 'listKOUJI'], ['冬期', 'listTOUKI'], ['その他', 'listOTHERS']];
+        const lists = []; let stale = null; let newest = null;
+        for (const [kind, f] of KINDS) {
+          const u = src.dataBase + f + '.json';
+          const r = await fc().load({ key: u, ver, label: src.name + '(' + kind + ')', fetcher: relayFetcher(u, false), parse: async (body) => { const a = JSON.parse(body); if (!Array.isArray(a)) throw perr('一覧の形式が違います(ページが変わった可能性)'); return a; } });
+          lists.push({ kind, items: r.records }); if (r.stale) stale = r; if (!newest || r.fetchedAt > newest) newest = r.fetchedAt;
+        }
+        let updated = null;
+        try { const ui = src.dataBase + 'info.json'; const r = await fc().load({ key: ui, ver, label: src.name + '(更新日時)', fetcher: relayFetcher(ui, false), parse: async (body) => [JSON.parse(body)] }); const d = (r.records[0] || {}).information_date; if (d) updated = String(d).slice(0, 10); } catch (e) { /* 更新日が取れなくても規制は読む */ }
+        const recs = ClosureRoad.parseFukushima(lists, src.url, newest || new Date().toISOString(), { updated }).map((x) => ({ ...x, sourceName: src.name, stale: stale ? true : undefined }));
+        recs._ai = { key: src.url, hash: null, text: null }; return recs;
+      }
+      const r = await fc().load({
+        key: src.url, ver, label: src.name, fetcher: relayFetcher(src.url, false),
+        parse: async (body, meta) => {
+          const at = meta.fetchedAt || new Date().toISOString();
+          let recs;
+          if (src.kind === 'aomori') { recs = ClosureRoad.parseAomori(body, src.url, at, { lastModified: meta.lastModified }); }
+          else {
+            const doc = new DOMParser().parseFromString(body, 'text/html');
+            if (!doc.querySelector('table') || !/規制路線/.test(body)) throw perr('表を読み取れませんでした(ページの構造が変わった可能性)');
+            recs = ClosureRoad.parseGunma(doc, src.url, at); rawText[src.url] = (doc.body.textContent || '').replace(/\s+/g, ' ').slice(0, 39000);
+          }
+          return recs.map((x) => ({ ...x, sourceName: src.name }));
+        },
+      });
+      const tr = tag(r); tr._ai = { key: src.url, hash: r.hash, text: rawText[src.url] || null }; return tr;
+    }
     if (src.kind === 'city' || src.kind === 'kofu') {
       // 日付で現在の規制かどうかを判定する解析のため、日付が変わったら再解析する
       const ver = PARSER_VER + '@' + new Date().toISOString().slice(0, 10);
@@ -272,7 +311,9 @@
     if (targets.length) {
       say('OpenStreetMapで同名の道を探しています…');
       try {
-        const els = await overpass(ClosureLocate.buildQuery(targets, bbox));
+        const forest = targets.filter((t) => t.layer !== 'road'), roads = targets.filter((t) => t.layer === 'road');
+        const els = forest.length ? await overpass(ClosureLocate.buildQuery(forest, bbox)) : [];
+        if (roads.length) { try { els.push(...(await overpass(ClosureLocate.buildRoadQuery(roads, bbox)))); } catch (e) { notes.push('道路(国道・県道)の位置の取得に失敗したため、それらは位置なしになります'); } }
         let landmarks = [];
         if (targets.some((t) => /橋|峠|トンネル|隧道|ダム/.test(t.section || ''))) {
           try { landmarks = ClosureLocate.parseLandmarks(await overpass(ClosureLocate.buildLandmarkQuery(bbox))); } catch (e) { notes.push('橋・峠の位置の取得に失敗したため、橋名・峠名で示された区間は位置不明になります'); }
@@ -311,12 +352,15 @@
       } catch (e) { fails.push('OpenStreetMap検索: ' + e.message); located = targets.map((t) => ({ ...t, position: { level: 'なし', reason: 'OSM検索に失敗したため位置なし' }, ways: [] })); }
     }
     // 範囲内(bbox)に道がないものは一覧から外す(遠い県内の路線を並べない)
-    const near = located.filter((r) => r.ways.length > 0);
+    // 道路(国道・県道)の規制は、位置が決まらないものを地図に出さない(長い道の全体を「不明」で描くと誤解を招くため)。林道は従来どおり描く
+    const isRoadUnk = (r) => r.layer === 'road' && !/林道/.test(r.route) && r.position && (r.position.level === '不明' || r.position.level === 'なし');
+    const near = located.filter((r) => r.ways.length > 0 && !isRoadUnk(r));
+    const roadUnk = located.filter((r) => r.ways.length > 0 && isRoadUnk(r));
     const outside = located.length - near.length;
     const gaps = {
       unjudged: results.filter((r) => r.status === '不明').map((r) => ({ route: r.route, municipality: r.municipality || '', why: r.note || '規制の内容を判定できませんでした', text: r.reason || r.typeText || '', url: r.sourceUrl, src: r.sourceName })),
       notFound: located.filter((r) => !r.ways || !r.ways.length).map((r) => ({ route: r.route, municipality: r.municipality || '', status: r.status, section: r.section || r.typeText || '', why: (r.position && r.position.reason) || 'この範囲のOSMに同名の道が見つかりません', url: r.sourceUrl, src: r.sourceName })),
-      noPos: near.filter((r) => r.position && (r.position.level === '不明' || r.position.level === 'なし')).map((r) => ({ route: r.route, municipality: r.municipality || '', status: r.status, why: r.position.reason, url: r.sourceUrl, src: r.sourceName })),
+      noPos: near.concat(roadUnk).filter((r) => r.position && (r.position.level === '不明' || r.position.level === 'なし')).map((r) => ({ route: r.route, municipality: r.municipality || '', status: r.status, why: r.position.reason, url: r.sourceUrl, src: r.sourceName })),
       aiDiff: results.filter((r) => r.ai && (r.ai.state === '相違' || r.ai.state === 'AIのみ検出')).map((r) => ({ route: r.route, municipality: r.municipality || '', state: r.ai.state, ours: r.status, ai: r.ai.aiStatus, aiSection: r.ai.aiSection, quote: r.ai.quote, url: r.sourceUrl, src: r.sourceName })),
       aiOnly, aiTried, fails: fails.slice(), sources: Object.fromEntries(codes.map((k) => [k, (SOURCES[k] || []).map((s) => ({ name: s.name, url: s.url }))])),
     };

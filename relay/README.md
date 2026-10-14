@@ -24,6 +24,7 @@
 ## 追加: 山梨県の取得と、Geminiによる二重チェック(任意)
 
 - 2026-10-14: Cloudflareの「ビルド」でこのリポジトリ(main、ルート `relay`)に接続しました。以後は main への push で中継が自動デプロイされます(手で貼り替えると次のpushで上書きされます)。
+- 許可ドメインに青森県(`www.koutsu-aomori.com`)・福島県(`www.pref.fukushima.jp`。httpのみ対応のためhttpでの取得を許可)・群馬県(`www.kendobousai-gunma.jp`)を追加しました。mainへのpushで自動デプロイされます。
 - 許可ドメインに松本市・安曇野市・伊那市・甲府市(`www.city.matsumoto.nagano.jp` `www.city.azumino.nagano.jp` `www.inacity.jp` `www.city.kofu.yamanashi.jp`)を追加しました。mainへのpushで自動デプロイされます。
 - 許可ドメインに `www.pref.kanagawa.jp`(神奈川県 県営林道)を追加しました。mainへのpushで自動デプロイされます。
 - 許可ドメインに `www.pref.tochigi.lg.jp`(栃木県 矢板森林管理事務所)を追加しました。**中継のコード(worker.js)を貼り替えて Deploy し直してください。**

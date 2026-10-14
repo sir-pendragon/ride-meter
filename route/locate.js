@@ -37,6 +37,13 @@
     const [s, w, n, e] = bbox;
     return `[out:json][timeout:60];way["highway"]["name"~"林道"]["name"~"(${re})"](${s},${w},${n},${e});out tags geom;`;
   }
+  // 道路(国道・県道)の規制用: 路線名で探す(「林道」を含む名前に限らない)。名前の一致は後段で完全一致のみ採用する
+  function buildRoadQuery(records, bbox) {
+    const names = new Set();
+    for (const r of records) { for (const c of nameCandidates(r.route)) if (c.length >= 3 && (/林道/.test(r.route) || !/林道|線線$/.test(c))) names.add(c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')); }
+    const [s, w, n, e] = bbox;
+    return `[out:json][timeout:60];way["highway"]["name"~"(${[...names].join('|')})"](${s},${w},${n},${e});out tags geom;`;
+  }
   // 橋・峠・トンネル(区間の目印)。名前のあるものだけ
   function buildLandmarkQuery(bbox) {
     const [s, w, n, e] = bbox; const b = `(${s},${w},${n},${e})`;
@@ -174,6 +181,14 @@
     const { path, total } = comp.main; const L = total;
     const mk = (d0, d1, level, confidence, basis, extra) => ({ d0, d1, pts: cutPath(path, d0, d1), level, confidence, basis, ...extra });
     if (sec.type === 'whole') return [mk(0, L, '推定', '中', '全線規制のため、同名の道の全体を当てはめた推定です')];
+    if (sec.type === 'point') { // 公式データの代表地点(座標1点)と延長から切り出す。地点が区間の中央とは書かれていないため「要確認」
+      const pr = project(path, [sec.lat, sec.lon]);
+      if (pr.off > 300) return [{ pts: [], level: '不明', confidence: '低', basis: `公式の代表地点がこの道から約${Math.round(pr.off)}m離れており、同じ道とは確認できません` }];
+      if (!sec.lenM) return [{ pts: [], level: '不明', confidence: '低', basis: '公式データに延長の記載がなく、区間の範囲を決められません' }];
+      if (sec.lenM > 3000) return [{ pts: [], level: '不明', confidence: '低', basis: `延長${(sec.lenM / 1000).toFixed(1)}kmの区間ですが、公式の座標は代表地点1点だけで、区間の範囲を決められません`, point: [sec.lat, sec.lon] }];
+      const half = sec.lenM / 2 + 50;
+      return [mk(Math.max(0, pr.along - half), Math.min(L, pr.along + half), '要確認', '低', `公式の代表地点(座標。道から約${Math.round(pr.off)}m)と延長${sec.lenM}mから、地点の前後${Math.round(half)}mを切り出した推定です。地点が区間の中央とは書かれていません`)];
+    }
     if (sec.type === 'km') {
       const out = [];
       const dirs = sec.from === 'start' ? [['A端', false], ['B端', true]] : [['A端', true], ['B端', false]];
@@ -222,8 +237,8 @@
       const ways = [];
       for (const c of nameCandidates(r.route)) for (const w of byName.get(norm(c)) || []) if (!ways.includes(w)) ways.push(w);
       if (!ways.length) return { ...r, candidates: [], ways: [], selected: null, position: { level: 'なし', reason: 'OSMに同名の道が見つかりません(位置は表示しません)' } };
-      const sec = parseSection(r.section, r.scope);
-      if (!r.municipality) { const mm = squash(r.section || '').match(/([\u4e00-\u9fff]{1,5}[市町村])[^（）()]{0,12}地内/); if (mm) r = { ...r, municipality: mm[1], municipalityFrom: '区間の文言' }; }
+      const sec = r.officialPoint ? { type: 'point', ...r.officialPoint } : parseSection(r.section, r.scope);
+      if (!r.municipality && r.layer !== 'road') { const mm = squash(r.section || '').match(/([\u4e00-\u9fff]{1,5}[市町村])[^（）()]{0,12}地内/); if (mm) r = { ...r, municipality: mm[1], municipalityFrom: '区間の文言' }; }
       let comps = components(ways).map((ws) => { const main = mainPath(ws); const c0 = main.path[Math.floor(main.path.length / 2)] || ws[0].pts[0]; const samples = main.total ? [0, 0.2, 0.4, 0.6, 0.8, 1].map((f) => { const q = cutPath(main.path, f * main.total, Math.min(main.total, f * main.total + 1)); return q[0] || c0; }) : [c0]; return { ways: ws, main, center: c0, samples }; });
       const notes = [];
       if (r.municipality && opts.muniOf) {
@@ -256,6 +271,6 @@
   // 旧API(互換): locate() の薄いラッパー
   function match(records, elements, opts) { return locate(records, elements, opts); }
 
-  const api = { nameCandidates, buildQuery, buildLandmarkQuery, parseLandmarks, parseSection, components, mainPath, cutPath, project, locate, match };
+  const api = { nameCandidates, buildQuery, buildRoadQuery, buildLandmarkQuery, parseLandmarks, parseSection, components, mainPath, cutPath, project, locate, match };
   if (typeof module !== 'undefined') module.exports = api; else root.ClosureLocate = api;
 })(typeof globalThis !== 'undefined' ? globalThis : (typeof self !== 'undefined' ? self : this));
