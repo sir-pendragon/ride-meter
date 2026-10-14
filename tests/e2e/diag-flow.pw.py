@@ -55,6 +55,7 @@ C={c['id']:c for c in rep['checks']}
 ok(C['route.format']['result']=='OK' and C['trace.format']['result'] in('OK','一部未確認') and C['locate.format']['result']=='OK',('形式の判定',C['route.format'],C['trace.format'],C['locate.format']))
 ok(all(C['mode.'+m]['result']=='OK' for m in('min','max','cyc','cmf','cmf-via')),[(k,v['result'],v['detail']) for k,v in C.items() if k.startswith('mode')])
 ok(C['via.attrs']['result']=='OK' and C['storage']['result']=='OK' and C['privacy.scan']['result']=='OK',[C['via.attrs'],C['storage']])
+ok(rep['xClientId']=='allowed' and C['cors.xclientid']['result']=='OK','X-Client-Id付きの確認通信が通る(模擬)')
 ok(C['struct.fix']['result']=='未確認','橋・トンネルが出ない模擬では、補正は「未確認」のまま(成功にしない)')
 ok(rep['schemas'].get('/route') and rep['schemas'].get('/trace_attributes') and not json.dumps(rep['schemas']).count('"abc"'),'応答の形を記録')
 ok(rep['aborted'] is None and all(('ms' in c) for c in rep['calls'] if c['svc']=='valhalla'),'中止なし・各通信の時間を記録')

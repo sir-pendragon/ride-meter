@@ -55,6 +55,10 @@ C = D.buildChecks(rep({ calls: [{ svc: 'valhalla', path: '/route', status: 429 }
 ok(get(C, 'limits').result === 'NG', '429があればNG');
 C = D.buildChecks(rep({ privacy: { storageUnchanged: false, blockedWrites: 0 } }));
 ok(get(C, 'storage').result === 'NG', '保存内容が変わればNG');
+C = D.buildChecks(rep({ xClientId: 'allowed' })); ok(get(C, 'cors.xclientid').result === 'OK', 'X-Client-Idが通れば OK');
+C = D.buildChecks(rep({ xClientId: 'blocked' })); ok(get(C, 'cors.xclientid').result === 'NG', '拒否されたらNG');
+C = D.buildChecks(rep({ xClientId: 'not-tested' })); ok(get(C, 'cors.xclientid').result === '未確認', '試験していなければ未確認');
+ok(D.LIMITS.valhallaCap <= 40, 'Valhalla呼び出しの上限は40回以内');
 // 漏えい点検
 ok(D.leaks('{"a":35.123456}') && D.leaks('AIzaSyA1234567890123456789012345') && !D.leaks('{"km":12.3,"q":0.512}'), '座標・キーの点検');
 // 通信の種別

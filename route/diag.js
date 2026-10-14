@@ -9,7 +9,8 @@
   const VERSION = 1;
   /* 診断用の固定地点(公開されている駅のおおよその位置。道路に載らないときは、診断の失敗として記録される。パネルで書き換えられる) */
   const PRESET = { id: 'ome-okutama', label: '青梅駅 → 御嶽駅(経由) → 奥多摩駅(おおよその位置)', s: [35.7878, 139.2762], v: [35.8054, 139.1934], g: [35.8091, 139.0973] };
-  const LIMITS = { valhallaCap: 80, gapMs: 1500, cooldownMs: 60000, goWaitMs: 60000, scnTimeoutMs: 150000 };
+  const LIMITS = { valhallaCap: 40, gapMs: 1500, cooldownMs: 60000, goWaitMs: 60000, scnTimeoutMs: 150000 };
+  const CLIENT_ID = 'sir-pendragon.github.io/ride-meter';
   const REQUIRED = ['length', 'road_class', 'use', 'surface'];            // どの辺にも出ないなら異常
   const OPTIONAL = ['lane_count', 'speed_limit', 'cycle_lane', 'bridge', 'tunnel', 'travel_mode']; // 該当する道がなければ出ないことがある
   const ENUM = ['surface', 'road_class', 'use', 'travel_mode', 'cycle_lane'];
@@ -107,6 +108,7 @@
     // Overpass
     const ov = calls.filter((c) => c.svc === 'overpass');
     add('overpass', '5', !ov.length ? '未確認' : ov.some((c) => c.status === 200) ? 'OK' : 'NG', ov.length ? `Overpass ${ov.length} 回(200: ${ov.filter((c) => c.status === 200).length}、その他: ${[...new Set(ov.filter((c) => c.status !== 200).map((c) => c.status || c.err))].join(',') || 'なし'})。取得済みの範囲は端末のキャッシュで再利用` : 'Overpass は呼ばれませんでした(キャッシュ済み、または景観・峠・自転車ルートの探索なし)');
+    add('cors.xclientid', '5', rep.xClientId === 'allowed' ? 'OK' : rep.xClientId === 'blocked' ? 'NG' : '未確認', rep.xClientId === 'allowed' ? 'ヘッダー X-Client-Id を付けた /locate が通りました(アプリに付けられる見込み。付与は別途判断)' : rep.xClientId === 'blocked' ? 'X-Client-Id を付けた通信がブラウザに拒否されました(CORS不許可の可能性。アプリには付けない)' : '試験していません');
     // 負荷
     const v = calls.filter((c) => c.svc === 'valhalla'), lim = v.filter((c) => c.status === 429 || c.status === 503);
     add('limits', '5', lim.length ? 'NG' : 'OK', `Valhalla ${v.length} 回(上限 ${LIMITS.valhallaCap} 回)。429/503: ${lim.length} 回。診断全体 ${rep.totals.ms} ms`);
@@ -186,7 +188,7 @@
     box.innerHTML = `<b style="color:#d29922">診断モード(開発用)</b>　<span style="opacity:.8">通常の画面ではありません。診断が終わったら「終了」を押してください。</span>
 <div style="margin:6px 0">${PRESET.label}<br>
  出発 ${fld('dg-s1', PRESET.s[0])} ${fld('dg-s2', PRESET.s[1])}<br>経由 ${fld('dg-v1', PRESET.v[0])} ${fld('dg-v2', PRESET.v[1])}<br>到着 ${fld('dg-g1', PRESET.g[0])} ${fld('dg-g2', PRESET.g[1])}</div>
-<div style="opacity:.85">押すと、実際の Valhalla・Overpass に通信します(目安: Valhalla 30〜60回、Overpass 数回。1回だけ、順番に。上限 ${LIMITS.valhallaCap} 回・429で中止)。診断中と、このページを閉じるまで、端末への保存は止めます。利用者の地点・通行止め・APIキーは使いません。</div>
+<div style="opacity:.85">押すと、実際の Valhalla・Overpass に通信します(目安: Valhalla 15〜35回、Overpass 数回。1回だけ、順番に。上限 ${LIMITS.valhallaCap} 回・429で中止)。診断中と、このページを閉じるまで、端末への保存は止めます。利用者の地点・通行止め・APIキーは使いません。</div>
 <div style="margin:8px 0"><button id="dg-go" style="padding:6px 12px">診断を開始</button> <button id="dg-end" style="padding:6px 12px">終了(再読み込み)</button></div>
 <div id="dg-log" style="white-space:pre-wrap;opacity:.9"></div>
 <div id="dg-out" hidden><div style="margin:6px 0"><button id="dg-dl" style="padding:6px 12px">JSONを保存</button> <button id="dg-cp" style="padding:6px 12px">コピー</button></div><textarea id="dg-ta" readonly rows="8" style="width:100%;background:#0d1117;color:#e6edf3;font:11px monospace"></textarea></div>`;
@@ -231,7 +233,7 @@
     async function run() {
       if (ctl.running) return; if (ctl.lastEnd && Date.now() - ctl.lastEnd < LIMITS.cooldownMs) { say('連続して実行しないでください。あと ' + Math.ceil((LIMITS.cooldownMs - (Date.now() - ctl.lastEnd)) / 1000) + ' 秒待ってください。'); return; }
       ctl.running = true; box.querySelector('#dg-go').disabled = true; box.querySelector('#dg-out').hidden = true;
-      Object.assign(ctl, { calls: [], schemas: {}, agg: newAgg(), valCalls: 0, abort: '', counts: {} });
+      Object.assign(ctl, { calls: [], schemas: {}, agg: newAgg(), valCalls: 0, abort: '', counts: {}, xcid: '' });
       const S = [num('#dg-s1', PRESET.s[0]), num('#dg-s2', PRESET.s[1])], V = [num('#dg-v1', PRESET.v[0]), num('#dg-v2', PRESET.v[1])], G = [num('#dg-g1', PRESET.g[0]), num('#dg-g2', PRESET.g[1])];
       const custom = [S, V, G].some((p, i) => p[0] !== [PRESET.s, PRESET.v, PRESET.g][i][0] || p[1] !== [PRESET.s, PRESET.v, PRESET.g][i][1]);
       const before = lsSnap(), t0 = Date.now(), scenarios = [];
@@ -242,9 +244,11 @@
           scenarios.push(await scenario(plan[i], plan[i].pts));
           await sleep(LIMITS.gapMs);
         }
-        if (!ctl.calls.some((c) => c.path === '/locate') && !ctl.abort) {   // 探索で /locate が呼ばれなかったときだけ、形式の確認に1回
-          ctl.scn = 'probe-locate'; say('/locate の形式を確認しています');
-          try { await root.fetch(VAL + '/locate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ locations: [{ lat: S[0], lon: S[1] }, { lat: G[0], lon: G[1] }], costing: 'bicycle', verbose: true }) }); } catch (e) { }
+        if (!ctl.abort) {   // /locate の形式と、X-Client-Id(公開サーバーが求める識別ヘッダー)がCORSで通るかの確認。1回だけ。失敗しても再送しない
+          ctl.scn = 'probe-locate'; say('/locate の形式と X-Client-Id の通過を確認しています');
+          const body = JSON.stringify({ locations: [{ lat: S[0], lon: S[1] }, { lat: G[0], lon: G[1] }], costing: 'bicycle', verbose: true });
+          try { await root.fetch(VAL + '/locate', { method: 'POST', headers: { 'content-type': 'application/json', 'X-Client-Id': CLIENT_ID }, body }); ctl.xcid = 'allowed'; }
+          catch (e) { ctl.xcid = ctl.abort ? 'not-tested' : 'blocked'; }
           await sleep(300);
         }
       } finally { ctl.running = false; ctl.lastEnd = Date.now(); box.querySelector('#dg-go').disabled = false; }
@@ -261,8 +265,8 @@
         totals: { ms: Date.now() - t0, valhalla: ctl.valCalls, perKind: cnt },
         calls: ctl.calls.map((c) => ({ scn: c.scn, svc: c.svc, path: c.path, host: c.host, status: c.status, ms: c.ms, err: c.err, error: c.error })),
         schemas: ctl.schemas, traceAttrs: { ...ctl.agg, km: r3(ctl.agg.km) }, scenarios,
-        privacy: { storageUnchanged: before === after && before !== 'ERR', blockedWrites: ctl.blocked, usedUserPoints: false, usedUserClosures: false, usedApiKeys: false },
-        terms: 'Valhalla(FOSSGIS公開サーバー): 公平利用。X-Client-Idの付与は未実施(CORS許可は未確認)。Overpass: 目安 1日1万回・1GB未満'
+        xClientId: ctl.xcid || 'not-tested', privacy: { storageUnchanged: before === after && before !== 'ERR', blockedWrites: ctl.blocked, usedUserPoints: false, usedUserClosures: false, usedApiKeys: false },
+        terms: 'Valhalla(FOSSGIS公開サーバー): 公平利用。アプリ本体はX-Client-Id未付与(診断で通過可否を1回だけ試験)。Overpass: 目安 1日1万回・1GB未満'
       };
       rep.checks = buildChecks(rep);
       let json = JSON.stringify(rep, null, 1);
