@@ -74,7 +74,7 @@ a{color:var(--acc)}
  <div class="row"><input type="text" id="ac-relay" class="grow" placeholder="中継のURL(例: https://….workers.dev)"><button class="btn sm" id="ac-save">保存</button></div>
  <label class="hint" style="display:block;margin:6px 0"><input type="checkbox" id="ac-ai"> Geminiで二重チェックする(参考表示のみ。中継側にGeminiのキーを設定した場合)</label>
  <div class="row" style="margin-top:8px"><button class="btn pri" id="ac-go">ルート周辺の規制を取得</button></div>
- <p class="hint" id="ac-st"></p><ul class="sr" id="ac-list"></ul><div id="ac-gap"></div>
+ <p class="hint" id="ac-st"></p><ul class="sr" id="ac-list"></ul><div id="ac-gap"></div><div id="ac-munis"></div>
  <h3 style="margin-top:12px">「避ける」を確定した規制</h3><ul class="cl" id="ac-conf"></ul>
 </section>
 <section id="s-pref"><h2>通過する県の規制情報(林道など)</h2>
@@ -84,7 +84,7 @@ a{color:var(--acc)}
 <p class="hint" style="margin-top:14px">地図: 国土地理院タイル / © OpenStreetMap contributors。ルート計算: Valhalla(公開サーバー・OpenStreetMapデータ)。標高: 国土地理院 標高タイル(DEM10B)。場所検索: Nominatim。獲得標高・舗装率は推定値です。実際の道路状況・通行止め・冬期閉鎖は必ず公式情報で確認してください。</p>
 </main>
 <script src="leaflet/leaflet.js"></script><script src="gm-shim.js"></script>
-<script src="fetchcore.js"></script><script src="aicheck.js"></script><script src="parse-tables.js"></script><script src="parse-tokyo-pdf.js"></script><script src="parse-yamanashi.js"></script><script src="parse-kanagawa.js"></script><script src="parse-city.js"></script><script src="parse-road.js"></script><script src="locate.js"></script><script src="closures.js"></script>
+<script src="fetchcore.js"></script><script src="aicheck.js"></script><script src="parse-tables.js"></script><script src="parse-tokyo-pdf.js"></script><script src="parse-yamanashi.js"></script><script src="parse-kanagawa.js"></script><script src="parse-city.js"></script><script src="parse-road.js"></script><script src="muni-registry.js"></script><script src="locate.js"></script><script src="closures.js"></script>
 <script type="text/plain" id="main-src">
 (()=>{
 const $=s=>document.querySelector(s);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -244,7 +244,8 @@ $('#prefs').onclick=e=>{const b=e.target.closest('button');if(!b)return;const li
 $('#official').addEventListener('click',()=>{let la,lo;if(st.sel&&st.sel.pts){const bb=L.polyline(st.sel.pts).getBounds().getCenter();la=bb.lat;lo=bb.lng}else if(st.points.length){la=st.points[0].lat;lo=st.points[0].lon}else{const c=map.getCenter();la=c.lat;lo=c.lng}
   $('#official').href='https://www.road-info-prvs.mlit.go.jp/roadinfo/content.php?mode=pc&lang=jp&area=00&page=10&table=0&zoom=11&legned=1&ido='+la.toFixed(5)+'&keido='+lo.toFixed(5)});
 listPts();listCl();if(st.points.length){const b=L.latLngBounds(st.points.map(p=>[p.lat,p.lon]).concat(st.closures.map(p=>[p.lat,p.lon])));map.fitBounds(b,{padding:[40,40],maxZoom:13})}
-Closures.init({map,L,esc,getPoints:()=>st.points,getPrefCodes:async()=>{let ps=st.sel&&st.sel.pts?st.sel.pts:null;if(!ps){ps=[];for(let i=0;i<st.points.length;i++){const b=st.points[i];ps.push([b.lat,b.lon]);const n=st.points[i+1];if(n){const d=hav([b.lat,b.lon],[n.lat,n.lon]),k=Math.floor(d/3000);for(let j=1;j<=k;j++)ps.push([b.lat+(n.lat-b.lat)*j/(k+1),b.lon+(n.lon-b.lon)*j/(k+1)])}}}return detectPrefs(ps)},geocode:async(q,bb)=>{if(!window.__map||window.__map.kind!=='google'||!window.google||!google.maps)return null;try{const {Geocoder}=await google.maps.importLibrary('geocoding');const r=await new Geocoder().geocode({address:q,region:'JP',bounds:{south:bb[0],west:bb[1],north:bb[2],east:bb[3]}});const x=r&&r.results&&r.results[0];if(!x||x.partial_match)return null;const p=x.geometry.location;const la=typeof p.lat==='function'?p.lat():p.lat,lo=typeof p.lng==='function'?p.lng():p.lng;return{lat:la,lon:lo}}catch(e){const c=e&&(e.code||e.message)||'';return /REQUEST_DENIED|not enabled|API/i.test(String(c))?{denied:true}:null}},onChange:()=>clearResults()});
+const routePts=()=>{let ps=st.sel&&st.sel.pts?st.sel.pts:null;if(!ps){ps=[];for(let i=0;i<st.points.length;i++){const b=st.points[i];ps.push([b.lat,b.lon]);const n=st.points[i+1];if(n){const d=hav([b.lat,b.lon],[n.lat,n.lon]),k=Math.floor(d/3000);for(let j=1;j<=k;j++)ps.push([b.lat+(n.lat-b.lat)*j/(k+1),b.lon+(n.lon-b.lon)*j/(k+1)])}}}return ps};
+Closures.init({map,L,esc,getPoints:()=>st.points,getRoutePts:routePts,getPrefCodes:async()=>{return detectPrefs(routePts())},geocode:async(q,bb)=>{if(!window.__map||window.__map.kind!=='google'||!window.google||!google.maps)return null;try{const {Geocoder}=await google.maps.importLibrary('geocoding');const r=await new Geocoder().geocode({address:q,region:'JP',bounds:{south:bb[0],west:bb[1],north:bb[2],east:bb[3]}});const x=r&&r.results&&r.results[0];if(!x||x.partial_match)return null;const p=x.geometry.location;const la=typeof p.lat==='function'?p.lat():p.lat,lo=typeof p.lng==='function'?p.lng():p.lng;return{lat:la,lon:lo}}catch(e){const c=e&&(e.code||e.message)||'';return /REQUEST_DENIED|not enabled|API/i.test(String(c))?{denied:true}:null}},onChange:()=>clearResults()});
 window.__rt={st,compute,metrics,densify,elevations,zigzag};
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();

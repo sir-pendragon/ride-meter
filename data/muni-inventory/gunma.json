@@ -1,6 +1,6 @@
 [
  {
-  "code": "10201",
+  "pref": "群馬県",
   "name": "前橋市",
   "status": "unverified",
   "url": null,
@@ -11,7 +11,7 @@
   "notes": "Not searched in this pass. JIS code from memory."
  },
  {
-  "code": "10202",
+  "pref": "群馬県",
   "name": "高崎市",
   "status": "unverified",
   "url": null,
@@ -22,7 +22,7 @@
   "notes": "Not searched in this pass. JIS code from memory."
  },
  {
-  "code": "10203",
+  "pref": "群馬県",
   "name": "桐生市",
   "status": "found",
   "url": "https://www.city.kiryu.lg.jp/sangyou/nougyoushinko/ringyou/1017663.html",
@@ -33,7 +33,7 @@
   "notes": "Opened. Prose, only 林道梅田・小平線 (赤柴地区 closed since 2024-05-28). Forest road only; no city road closure list found."
  },
  {
-  "code": "10204",
+  "pref": "群馬県",
   "name": "伊勢崎市",
   "status": "unverified",
   "url": null,
@@ -44,7 +44,7 @@
   "notes": "Not searched in this pass. JIS code from memory."
  },
  {
-  "code": "10205",
+  "pref": "群馬県",
   "name": "太田市",
   "status": "unverified",
   "url": null,
@@ -55,7 +55,7 @@
   "notes": "Not searched in this pass. JIS code from memory."
  },
  {
-  "code": "10206",
+  "pref": "群馬県",
   "name": "沼田市",
   "status": "not_found",
   "url": null,
@@ -66,7 +66,7 @@
   "notes": "Domain city.numata.gunma.jp. Opened top and 道路・交通 category pages: no closure page. Unopened candidate: https://www.city.numata.gunma.jp/life/kotsu/douro/index.html"
  },
  {
-  "code": "10207",
+  "pref": "群馬県",
   "name": "館林市",
   "status": "unverified",
   "url": null,
@@ -77,7 +77,7 @@
   "notes": "Not searched in this pass. JIS code from memory."
  },
  {
-  "code": "10208",
+  "pref": "群馬県",
   "name": "渋川市",
   "status": "not_found",
   "url": null,
@@ -88,7 +88,7 @@
   "notes": "Domain city.shibukawa.lg.jp. Domain search returned only an unrelated forms page."
  },
  {
-  "code": "10209",
+  "pref": "群馬県",
   "name": "藤岡市",
   "status": "unverified",
   "url": null,
@@ -99,7 +99,7 @@
   "notes": "Not searched in this pass. JIS code from memory."
  },
  {
-  "code": "10210",
+  "pref": "群馬県",
   "name": "富岡市",
   "status": "unverified",
   "url": null,
@@ -110,7 +110,7 @@
   "notes": "Not searched in this pass. JIS code from memory."
  },
  {
-  "code": "10211",
+  "pref": "群馬県",
   "name": "安中市",
   "status": "unverified",
   "url": null,
@@ -121,7 +121,7 @@
   "notes": "Not searched in this pass. JIS code from memory."
  },
  {
-  "code": "10212",
+  "pref": "群馬県",
   "name": "みどり市",
   "status": "unverified",
   "url": null,
@@ -132,7 +132,7 @@
   "notes": "Not searched in this pass. JIS code from memory."
  },
  {
-  "code": "10344",
+  "pref": "群馬県",
   "name": "榛東村",
   "status": "unverified",
   "url": null,
@@ -143,7 +143,7 @@
   "notes": "Not searched in this pass. JIS code from memory."
  },
  {
-  "code": "10345",
+  "pref": "群馬県",
   "name": "吉岡町",
   "status": "unverified",
   "url": null,
@@ -154,7 +154,7 @@
   "notes": "Not searched in this pass. JIS code from memory."
  },
  {
-  "code": "10366",
+  "pref": "群馬県",
   "name": "上野村",
   "status": "found",
   "url": "https://www.uenomura.jp/admin/life/seikatsu/road/tsukoudome.html",
@@ -165,7 +165,7 @@
   "notes": "Opened. Village roads, forest roads (広域基幹林道上野大滝線, 後山線, カマカケ線 closed; 御荷鉾スーパー林道 open), tunnel inspections, national/prefectural roads. Best page found."
  },
  {
-  "code": "10367",
+  "pref": "群馬県",
   "name": "神流町",
   "status": "found",
   "url": "https://www.town.kanna.gunma.jp/soshiki/sangyokensetsuka/3/4/1169.html",
@@ -176,7 +176,7 @@
   "notes": "Opened. Winter closures only (御荷鉾スーパー林道, R299 十石峠, 県道上野小海線 ぶどう峠). Parent index 通行止め情報 https://www.town.kanna.gunma.jp/soshiki/sangyokensetsuka/3/4/index.html opened (links only to this page). Seasonal; no non-winter closures listed."
  },
  {
-  "code": "10382",
+  "pref": "群馬県",
   "name": "下仁田町",
   "status": "index_only",
   "url": "https://www.town.shimonita.lg.jp/nourin-kensetu/m03/m02/m03/20250901.html",
@@ -187,7 +187,7 @@
   "notes": "Opened. General forest-road cautions, no per-road closure list. Also opened https://www.town.shimonita.lg.jp/fuketsu/m01/m08/115.html (荒船風穴周辺道路の交通規制, Apr1-Nov30, updated 2023-04-25)."
  },
  {
-  "code": "10383",
+  "pref": "群馬県",
   "name": "南牧村",
   "status": "not_found",
   "url": null,
@@ -198,7 +198,7 @@
   "notes": "Official domain not identified; domain-limited searches empty."
  },
  {
-  "code": "10384",
+  "pref": "群馬県",
   "name": "甘楽町",
   "status": "unverified",
   "url": null,
@@ -209,7 +209,7 @@
   "notes": "Not searched in this pass. JIS code from memory."
  },
  {
-  "code": "10421",
+  "pref": "群馬県",
   "name": "中之条町",
   "status": "not_found",
   "url": null,
@@ -220,7 +220,7 @@
   "notes": "Domain town.nakanojo.gunma.jp. Domain search found no closure page (only 建設課 pages, not opened)."
  },
  {
-  "code": "10424",
+  "pref": "群馬県",
   "name": "長野原町",
   "status": "not_found",
   "url": null,
@@ -231,7 +231,7 @@
   "notes": "Domain town.naganohara.gunma.jp. Opened 道路・除雪 section: no closure list. Seen only 2019 typhoon page."
  },
  {
-  "code": "10425",
+  "pref": "群馬県",
   "name": "嬬恋村",
   "status": "not_found",
   "url": null,
@@ -242,7 +242,7 @@
   "notes": "Domain vill.tsumagoi.gunma.jp. No closure index found. Opened only stale news items: 村道大前細原線 closure 2021-11 to 2022-04 (https://www.vill.tsumagoi.gunma.jp/www/files/kotsu/tsukoukisei_oomaehosobarasen.pdf), 鳥居峠林道 2021 opening notice (https://www.vill.tsumagoi.gunma.jp/www/contents/1000000000348/index.html). Sitemap https://www.vill.tsumagoi.gunma.jp/www/sitemap.html unopened; could be tried."
  },
  {
-  "code": "10426",
+  "pref": "群馬県",
   "name": "草津町",
   "status": "not_found",
   "url": null,
@@ -253,7 +253,7 @@
   "notes": "Domain town.kusatsu.gunma.jp. Opened only news item on R292 reopening / 白根山 entry ban (https://www.town.kusatsu.gunma.jp/www/contents/1779431376046/index.html, updated 2026-05-22; kind news_item_only). Related category https://www.town.kusatsu.gunma.jp/li/110/index.html unopened."
  },
  {
-  "code": "10428",
+  "pref": "群馬県",
   "name": "高山村",
   "status": "not_found",
   "url": null,
@@ -264,7 +264,7 @@
   "notes": "Domain vill.takayama.gunma.jp. Opened 建設課 page: no closure link."
  },
  {
-  "code": "10429",
+  "pref": "群馬県",
   "name": "東吾妻町",
   "status": "not_found",
   "url": null,
@@ -275,7 +275,7 @@
   "notes": "Domain town.higashiagatsuma.gunma.jp. Opened 町道・公共物の管理: only a 2019 typhoon regulation link."
  },
  {
-  "code": "10443",
+  "pref": "群馬県",
   "name": "片品村",
   "status": "index_only",
   "url": "https://www.vill.katashina.gunma.jp/gaiyou/kakuka/nourin/index.html",
@@ -286,7 +286,7 @@
   "notes": "Opened section page (links to 林道 page .../nourin/doboku/2016-0404-1816-35.html, not opened, and 村道東俣線通行止め). Opened https://www.vill.katashina.gunma.jp/gaiyou/kakuka/nourin/doboku/2016-0404-1818-35.html: single-road landslide closure, no date, possibly stale. Also seen in search (not opened): 尾瀬 traffic regulation news items under /gaiyou/kakuka/kanko/."
  },
  {
-  "code": "10444",
+  "pref": "群馬県",
   "name": "川場村",
   "status": "not_found",
   "url": null,
@@ -297,7 +297,7 @@
   "notes": "Domain vill.kawaba.gunma.jp. Two domain searches, no closure page. お知らせ list https://www.vill.kawaba.gunma.jp/kurashi/news/ unopened."
  },
  {
-  "code": "10448",
+  "pref": "群馬県",
   "name": "昭和村",
   "status": "unverified",
   "url": null,
@@ -308,7 +308,7 @@
   "notes": "Not searched in this pass. JIS code from memory."
  },
  {
-  "code": "10449",
+  "pref": "群馬県",
   "name": "みなかみ町",
   "status": "not_found",
   "url": null,
@@ -319,7 +319,7 @@
   "notes": "Domain town.minakami.gunma.jp. No road-closure index found. Opened only a trail closure news item (https://www.town.minakami.gunma.jp/01news/2023/2023-0529-1442-71.html). Seen not opened: 谷川岳一ノ倉沢道路 交通規制 PDFs (/politics/03soshiki/files/2026denkibasu_annai.pdf)."
  },
  {
-  "code": "10464",
+  "pref": "群馬県",
   "name": "玉村町",
   "status": "unverified",
   "url": null,
@@ -330,7 +330,7 @@
   "notes": "Not searched in this pass. JIS code from memory."
  },
  {
-  "code": "10521",
+  "pref": "群馬県",
   "name": "板倉町",
   "status": "unverified",
   "url": null,
@@ -341,7 +341,7 @@
   "notes": "Not searched in this pass. JIS code from memory."
  },
  {
-  "code": "10522",
+  "pref": "群馬県",
   "name": "明和町",
   "status": "unverified",
   "url": null,
@@ -352,7 +352,7 @@
   "notes": "Not searched in this pass. JIS code from memory."
  },
  {
-  "code": "10523",
+  "pref": "群馬県",
   "name": "千代田町",
   "status": "unverified",
   "url": null,
@@ -363,7 +363,7 @@
   "notes": "Not searched in this pass. JIS code from memory."
  },
  {
-  "code": "10524",
+  "pref": "群馬県",
   "name": "大泉町",
   "status": "unverified",
   "url": null,
@@ -374,7 +374,7 @@
   "notes": "Not searched in this pass. JIS code from memory."
  },
  {
-  "code": "10525",
+  "pref": "群馬県",
   "name": "邑楽町",
   "status": "unverified",
   "url": null,

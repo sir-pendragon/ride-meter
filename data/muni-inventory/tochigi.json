@@ -1,6 +1,6 @@
 [
  {
-  "code": "09201",
+  "pref": "栃木県",
   "name": "宇都宮市",
   "status": "not_found",
   "url": null,
@@ -11,7 +11,7 @@
   "notes": "Search surfaced only road-works/maintenance pages (e.g. /kurashi/kotsu/douro/1024753.html, not opened: robots-blocked for fetch). No closure list confirmed. Search budget exhausted. Follow-up domain search returned only open-data road datasets/maintenance pages."
  },
  {
-  "code": "09202",
+  "pref": "栃木県",
   "name": "足利市",
   "status": "found",
   "url": "https://www.city.ashikaga.tochigi.jp/living/000026/000157/000979/index.html",
@@ -22,7 +22,7 @@
   "notes": "Index of closure notices incl. 5 forest-road items (林道粟谷・松田線, 入山線, 入山線及び入山長石線, 大岩・月谷線, 小彦谷線). Sub-page opened: 市内の通行止め情報 https://www.city.ashikaga.tochigi.jp/living/000026/000157/000979/p008539.html (updated 2026-09-01; bullet list of closed city roads + Google Map)."
  },
  {
-  "code": "09203",
+  "pref": "栃木県",
   "name": "栃木市",
   "status": "index_only",
   "url": "https://www.city.tochigi.lg.jp/life/1/19/84/",
@@ -33,7 +33,7 @@
   "notes": "Road category page lists individual notices (Tobu Nikko Line crossing closure/widening). No consolidated closure list. Forest road item exists as single notice (opened): 林道の通行止めのお知らせ https://www.city.tochigi.lg.jp/soshiki/35/92912.html (2026-08-12, 林道真上男丸柏木線, Nishikata, with PDF map). Follow-up domain search found nothing beyond the listed pages."
  },
  {
-  "code": "09204",
+  "pref": "栃木県",
   "name": "佐野市",
   "status": "found",
   "url": "https://www.city.sano.lg.jp/soshikiichiran/nourin/nosansonshinkoka/oshirase/28769.html",
@@ -44,7 +44,7 @@
   "notes": "Forest road status (大網入谷線 closed; others lifted) with closure-map PDF link. Also opened: 市内通行止めについて（令和8年台風第15号） https://www.city.sano.lg.jp/soshikiichiran/gyousei/kikikanrika/oshirase/28738.html (updated 2026-08-13; city/pref/forest roads, resolved/unresolved flags; event-specific)."
  },
  {
-  "code": "09205",
+  "pref": "栃木県",
   "name": "鹿沼市",
   "status": "found",
   "url": "https://www.city.kanuma.tochigi.jp/0225/genre2-1-001.html",
@@ -55,7 +55,7 @@
   "notes": "Static list of 16 flood-prone underpass/low-point locations (大雨時通行止箇所一覧), not a live closure list; no forest roads. Live notices go elsewhere: 通行止め情報について https://www.city.kanuma.tochigi.jp/0225/info-0000011416-0.html (2026-07-18, only says some prefectural roads closed, defers to prefecture). Category: 災害情報 https://www.city.kanuma.tochigi.jp/0039/genre1-0-001.html"
  },
  {
-  "code": "09206",
+  "pref": "栃木県",
   "name": "日光市",
   "status": "index_only",
   "url": "https://www.city.nikko.lg.jp/kurashi_tetsuzuki/shido/index.html",
@@ -66,7 +66,7 @@
   "notes": "Lists a few individual city-road closure notices (市道戸川山線, 馬坂線, 馬坂2号線); no dates, no forest roads. 市道の通行止めについて https://www.city.nikko.lg.jp/soshiki/7/1034/4/530.html (updated 2026-09-03) has empty body, contact only. 足尾の山歩き情報 (trail closures) https://www.city.nikko.lg.jp/soshiki/6/1027/1/375.html not a road list. Follow-up domain-restricted search found nothing new."
  },
  {
-  "code": "09208",
+  "pref": "栃木県",
   "name": "小山市",
   "status": "not_found",
   "url": null,
@@ -77,7 +77,7 @@
   "notes": "Opened 9月3日の大雨・突風被害について (page009598) and 防災ポータル https://bosai.city.oyama.tochigi.jp/ : no closure list (portal has 道路情報 link to koukyou-jouhou.html#road, unopened)."
  },
  {
-  "code": "09209",
+  "pref": "栃木県",
   "name": "真岡市",
   "status": "found",
   "url": "https://www.city.moka.lg.jp/kakuka/kensetsu/oshirase/23456.html",
@@ -88,7 +88,7 @@
   "notes": "Map-based closure info for city and other roads (red shading = closed), mainly heavy rain; event closures excluded. Parent notices index https://www.city.moka.lg.jp/kakuka/kensetsu/oshirase/index.html (lists 通行止め情報 and 阿部岡橋 notice). Forest roads not mentioned."
  },
  {
-  "code": "09210",
+  "pref": "栃木県",
   "name": "大田原市",
   "status": "found",
   "url": "https://www.city.ohtawara.tochigi.jp/docs/2026070900055",
@@ -99,7 +99,7 @@
   "notes": "Single news item (forest road regulation, lifted). Other individual closure notices exist (清水橋, 汗子橋) in search results, not opened. 道路課 page https://www.city.ohtawara.tochigi.jp/unit/construction/dourokensetsu/ (not opened). No consolidated list confirmed."
  },
  {
-  "code": "09211",
+  "pref": "栃木県",
   "name": "矢板市",
   "status": "found",
   "url": "https://www.city.yaita.tochigi.jp/life/8/7/58/",
@@ -110,7 +110,7 @@
   "notes": "Category lists 冬期通行止め解除 notice (県道56号 / 八方ヶ原線車道, contact is 矢板森林管理事務所). Item opened: https://www.city.yaita.tochigi.jp/site/kankou/20260422.html (lifting on 2026-04-22; date mismatch with listed 2025-04-21). Seasonal winter-closure notices at /site/kankou/touki2024.html (not opened, fetch error). Prefecture forest road page excluded per instructions."
  },
  {
-  "code": "09213",
+  "pref": "栃木県",
   "name": "那須塩原市",
   "status": "unverified",
   "url": "http://www.city.nasushiobara.lg.jp/machizukuri/d02/k01/index.html",
@@ -121,7 +121,7 @@
   "notes": "Candidate from search (道路 category); fetch failed so contents unconfirmed. Other candidate: 冬季積雪・凍結のため一部の市道が全面通行止めになります http://www.city.nasushiobara.lg.jp/25/009011.html (fetch failed). Neither opened. Retry in follow-up: more candidate pages (kinkyusaigaijoho/3903.html, jogesuido/12245.html) also failed to fetch."
  },
  {
-  "code": "09214",
+  "pref": "栃木県",
   "name": "さくら市",
   "status": "unverified",
   "url": "https://www.city.tochigi-sakura.lg.jp/mobile/viewer/info.html?idSubTop=6&id=2802",
@@ -132,7 +132,7 @@
   "notes": "Opened, on city domain (mobile site, Crisis Mgmt Section), but it only relays prefecture road management info; no city closure list visible. Treat as pointer to prefecture system. Follow-up search found nothing else."
  },
  {
-  "code": "09215",
+  "pref": "栃木県",
   "name": "那須烏山市",
   "status": "not_found",
   "url": null,
@@ -143,7 +143,7 @@
   "notes": "Search only gave event traffic-regulation PDFs and news list (https://www.city.nasukarasuyama.lg.jp/news.php?type=0, not opened). Follow-up search: only event/plan PDFs."
  },
  {
-  "code": "09216",
+  "pref": "栃木県",
   "name": "下野市",
   "status": "unverified",
   "url": "https://www.city.shimotsuke.lg.jp/1939/info-0000010693-3.html",
@@ -154,7 +154,7 @@
   "notes": "Candidate from search only (flood closure notices; not opened). Opened 道路の管理状況 https://www.city.shimotsuke.lg.jp/0773/genre3-3-001.html and 下野市が管理する道路の状況 .../1589/genre4-1-001.html: no closure info. Re-check: candidate notice fetch failed; 防災ポータル https://www.city.shimotsuke.lg.jp/index2.html opened, has no closure section and only points to prefecture road regulation pages."
  },
  {
-  "code": "09301",
+  "pref": "栃木県",
   "name": "上三川町",
   "status": "found_empty",
   "url": "https://town.kaminokawa.lg.jp/0338/info-0000001660-0.html",
@@ -165,7 +165,7 @@
   "notes": "Dedicated closure page; 最新情報 says 主な通行規制箇所はありません. Last update 2024-02, possibly stale or only edited when needed. Domain town.kaminokawa.lg.jp (no www in search result)."
  },
  {
-  "code": "09342",
+  "pref": "栃木県",
   "name": "益子町",
   "status": "not_found",
   "url": null,
@@ -176,7 +176,7 @@
   "notes": "Only 道路に関するお願い page surfaced (robots-blocked, not opened); no closure list."
  },
  {
-  "code": "09343",
+  "pref": "栃木県",
   "name": "茂木町",
   "status": "not_found",
   "url": null,
@@ -187,7 +187,7 @@
   "notes": "Top page opened: no closure/forest road links; only disaster RSS https://www.town.motegi.tochigi.jp/motegi/rss/rss3.xml (not opened)."
  },
  {
-  "code": "09344",
+  "pref": "栃木県",
   "name": "市貝町",
   "status": "not_found",
   "url": null,
@@ -198,7 +198,7 @@
   "notes": "Search gave road-network and event traffic pages only; none opened."
  },
  {
-  "code": "09345",
+  "pref": "栃木県",
   "name": "芳賀町",
   "status": "not_found",
   "url": null,
@@ -209,7 +209,7 @@
   "notes": "Only 防災WEB (www-bousai.town.haga.tochigi.jp) surfaced; no closure list; not opened. Follow-up search: only disaster plan PDFs."
  },
  {
-  "code": "09361",
+  "pref": "栃木県",
   "name": "壬生町",
   "status": "found",
   "url": "https://www.town.mibu.tochigi.jp/docs/2026090200012",
@@ -220,7 +220,7 @@
   "notes": "No dedicated closure list; 案内・お知らせ https://www.town.mibu.tochigi.jp/category/zokusei/news/ shows only this regulation notice (construction). Also 通学橋通行止めについて (2024, not opened)."
  },
  {
-  "code": "09364",
+  "pref": "栃木県",
   "name": "野木町",
   "status": "found",
   "url": "https://www.town.nogi.lg.jp/kurashi/koutsu/page006715.html",
@@ -231,7 +231,7 @@
   "notes": "Index of 8 construction-related traffic regulation notices. Parent 交通・道路 section https://www.town.nogi.lg.jp/kurashi/koutsu/ (fetch error, unopened) contains more (e.g. 大手箱橋通行止め). Town is flat, no forest roads."
  },
  {
-  "code": "09384",
+  "pref": "栃木県",
   "name": "塩谷町",
   "status": "found",
   "url": "https://www.town.shioya.tochigi.jp/info/2264",
@@ -242,7 +242,7 @@
   "notes": "Single news item; road names only in an image (260709nishimae.png), unreadable. No consolidated list: 管理課 list (/divinfolist/33) and 交通 menu (/menu/19) opened and contain no closure notices. Re-check for new林道 items via https://www.town.shioya.tochigi.jp/alllist/whatsnew. Follow-up domain search found no other closure pages."
  },
  {
-  "code": "09386",
+  "pref": "栃木県",
   "name": "高根沢町",
   "status": "not_found",
   "url": null,
@@ -253,7 +253,7 @@
   "notes": "道路に関するお願い page opened: no closure list or links."
  },
  {
-  "code": "09407",
+  "pref": "栃木県",
   "name": "那須町",
   "status": "index_only",
   "url": "https://www.town.nasu.lg.jp/viewer/disaster.html?idSubTop=2&Page=208",
@@ -264,7 +264,7 @@
   "notes": "Town disaster-info archive carries ad hoc road closure/lift notices (e.g. 2019-10 typhoon 19 town-road closures); page number is not stable, need the archive's first page/category 災害情報 under 防災・安全. No standing closure list; forest roads not covered. Alt-route forest road list PDF is a plan appendix."
  },
  {
-  "code": "09411",
+  "pref": "栃木県",
   "name": "那珂川町",
   "status": "not_found",
   "url": null,

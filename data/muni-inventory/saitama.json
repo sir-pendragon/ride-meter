@@ -1,6 +1,6 @@
 [
  {
-  "code": "11100",
+  "pref": "埼玉県",
   "name": "さいたま市",
   "status": "unverified",
   "url": "https://www.city.saitama.lg.jp/001/011/001/p097759.html",
@@ -11,7 +11,7 @@
   "notes": "Appeared in search; WebFetch failed. Looks like a per-event notice, not a standing list. Parent: https://www.city.saitama.lg.jp/001/010/018/007/index.html (道路) not opened."
  },
  {
-  "code": "11201",
+  "pref": "埼玉県",
   "name": "川越市",
   "status": "index_only",
   "url": "https://www.city.kawagoe.saitama.jp/kurashi/kotsu/1003125/index.html",
@@ -22,7 +22,7 @@
   "notes": "Opened. Road hub; lists individual notices incl. Route 16 Kamiee Bridge staircase closure. Not a dedicated closure list."
  },
  {
-  "code": "11202",
+  "pref": "埼玉県",
   "name": "熊谷市",
   "status": "not_found",
   "url": null,
@@ -33,7 +33,7 @@
   "notes": "1 search; no standing closure page surfaced."
  },
  {
-  "code": "11203",
+  "pref": "埼玉県",
   "name": "川口市",
   "status": "not_found",
   "url": null,
@@ -44,7 +44,7 @@
   "notes": "1 search; only event/traffic-regulation notices surfaced."
  },
  {
-  "code": "11206",
+  "pref": "埼玉県",
   "name": "行田市",
   "status": "not_found",
   "url": null,
@@ -55,7 +55,7 @@
   "notes": "1 search; per-notice only e.g. https://www.city.gyoda.lg.jp/soshiki/kensetubu/dorochisui/oshirase/10846.html (not opened)."
  },
  {
-  "code": "11207",
+  "pref": "埼玉県",
   "name": "秩父市",
   "status": "found",
   "url": "https://www.city.chichibu.lg.jp/9438.html",
@@ -72,7 +72,7 @@
   ]
  },
  {
-  "code": "11208",
+  "pref": "埼玉県",
   "name": "所沢市",
   "status": "not_found",
   "url": null,
@@ -83,7 +83,7 @@
   "notes": "1 search; only construction-info pages surfaced."
  },
  {
-  "code": "11209",
+  "pref": "埼玉県",
   "name": "飯能市",
   "status": "index_only",
   "url": "https://www.city.hanno.lg.jp/kurashi_seikatsukankyo/doro_suiro_kukakuseiri/dorotsuko_seibijoho/index.html",
@@ -99,7 +99,7 @@
   ]
  },
  {
-  "code": "11210",
+  "pref": "埼玉県",
   "name": "加須市",
   "status": "not_found",
   "url": null,
@@ -110,7 +110,7 @@
   "notes": "1 search; per-notice only e.g. https://www.city.kazo.lg.jp/soshiki/douro/news/42035.html (not opened)."
  },
  {
-  "code": "11211",
+  "pref": "埼玉県",
   "name": "本庄市",
   "status": "index_only",
   "url": "https://www.city.honjo.lg.jp/kinkyu/22090.html",
@@ -121,7 +121,7 @@
   "notes": "2nd pass: opened /kinkyu/22090.html (市道4-290 児玉町河内 closure, per-event). /kinkyu/ is the emergency notice section with many closures incl. mountain Kodama area; its index URL not obtained. Standing list not found."
  },
  {
-  "code": "11212",
+  "pref": "埼玉県",
   "name": "東松山市",
   "status": "unverified",
   "url": "http://www.city.higashimatsuyama.lg.jp/disaster_info/1572585128508.html",
@@ -135,7 +135,7 @@
   ]
  },
  {
-  "code": "11214",
+  "pref": "埼玉県",
   "name": "春日部市",
   "status": "unverified",
   "url": "https://www.city.kasukabe.lg.jp/emergency/16610.html",
@@ -146,7 +146,7 @@
   "notes": "WebFetch failed."
  },
  {
-  "code": "11215",
+  "pref": "埼玉県",
   "name": "狭山市",
   "status": "not_found",
   "url": null,
@@ -157,7 +157,7 @@
   "notes": "1 search; nothing relevant."
  },
  {
-  "code": "11216",
+  "pref": "埼玉県",
   "name": "羽生市",
   "status": "found",
   "url": "https://www.city.hanyu.lg.jp/docs/2026082100016",
@@ -168,7 +168,7 @@
   "notes": "Opened. Short page linking closure notices (e.g. 弁天橋架替, closed from 2025-10-01); unclear if closures are cleared when ended. Flat city; no forest roads."
  },
  {
-  "code": "11217",
+  "pref": "埼玉県",
   "name": "鴻巣市",
   "status": "not_found",
   "url": null,
@@ -179,7 +179,7 @@
   "notes": "1 search; per-notice only e.g. https://www.city.kounosu.saitama.jp/page/26440.html (冠水橋) not opened."
  },
  {
-  "code": "11218",
+  "pref": "埼玉県",
   "name": "深谷市",
   "status": "not_found",
   "url": null,
@@ -190,7 +190,7 @@
   "notes": "1 search; nothing relevant."
  },
  {
-  "code": "11219",
+  "pref": "埼玉県",
   "name": "上尾市",
   "status": "not_found",
   "url": null,
@@ -201,7 +201,7 @@
   "notes": "1 search; nothing relevant."
  },
  {
-  "code": "11221",
+  "pref": "埼玉県",
   "name": "草加市",
   "status": "not_found",
   "url": null,
@@ -212,7 +212,7 @@
   "notes": "1 search; per-notice only."
  },
  {
-  "code": "11222",
+  "pref": "埼玉県",
   "name": "越谷市",
   "status": "not_found",
   "url": null,
@@ -223,7 +223,7 @@
   "notes": "Opened https://www.city.koshigaya.saitama.jp/kurashi_shisei/jigyosha/douro/topicsindex.html (道路・河川に関するお知らせ): no closure items."
  },
  {
-  "code": "11223",
+  "pref": "埼玉県",
   "name": "蕨市",
   "status": "not_found",
   "url": null,
@@ -234,7 +234,7 @@
   "notes": "1 search; nothing relevant."
  },
  {
-  "code": "11224",
+  "pref": "埼玉県",
   "name": "戸田市",
   "status": "not_found",
   "url": null,
@@ -245,7 +245,7 @@
   "notes": "1 search; nothing relevant."
  },
  {
-  "code": "11225",
+  "pref": "埼玉県",
   "name": "入間市",
   "status": "index_only",
   "url": "https://www.city.iruma.saitama.jp/kurashi/9/doro/index.html",
@@ -256,7 +256,7 @@
   "notes": "Opened. Road hub with 14 items; 3 are closure notices (Kenbu bridge culvert, Asu guard, G517 partial lift). No consolidated list."
  },
  {
-  "code": "11227",
+  "pref": "埼玉県",
   "name": "朝霞市",
   "status": "unverified",
   "url": "https://www.city.asaka.lg.jp/soshiki/55/tuukoudome-20230602.html",
@@ -267,7 +267,7 @@
   "notes": "WebFetch failed. Per-event (2023); also r8-typhoon6 page seen."
  },
  {
-  "code": "11228",
+  "pref": "埼玉県",
   "name": "志木市",
   "status": "not_found",
   "url": null,
@@ -278,7 +278,7 @@
   "notes": "1 search; nothing relevant."
  },
  {
-  "code": "11229",
+  "pref": "埼玉県",
   "name": "和光市",
   "status": "not_found",
   "url": null,
@@ -289,7 +289,7 @@
   "notes": "1 search; nothing relevant."
  },
  {
-  "code": "11230",
+  "pref": "埼玉県",
   "name": "新座市",
   "status": "index_only",
   "url": "https://www.city.niiza.lg.jp/soshiki/33/niizamap-douro.html",
@@ -300,7 +300,7 @@
   "notes": "Opened. Map for road ledger/network; not a closure feed."
  },
  {
-  "code": "11232",
+  "pref": "埼玉県",
   "name": "桶川市",
   "status": "not_found",
   "url": null,
@@ -311,7 +311,7 @@
   "notes": "1 search; per-notice only e.g. https://www.city.okegawa.lg.jp/kurashi/sumai/douro_1/5870.html (not opened)."
  },
  {
-  "code": "11233",
+  "pref": "埼玉県",
   "name": "久喜市",
   "status": "found_empty",
   "url": "https://www.city.kuki.lg.jp/1009811/1009812.html",
@@ -322,7 +322,7 @@
   "notes": "Opened. Flood-related closure page with an empty location section at fetch time; likely re-used for disasters."
  },
  {
-  "code": "11234",
+  "pref": "埼玉県",
   "name": "北本市",
   "status": "not_found",
   "url": null,
@@ -333,7 +333,7 @@
   "notes": "1 search; nothing relevant."
  },
  {
-  "code": "11235",
+  "pref": "埼玉県",
   "name": "八潮市",
   "status": "index_only",
   "url": "https://www.city.yashio.lg.jp/shisei/machizukuri/dousuiro_kyouryou/kannbotujiko/kannbotu/index.html",
@@ -344,7 +344,7 @@
   "notes": "Opened. Specific to the Nakachuo sinkhole; links to prefecture traffic-regulation map. Not general."
  },
  {
-  "code": "11236",
+  "pref": "埼玉県",
   "name": "富士見市",
   "status": "unverified",
   "url": null,
@@ -355,7 +355,7 @@
   "notes": "Not yet searched (earlier search budget exhausted; not run in 2nd pass)."
  },
  {
-  "code": "11237",
+  "pref": "埼玉県",
   "name": "三郷市",
   "status": "unverified",
   "url": null,
@@ -366,7 +366,7 @@
   "notes": "Not yet searched (earlier search budget exhausted; not run in 2nd pass)."
  },
  {
-  "code": "11238",
+  "pref": "埼玉県",
   "name": "蓮田市",
   "status": "unverified",
   "url": null,
@@ -377,7 +377,7 @@
   "notes": "Not yet searched (earlier search budget exhausted; not run in 2nd pass)."
  },
  {
-  "code": "11239",
+  "pref": "埼玉県",
   "name": "坂戸市",
   "status": "unverified",
   "url": null,
@@ -388,7 +388,7 @@
   "notes": "Not yet searched (earlier search budget exhausted; not run in 2nd pass)."
  },
  {
-  "code": "11240",
+  "pref": "埼玉県",
   "name": "幸手市",
   "status": "unverified",
   "url": null,
@@ -399,7 +399,7 @@
   "notes": "Not yet searched (earlier search budget exhausted; not run in 2nd pass)."
  },
  {
-  "code": "11241",
+  "pref": "埼玉県",
   "name": "鶴ヶ島市",
   "status": "unverified",
   "url": null,
@@ -410,7 +410,7 @@
   "notes": "Not yet searched (earlier search budget exhausted; not run in 2nd pass)."
  },
  {
-  "code": "11242",
+  "pref": "埼玉県",
   "name": "日高市",
   "status": "unverified",
   "url": "https://www.city.hidaka.lg.jp/life_procedure/11/13/35506.html",
@@ -421,7 +421,7 @@
   "notes": "WebFetch failed. Per-event notice only; no standing list found in 2 searches. 2nd pass search done; no new standing page."
  },
  {
-  "code": "11243",
+  "pref": "埼玉県",
   "name": "吉川市",
   "status": "unverified",
   "url": null,
@@ -432,7 +432,7 @@
   "notes": "Not yet searched (earlier search budget exhausted; not run in 2nd pass)."
  },
  {
-  "code": "11245",
+  "pref": "埼玉県",
   "name": "ふじみ野市",
   "status": "unverified",
   "url": null,
@@ -443,7 +443,7 @@
   "notes": "Not yet searched (earlier search budget exhausted; not run in 2nd pass)."
  },
  {
-  "code": "11246",
+  "pref": "埼玉県",
   "name": "白岡市",
   "status": "unverified",
   "url": null,
@@ -454,7 +454,7 @@
   "notes": "Not yet searched (earlier search budget exhausted; not run in 2nd pass)."
  },
  {
-  "code": "11301",
+  "pref": "埼玉県",
   "name": "伊奈町",
   "status": "unverified",
   "url": null,
@@ -465,7 +465,7 @@
   "notes": "Not yet searched (earlier search budget exhausted; not run in 2nd pass)."
  },
  {
-  "code": "11324",
+  "pref": "埼玉県",
   "name": "三芳町",
   "status": "unverified",
   "url": null,
@@ -476,7 +476,7 @@
   "notes": "Not yet searched (earlier search budget exhausted; not run in 2nd pass)."
  },
  {
-  "code": "11326",
+  "pref": "埼玉県",
   "name": "毛呂山町",
   "status": "not_found",
   "url": null,
@@ -487,7 +487,7 @@
   "notes": "2 searches. Opened 遊歩道の通行止めについて (https://www.town.moroyama.saitama.jp/soshikikarasagasu/sangyoshinkoka/kanko_tokusan/1_1/2812.html, 2021-12-23): hiking trails only, stale. Not a road closure page. 2nd pass search done; no new standing page."
  },
  {
-  "code": "11327",
+  "pref": "埼玉県",
   "name": "越生町",
   "status": "found",
   "url": "https://www.town.ogose.saitama.jp/kamei/sangyokanko/norin/rinngyou/1.html",
@@ -501,7 +501,7 @@
   ]
  },
  {
-  "code": "11341",
+  "pref": "埼玉県",
   "name": "滑川町",
   "status": "unverified",
   "url": null,
@@ -512,7 +512,7 @@
   "notes": "Not yet searched (earlier search budget exhausted; not run in 2nd pass)."
  },
  {
-  "code": "11342",
+  "pref": "埼玉県",
   "name": "嵐山町",
   "status": "index_only",
   "url": "https://www.town.ranzan.saitama.jp/0000008018.html",
@@ -523,7 +523,7 @@
   "notes": "2nd pass: opened per-event town road landslide closure. Candidate standing pages unopened (fetch fails): 0000007899 倒木による通行止め箇所, 0000007707 交通規制のお知らせ."
  },
  {
-  "code": "11343",
+  "pref": "埼玉県",
   "name": "小川町",
   "status": "unverified",
   "url": "https://www.town.ogawa.saitama.jp/gyosei/sosiki/12/oshirase/index.html",
@@ -534,7 +534,7 @@
   "notes": "WebFetch failed. Appears to be a department notice index for closures. 2nd pass search done; no new standing page."
  },
  {
-  "code": "11346",
+  "pref": "埼玉県",
   "name": "川島町",
   "status": "unverified",
   "url": null,
@@ -545,7 +545,7 @@
   "notes": "Not yet searched (earlier search budget exhausted; not run in 2nd pass)."
  },
  {
-  "code": "11347",
+  "pref": "埼玉県",
   "name": "吉見町",
   "status": "unverified",
   "url": null,
@@ -556,7 +556,7 @@
   "notes": "Not yet searched (earlier search budget exhausted; not run in 2nd pass)."
  },
  {
-  "code": "11348",
+  "pref": "埼玉県",
   "name": "鳩山町",
   "status": "not_found",
   "url": null,
@@ -567,7 +567,7 @@
   "notes": "2nd pass: 1 search, nothing relevant."
  },
  {
-  "code": "11349",
+  "pref": "埼玉県",
   "name": "ときがわ町",
   "status": "found",
   "url": "https://www.town.tokigawa.lg.jp/info/2423",
@@ -578,7 +578,7 @@
   "notes": "Opened. Table of closed town forest roads (朴ノ木線, 剣ヶ峰七重線, 小倉線) plus route-map PDF and prefecture-managed contacts. Town roads not covered."
  },
  {
-  "code": "11361",
+  "pref": "埼玉県",
   "name": "横瀬町",
   "status": "unverified",
   "url": "https://www.town.yokoze.saitama.jp/anzen/koutsu/58312",
@@ -589,7 +589,7 @@
   "notes": "WebFetch failed (3 attempts). Appeared as top search hit; category 'anzen/koutsu' suggests standing page. Per-notice pages under /kurashi/kurashi-joho/ (e.g. 62197, 61818 路面凍結). 2nd pass search done; no new standing page."
  },
  {
-  "code": "11362",
+  "pref": "埼玉県",
   "name": "皆野町",
   "status": "not_found",
   "url": null,
@@ -600,7 +600,7 @@
   "notes": "Opened only per-event topics (https://www.town.minano.saitama.jp/topics/2025/0703_41661/ night closure of prefectural road); no standing closure page or list link found. 2nd pass: opened 道路占用等 (permits only, no closure list); 林道占用様式 seen. No standing page."
  },
  {
-  "code": "11363",
+  "pref": "埼玉県",
   "name": "長瀞町",
   "status": "index_only",
   "url": "https://www.town.nagatoro.saitama.jp/news/",
@@ -615,7 +615,7 @@
   ]
  },
  {
-  "code": "11365",
+  "pref": "埼玉県",
   "name": "小鹿野町",
   "status": "not_found",
   "url": null,
@@ -626,7 +626,7 @@
   "notes": "2 searches. Only per-event notices (町道91号線 https://www.town.ogano.lg.jp/cyoudou91gou_koutuukisei/, fetch failed) and 林道管理規程. No standing page found; homepage fetch blocked (not in provenance). 2nd pass search done; no new standing page."
  },
  {
-  "code": "11369",
+  "pref": "埼玉県",
   "name": "東秩父村",
   "status": "index_only",
   "url": "https://www.vill.higashichichibu.saitama.jp/soshiki/19/sinrinkanridou.html",
@@ -637,7 +637,7 @@
   "notes": "Opened. Describes village forest road rules and when closures occur plus table of 18 roads; no live closure list."
  },
  {
-  "code": "11381",
+  "pref": "埼玉県",
   "name": "美里町",
   "status": "unverified",
   "url": null,
@@ -648,7 +648,7 @@
   "notes": "Not yet searched (earlier search budget exhausted; not run in 2nd pass)."
  },
  {
-  "code": "11383",
+  "pref": "埼玉県",
   "name": "神川町",
   "status": "not_found",
   "url": null,
@@ -659,7 +659,7 @@
   "notes": "1 search; nothing relevant. 2nd pass search done; no new standing page."
  },
  {
-  "code": "11385",
+  "pref": "埼玉県",
   "name": "上里町",
   "status": "unverified",
   "url": null,
@@ -670,7 +670,7 @@
   "notes": "Not yet searched (earlier search budget exhausted; not run in 2nd pass)."
  },
  {
-  "code": "11408",
+  "pref": "埼玉県",
   "name": "寄居町",
   "status": "not_found",
   "url": null,
@@ -681,7 +681,7 @@
   "notes": "2 searches; nothing relevant (only 8/13 大雨 注意喚起 https://www.town.yorii.saitama.jp/soshiki/28/20260813rain.html not opened). 2nd pass search done; no new standing page."
  },
  {
-  "code": "11442",
+  "pref": "埼玉県",
   "name": "宮代町",
   "status": "unverified",
   "url": null,
@@ -692,7 +692,7 @@
   "notes": "Not yet searched (earlier search budget exhausted; not run in 2nd pass)."
  },
  {
-  "code": "11464",
+  "pref": "埼玉県",
   "name": "杉戸町",
   "status": "unverified",
   "url": null,
@@ -703,7 +703,7 @@
   "notes": "Not yet searched (earlier search budget exhausted; not run in 2nd pass)."
  },
  {
-  "code": "11465",
+  "pref": "埼玉県",
   "name": "松伏町",
   "status": "unverified",
   "url": null,

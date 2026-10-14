@@ -1,6 +1,6 @@
 [
  {
-  "code": "13101",
+  "pref": "東京都",
   "name": "千代田区",
   "status": "unverified",
   "url": null,
@@ -11,7 +11,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13102",
+  "pref": "東京都",
   "name": "中央区",
   "status": "unverified",
   "url": null,
@@ -22,7 +22,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13103",
+  "pref": "東京都",
   "name": "港区",
   "status": "unverified",
   "url": null,
@@ -33,7 +33,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13104",
+  "pref": "東京都",
   "name": "新宿区",
   "status": "unverified",
   "url": null,
@@ -44,7 +44,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13105",
+  "pref": "東京都",
   "name": "文京区",
   "status": "unverified",
   "url": null,
@@ -55,7 +55,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13106",
+  "pref": "東京都",
   "name": "台東区",
   "status": "unverified",
   "url": null,
@@ -66,7 +66,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13107",
+  "pref": "東京都",
   "name": "墨田区",
   "status": "unverified",
   "url": null,
@@ -77,7 +77,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13108",
+  "pref": "東京都",
   "name": "江東区",
   "status": "unverified",
   "url": null,
@@ -88,7 +88,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13109",
+  "pref": "東京都",
   "name": "品川区",
   "status": "unverified",
   "url": null,
@@ -99,7 +99,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13110",
+  "pref": "東京都",
   "name": "目黒区",
   "status": "unverified",
   "url": null,
@@ -110,7 +110,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13111",
+  "pref": "東京都",
   "name": "大田区",
   "status": "unverified",
   "url": null,
@@ -121,7 +121,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13112",
+  "pref": "東京都",
   "name": "世田谷区",
   "status": "unverified",
   "url": null,
@@ -132,7 +132,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13113",
+  "pref": "東京都",
   "name": "渋谷区",
   "status": "unverified",
   "url": null,
@@ -143,7 +143,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13114",
+  "pref": "東京都",
   "name": "中野区",
   "status": "unverified",
   "url": null,
@@ -154,7 +154,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13115",
+  "pref": "東京都",
   "name": "杉並区",
   "status": "unverified",
   "url": null,
@@ -165,7 +165,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13116",
+  "pref": "東京都",
   "name": "豊島区",
   "status": "unverified",
   "url": null,
@@ -176,7 +176,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13117",
+  "pref": "東京都",
   "name": "北区",
   "status": "unverified",
   "url": null,
@@ -187,7 +187,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13118",
+  "pref": "東京都",
   "name": "荒川区",
   "status": "unverified",
   "url": null,
@@ -198,7 +198,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13119",
+  "pref": "東京都",
   "name": "板橋区",
   "status": "unverified",
   "url": null,
@@ -209,7 +209,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13120",
+  "pref": "東京都",
   "name": "練馬区",
   "status": "unverified",
   "url": null,
@@ -220,7 +220,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13121",
+  "pref": "東京都",
   "name": "足立区",
   "status": "unverified",
   "url": null,
@@ -231,7 +231,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13122",
+  "pref": "東京都",
   "name": "葛飾区",
   "status": "unverified",
   "url": null,
@@ -242,7 +242,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13123",
+  "pref": "東京都",
   "name": "江戸川区",
   "status": "unverified",
   "url": null,
@@ -253,7 +253,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13201",
+  "pref": "東京都",
   "name": "八王子市",
   "status": "found_empty",
   "url": "https://www.city.hachioji.tokyo.jp/kurashi/life/001/001/001/p022326.html",
@@ -267,7 +267,7 @@
   ]
  },
  {
-  "code": "13202",
+  "pref": "東京都",
   "name": "立川市",
   "status": "unverified",
   "url": "https://www.city.tachikawa.lg.jp/kurashi/kotsu/1001934/1005996.html",
@@ -278,7 +278,7 @@
   "notes": "Only a single project notice surfaced in search (fetch failed or not attempted); no general closure list identified."
  },
  {
-  "code": "13203",
+  "pref": "東京都",
   "name": "武蔵野市",
   "status": "unverified",
   "url": "https://www.city.musashino.lg.jp/kurashi_tetsuzuki/doro/1045300.html",
@@ -289,7 +289,7 @@
   "notes": "Only a single project notice surfaced in search (fetch failed or not attempted); no general closure list identified."
  },
  {
-  "code": "13204",
+  "pref": "東京都",
   "name": "三鷹市",
   "status": "unverified",
   "url": "https://www.city.mitaka.lg.jp/c_service/116/116645.html",
@@ -300,7 +300,7 @@
   "notes": "Only a single project notice surfaced in search (fetch failed or not attempted); no general closure list identified."
  },
  {
-  "code": "13205",
+  "pref": "東京都",
   "name": "青梅市",
   "status": "index_only",
   "url": "https://www.city.ome.tokyo.jp/site/omekanko/",
@@ -311,7 +311,7 @@
   "notes": "Searched twice. No dedicated closure/林道 page. Tourism news (https://www.city.ome.tokyo.jp/site/omekanko/list6-15.html opened: no closure entries now) occasionally carries 通行止め items; site/omekanko/75716.html and 119557.html fetch failed."
  },
  {
-  "code": "13206",
+  "pref": "東京都",
   "name": "府中市",
   "status": "unverified",
   "url": "https://www.city.fuchu.tokyo.jp/kurashi/machi/dourokouen/dourokouji/shimizugaoka3shinsetsu.html",
@@ -322,7 +322,7 @@
   "notes": "Search showed a 道路工事 notice series (dourokouji/) with per-project closure notices; fetch failed, index not found."
  },
  {
-  "code": "13207",
+  "pref": "東京都",
   "name": "昭島市",
   "status": "not_found",
   "url": null,
@@ -333,7 +333,7 @@
   "notes": "Domain search returned only event traffic-regulation/works items; no general page identified. Not opened."
  },
  {
-  "code": "13208",
+  "pref": "東京都",
   "name": "調布市",
   "status": "not_found",
   "url": null,
@@ -344,7 +344,7 @@
   "notes": "Domain search returned only event traffic-regulation/works items; no general page identified. Not opened."
  },
  {
-  "code": "13209",
+  "pref": "東京都",
   "name": "町田市",
   "status": "unverified",
   "url": "http://www.city.machida.tokyo.jp/kurashi/sumai/road/dourosirase/index.html",
@@ -358,7 +358,7 @@
   ]
  },
  {
-  "code": "13210",
+  "pref": "東京都",
   "name": "小金井市",
   "status": "unverified",
   "url": "https://www.city.koganei.lg.jp/shisei/seisakukeikaku/machitoshi/info/tuukoudome.html",
@@ -369,7 +369,7 @@
   "notes": "Single project notice seen in search; fetch failed. No general list found."
  },
  {
-  "code": "13211",
+  "pref": "東京都",
   "name": "小平市",
   "status": "not_found",
   "url": null,
@@ -380,7 +380,7 @@
   "notes": "お知らせ一覧 opened; no traffic-regulation section. A 交通規制情報 emergency item existed (important/123/123298.html, fetch failed) - ad hoc only."
  },
  {
-  "code": "13212",
+  "pref": "東京都",
   "name": "日野市",
   "status": "unverified",
   "url": "https://www.city.hino.lg.jp/shisei/machidukuri/kotsu/index.html",
@@ -391,7 +391,7 @@
   "notes": "Parent index link reported from opened 日野橋 page (2020); index itself not opened."
  },
  {
-  "code": "13213",
+  "pref": "東京都",
   "name": "東村山市",
   "status": "index_only",
   "url": "https://www.city.higashimurayama.tokyo.jp/kurashi/sumai/doro/index.html",
@@ -402,7 +402,7 @@
   "notes": "Road topic index; single closure notice (沢の堀). No dedicated closure list."
  },
  {
-  "code": "13214",
+  "pref": "東京都",
   "name": "国分寺市",
   "status": "not_found",
   "url": null,
@@ -413,7 +413,7 @@
   "notes": "Domain search returned only event traffic-regulation/works items; no general page identified. Not opened."
  },
  {
-  "code": "13215",
+  "pref": "東京都",
   "name": "国立市",
   "status": "not_found",
   "url": null,
@@ -424,7 +424,7 @@
   "notes": "Searched; only road management pages, no closure list."
  },
  {
-  "code": "13218",
+  "pref": "東京都",
   "name": "福生市",
   "status": "not_found",
   "url": null,
@@ -435,7 +435,7 @@
   "notes": "Searched; only works/policy pages; candidate fetch failed. No closure list identified."
  },
  {
-  "code": "13219",
+  "pref": "東京都",
   "name": "狛江市",
   "status": "unverified",
   "url": null,
@@ -446,7 +446,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13220",
+  "pref": "東京都",
   "name": "東大和市",
   "status": "unverified",
   "url": "https://www.city.higashiyamato.lg.jp/kurashi/dorokotsu/1002155/index.html",
@@ -457,7 +457,7 @@
   "notes": "Candidate parent index (reported as parent link by opened 倒木 notice 1011154, 2025-07, ad hoc 1h closure); index itself not opened."
  },
  {
-  "code": "13221",
+  "pref": "東京都",
   "name": "清瀬市",
   "status": "unverified",
   "url": "http://city.kiyose.lg.jp/050/040/index.html",
@@ -468,7 +468,7 @@
   "notes": "Candidate road index from search; fetch blocked by robots. Individual works closure notices exist (e.g. kurashi/sumaidourokoutuu/douro/1013049.html, not opened)."
  },
  {
-  "code": "13222",
+  "pref": "東京都",
   "name": "東久留米市",
   "status": "not_found",
   "url": null,
@@ -479,7 +479,7 @@
   "notes": "Searched; only ordinance/plan pages."
  },
  {
-  "code": "13223",
+  "pref": "東京都",
   "name": "武蔵村山市",
   "status": "found",
   "url": "https://www.city.musashimurayama.lg.jp/kurashi/koutsu/douro/1020965.html",
@@ -490,7 +490,7 @@
   "notes": "Ad hoc fallen-tree closure notice; no list page found. Same dir (kurashi/koutsu/douro/) has other closure notices e.g. 1020657 湖南通り (not opened)."
  },
  {
-  "code": "13224",
+  "pref": "東京都",
   "name": "多摩市",
   "status": "not_found",
   "url": null,
@@ -501,7 +501,7 @@
   "notes": "Searched; only works/policy pages (レンガ坂 archive opened). No closure list."
  },
  {
-  "code": "13225",
+  "pref": "東京都",
   "name": "稲城市",
   "status": "not_found",
   "url": null,
@@ -512,7 +512,7 @@
   "notes": "Searched; only permit/FAQ pages."
  },
  {
-  "code": "13227",
+  "pref": "東京都",
   "name": "羽村市",
   "status": "not_found",
   "url": null,
@@ -523,7 +523,7 @@
   "notes": "Searched. Only an event-specific closure (羽村堰下橋, Aug 2025 drill) opened; no general page."
  },
  {
-  "code": "13228",
+  "pref": "東京都",
   "name": "あきる野市",
   "status": "found",
   "url": "https://www.city.akiruno.tokyo.jp/0000017354.html",
@@ -537,7 +537,7 @@
   ]
  },
  {
-  "code": "13229",
+  "pref": "東京都",
   "name": "西東京市",
   "status": "not_found",
   "url": null,
@@ -548,7 +548,7 @@
   "notes": "Searched; only plan/permit pages."
  },
  {
-  "code": "13303",
+  "pref": "東京都",
   "name": "瑞穂町",
   "status": "found_empty",
   "url": "https://www.town.mizuho.tokyo.jp/kankyo/006/001/p007015.html",
@@ -559,7 +559,7 @@
   "notes": "Dedicated page, posted only for long-term town-road closures (typhoon/landslide/snow); said 現在、通行止めなどの交通規制は実施していません。 Also links national/prefectural road info. Unopened sibling: 令和7年度道路工事に伴う通行規制について (kankyo/001/003/p010990.html)."
  },
  {
-  "code": "13305",
+  "pref": "東京都",
   "name": "日の出町",
   "status": "index_only",
   "url": "https://www.town.hinode.tokyo.jp/category/1-5-0-0-0-0-0-0-0-0.html",
@@ -570,7 +570,7 @@
   "notes": "Re-searched: no dedicated list; ad hoc items only (都道184号線 通行止め解除; ひので野鳥の森自然公園内工事 0000002988 not opened)."
  },
  {
-  "code": "13307",
+  "pref": "東京都",
   "name": "檜原村",
   "status": "found",
   "url": "https://www.vill.hinohara.tokyo.jp/category/1-5-3-0-0-0-0-0-0-0.html",
@@ -585,7 +585,7 @@
   ]
  },
  {
-  "code": "13308",
+  "pref": "東京都",
   "name": "奥多摩町",
   "status": "index_only",
   "url": "https://www.town.okutama.tokyo.jp/1/kankosangyoka/kankojoho/3/index.html",
@@ -596,7 +596,7 @@
   "notes": "Re-searched: no dedicated road-closure list; tourism お知らせ index (incl. 氷川渓谷遊歩道, 国道411号) is the best available."
  },
  {
-  "code": "13361",
+  "pref": "東京都",
   "name": "大島町",
   "status": "not_found",
   "url": null,
@@ -607,7 +607,7 @@
   "notes": "Searched; only ordinances/disaster plans/newsletters."
  },
  {
-  "code": "13362",
+  "pref": "東京都",
   "name": "利島村",
   "status": "unverified",
   "url": null,
@@ -618,7 +618,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13363",
+  "pref": "東京都",
   "name": "新島村",
   "status": "not_found",
   "url": null,
@@ -629,7 +629,7 @@
   "notes": "Searched vill.niijima.tokyo.jp: no results (domain may differ)."
  },
  {
-  "code": "13364",
+  "pref": "東京都",
   "name": "神津島村",
   "status": "unverified",
   "url": "https://www.vill.kouzushima.tokyo.jp/2024-1220/",
@@ -640,7 +640,7 @@
   "notes": "Candidates from search (also /2026-0414/ 天上山登山道通行止め); not opened. 各課からのお知らせ index opened: first page no road items."
  },
  {
-  "code": "13381",
+  "pref": "東京都",
   "name": "三宅村",
   "status": "unverified",
   "url": "https://www.vill.miyake.tokyo.jp/kakuka/chiikiseibi/news/2025-1021-1556-10.html",
@@ -651,7 +651,7 @@
   "notes": "Candidate ad hoc notice (2025-10) from search; fetch failed. 新着情報 index opened (https://www.vill.miyake.tokyo.jp/news/index.html): no road items."
  },
  {
-  "code": "13382",
+  "pref": "東京都",
   "name": "御蔵島村",
   "status": "unverified",
   "url": null,
@@ -662,7 +662,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13401",
+  "pref": "東京都",
   "name": "八丈町",
   "status": "not_found",
   "url": null,
@@ -673,7 +673,7 @@
   "notes": "Searched; nothing relevant."
  },
  {
-  "code": "13402",
+  "pref": "東京都",
   "name": "青ヶ島村",
   "status": "unverified",
   "url": null,
@@ -684,7 +684,7 @@
   "notes": "Not yet searched (search budget); no URL opened."
  },
  {
-  "code": "13421",
+  "pref": "東京都",
   "name": "小笠原村",
   "status": "not_found",
   "url": null,

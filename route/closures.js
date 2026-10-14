@@ -16,12 +16,12 @@
     14: [{ id: 'kanagawa-keneirin', name: '神奈川県 自然環境保全センター(県営林道)', url: 'https://www.pref.kanagawa.jp/docs/f4y/03shinrin/seibi/keneirin/rinndou.html', kind: 'kanagawa' }],
     19: [
       { id: 'yamanashi', name: '山梨県 県営林道通行規制情報', url: 'https://www.pref.yamanashi.jp/rindoujyouhou/list.php', kind: 'yamanashi' },
-      { id: 'kofu', name: '甲府市 市営林道通行規制情報', url: 'https://www.city.kofu.yamanashi.jp/machi/kotsu/index.html', kind: 'kofu' },
+      { id: 'kofu', muni: '山梨県|甲府市', name: '甲府市 市営林道通行規制情報', url: 'https://www.city.kofu.yamanashi.jp/machi/kotsu/index.html', kind: 'kofu' },
     ],
     20: [
-      { id: 'matsumoto', name: '長野県 松本市 林道規制情報', url: 'https://www.city.matsumoto.nagano.jp/site/benricho/3182.html', kind: 'city', parse: 'parseMatsumoto' },
-      { id: 'azumino', name: '長野県 安曇野市 林道などの道路状況', url: 'https://www.city.azumino.nagano.jp/soshiki/30/91218.html', kind: 'city', parse: 'parseAzumino' },
-      { id: 'ina', name: '長野県 伊那市 南アルプス林道の車両通行規制', url: 'https://www.inacity.jp/kankojoho/sangaku_alps/minamialps/minamialps_tozan/tozanshanominasamahe/rindoutuuko.html', kind: 'city', parse: 'parseIna' },
+      { id: 'matsumoto', muni: '長野県|松本市', name: '長野県 松本市 林道規制情報', url: 'https://www.city.matsumoto.nagano.jp/site/benricho/3182.html', kind: 'city', parse: 'parseMatsumoto' },
+      { id: 'azumino', muni: '長野県|安曇野市', name: '長野県 安曇野市 林道などの道路状況', url: 'https://www.city.azumino.nagano.jp/soshiki/30/91218.html', kind: 'city', parse: 'parseAzumino' },
+      { id: 'ina', muni: '長野県|伊那市', name: '長野県 伊那市 南アルプス林道の車両通行規制', url: 'https://www.inacity.jp/kankojoho/sangaku_alps/minamialps/minamialps_tozan/tozanshanominasamahe/rindoutuuko.html', kind: 'city', parse: 'parseIna' },
     ],
     13: [{ id: 'tokyo', name: '東京都 森林事務所', url: 'https://forestry-office.metro.tokyo.lg.jp/about/rin/rin_kisei/index.html', kind: 'tokyo' }],
   };
@@ -293,17 +293,43 @@
     return res;
   }
 
-  async function run(bbox, codes, say) {
-    const results = []; const fails = []; const notes = []; const aiOnly = []; let aiTried = false;
+
+  // ルートが通る市町村("県名|市町村名")を国土地理院の逆ジオコーダで調べる。判定できなければ null(絞り込みはしない)
+  let muniTable = null;
+  async function loadMuniTable() {
+    if (muniTable) return muniTable;
+    const t = await (await fetch('https://maps.gsi.go.jp/js/muni.js')).text(); const tb = {};
+    for (const m of t.matchAll(/MUNI_ARRAY\["(\d+)"\]\s*=\s*'([^']*)'/g)) { const a = m[2].split(','); tb[m[1].padStart(5, '0')] = a[1] + '|' + a[3]; }
+    return (muniTable = tb);
+  }
+  async function routeMunis(pts, say) {
+    if (!pts || !pts.length) return null;
+    let tb; try { tb = await loadMuniTable(); } catch (e) { return null; }
+    // 約1.5kmごと(最大200地点)+出発地・経由地・到着地。間隔より短い区間だけ通る市町村は拾えないことがある
+    const hav = (a, b) => { const R = 6371000, r = Math.PI / 180, dl = (b[0] - a[0]) * r, dn = (b[1] - a[1]) * r; const x = Math.sin(dl / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dn / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); };
+    let total = 0; for (let i = 1; i < pts.length; i++) total += hav(pts[i - 1], pts[i]);
+    const step = Math.max(1500, total / 200); const sample = [pts[0]]; let acc = 0, next = step;
+    for (let i = 1; i < pts.length; i++) { acc += hav(pts[i - 1], pts[i]); if (acc >= next) { sample.push(pts[i]); next += step; } }
+    sample.push(pts[pts.length - 1]);
+    const keys = new Set(); let ok = 0; const todo = sample.slice(); if (say) say('通る市町村を調べています…');
+    const worker = async () => { while (todo.length) { const c = todo.shift(); try { const j = await (await fetch(`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${c[0]}&lon=${c[1]}`)).json(); const cd = j.results && j.results.muniCd; const v = cd && tb[String(cd).padStart(5, '0')]; if (v) { ok++; const [pf, nm] = v.split('|'); keys.add(pf + '|' + root.MuniRegistry.normName(nm)); } } catch (e) { /* 判定できない地点は無視 */ } } };
+    await Promise.all(Array.from({ length: 8 }, worker));
+    return ok >= Math.ceil(sample.length * 0.8) ? keys : null; // 8割未満しか判定できなければ、絞り込みに使わない
+  }
+
+  async function run(bbox, codes, say, muniKeys) {
+    const results = []; const fails = []; const notes = []; const aiOnly = []; const skipped = []; let aiTried = false;
     for (const code of codes) {
       for (const u of UNSUPPORTED[code] || []) notes.push(u);
       const srcs = SOURCES[code];
       if (!srcs) continue;
       for (const s of srcs) {
+        if (!root.MuniRegistry.wantsMuni(s, muniKeys)) { skipped.push(s.name); continue; }
         say(`${s.name} を取得中…`);
         try { let part = await fetchSource(s); if (aiEnabled()) { aiTried = true; say(`${s.name} をGeminiで二重チェック中…`); const ap = await aiApply(s, part); part = ap.records; aiOnly.push(...ap.aiOnly); if (ap.note) notes.push(ap.note); } results.push(...part); if (s._partial) fails.push(`${s.name}: ${s._partial}`); } catch (e) { fails.push(`${s.name}: ${e.message}`); }
       }
     }
+    if (skipped.length) notes.push('ルートが通らない市町村のため取得しなかったページ: ' + skipped.join('・'));
     const unk = results.filter((r) => r.status === '不明'); if (unk.length) notes.push(`規制の内容を判定できなかった行が${unk.length}件あります(通行止めとは扱いません。${unk.slice(0, 3).map((r) => r.route).join('・')}${unk.length > 3 ? ' ほか' : ''})。公式ページで確認してください`);
     // 規制のあるものだけを位置付けの対象にする(「特になし」等は位置を付けない)
     const targets = results.filter((r) => r.status === '通行止め' || r.status === '一部規制');
@@ -429,6 +455,23 @@
       + li(g.aiOnly || [], (x) => `AIのみ検出 ・ AI: ${e(x.status)}${x.section ? '(' + e(x.section) + ')' : ''} ・ 原文の引用: 「${e(x.quote)}」 ・ ${link(x)}`) + '</ul>';
   }
 
+  // ルートが通る市町村の公式規制ページ(台帳 data/muni-inventory)。自動で内容を読めるのは一部だけで、他は公式ページへのリンクを示す
+  let muniRender = 0;
+  async function renderMunis(keys, prefCodes) {
+    const el = document.querySelector('#ac-munis'); if (!el) return; const my = ++muniRender;
+    if (!keys) { el.innerHTML = '<div class="hint">通る市町村を判定できなかったため、市町村の規制ページの一覧は出していません。</div>'; return; }
+    const prefs = [...new Set([...keys].map((k) => k.split('|')[0]))].filter((p) => root.MuniRegistry.FILES[p]);
+    if (!prefs.length) { el.innerHTML = ''; return; }
+    const { reg, errs } = await root.MuniRegistry.load(prefs, async (u) => { const r = await fetch(u); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+    if (my !== muniRender) return;
+    const r = root.MuniRegistry.forRoute(reg, [...keys]); const e = ctx.esc;
+    const auto = new Set(Object.values(SOURCES).flat().filter((s) => s.muni).map((s) => s.muni));
+    const li = r.listed.map((x) => `<li style="display:block"><b>${e(x.name)}</b> <span class="hint">${e(x.pref)}・${x.status === 'found_empty' ? '今は規制の記載なし' : x.status === 'index_only' ? '専用の一覧なし(道路・防災の案内ページ)' : x.covers_forest_road === true ? '林道を含む' : '林道の記載は未確認'}${x.updated_hint ? '・更新 ' + e(x.updated_hint) : ''}</span> <a href="${e(x.url)}" target="_blank" rel="noopener">公式ページ ↗</a></li>`).join('');
+    const un = r.unconfirmed.map((x) => x.name).join('・');
+    el.innerHTML = `<div class="hint"><b>ルートが通る市町村の公式の規制ページ</b>(台帳は調査途中。内容はこのアプリでは読まず、リンクだけ示します)</div>${r.listed.length ? `<ul class="sr">${li}</ul>` : '<div class="hint">台帳に確認済みのページがある市町村はありません。</div>'}${un ? `<div class="hint">規制ページを確認できていない市町村: ${e(un)}(ページが無いという意味ではありません。通行止めが無いことの保証でもありません)</div>` : ''}${errs.length ? `<div class="hint">台帳を読めなかった県: ${e(errs.join('・'))}</div>` : ''}`;
+    void prefCodes; void auto;
+  }
+
   function renderList(res) {
     const ul = document.querySelector('#ac-list'); ul.innerHTML = '';
     found = res.near;
@@ -489,13 +532,14 @@
     async function fetchNow2(auto) {
       const pts = ctx.getPoints(); if (!pts.length) { setStatus('先に出発地と目的地を入れてください'); return null; }
       setStatus('通る県を調べています…'); const codes = await ctx.getPrefCodes(); const known = codes.filter((k) => SOURCES[k]);
+      const muniKeys = ctx.getRoutePts ? await routeMunis(ctx.getRoutePts(), setStatus) : null; renderMunis(muniKeys, codes);
       if (!known.length) { buildGaps(null, codes); renderGaps(); setStatus('通過する県の自動取得にはまだ対応していません(対応: '+Object.keys(SOURCES).map((k)=>PREF_NAMES[k]||k).join('・')+')'); return null; }
       const m = 0.08; const bbox = [Math.min(...pts.map((p) => p.lat)) - m, Math.min(...pts.map((p) => p.lon)) - m, Math.max(...pts.map((p) => p.lat)) + m, Math.max(...pts.map((p) => p.lon)) + m].map((v) => +v.toFixed(4));
-      const sig = bbox.join(',') + '|' + known.join(',');
+      const sig = bbox.join(',') + '|' + known.join(',') + '|' + (muniKeys ? [...muniKeys].sort().join(',') : '-');
       if (auto && lastAuto && lastAuto.sig === sig && Date.now() - lastAuto.t < 600000) { setStatus('直前に取得済みのため再取得しません(10分以内)'); return null; }
       $('#ac-go').disabled = true;
       try {
-        const res = await run(bbox, known, setStatus); renderList(res); buildGaps(res, codes); renderGaps(); lastAuto = { sig, t: Date.now() };
+        const res = await run(bbox, known, setStatus, muniKeys); renderList(res); buildGaps(res, codes); renderGaps(); lastAuto = { sig, t: Date.now() };
         const log = root.FetchCore ? fc().getLog().slice(-6).map((l) => `${l.label}:${l.result}`).join(' / ') : '';
         setStatus(`取得: 規制あり ${res.regulated}路線(全${res.total}行)のうち、この範囲でOSMに同名の道がある ${res.near.length}路線を表示。範囲外/道が見つからない ${res.outside}路線は表示しません。` + (res.fails.length ? ' 失敗: ' + res.fails.join(' / ') : '') + (res.notes.length ? ' 未対応・注意: ' + res.notes.join(' / ') : '') + (log ? ' 〔取得状況 ' + log + '〕' : ''));
       } catch (e) { buildGaps({ gaps: { unjudged: [], notFound: [], noPos: [], fails: ['取得できませんでした: ' + e.message], sources: {} } }, codes); renderGaps(); setStatus('取得できませんでした: ' + e.message); }
