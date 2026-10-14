@@ -63,7 +63,7 @@ with sync_playwright() as p:
     pg.route('**/*',h)
     pg.goto('http://127.0.0.1:%d/index.html'%srv.server_address[1]);pg.wait_for_function('typeof __rt!=="undefined"',timeout=20000)
     ok(pg.inner_text('#go')=='ルートを計算','ボタン名')
-    ok(pg.evaluate("[...document.querySelectorAll('#obj option')].map(o=>o.textContent)")==['最小獲得標高','最大獲得標高','自転車ルートを優先'],'プルダウンの選択肢')
+    ok(pg.evaluate("[...document.querySelectorAll('#obj option')].map(o=>o.textContent)")==['最小獲得標高','最大獲得標高','自転車ルートを優先','快適・絶景'],'プルダウンの選択肢(既存の3つ+快適・絶景)')
     pg.evaluate("__rt.st.points=[{lat:%f,lon:%f,name:'S'},{lat:%f,lon:%f,name:'G'}]"%(S+G))
     def run(obj):
         routes.clear();tr.clear()
