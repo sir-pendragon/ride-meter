@@ -48,8 +48,8 @@ a{color:var(--acc)}
  <div class="row" style="margin-top:8px"><button class="btn sm" id="swap">出発↔目的地を入れ替え</button><button class="btn sm" id="clr">地点をすべて消す</button></div>
 </section>
 <section id="s-opt"><h2>② ルートを計算</h2>
- <div class="row"><label>迂回の上限 <select id="detour"><option value="1.2">最短の1.2倍まで</option><option value="1.5" selected>最短の1.5倍まで</option><option value="2">最短の2倍まで</option></select></label></div>
- <div class="row" style="margin-top:8px"><button class="btn pri" id="go">3つのルートを計算</button></div>
+ <div class="row"><label>獲得標高 <select id="obj"><option value="min" selected>最小獲得標高</option><option value="max">最大獲得標高</option></select></label><label>迂回の上限 <select id="detour"><option value="1.2">最短の1.2倍まで</option><option value="1.5" selected>最短の1.5倍まで</option><option value="2">最短の2倍まで</option></select></label></div>
+ <div class="row" style="margin-top:8px"><button class="btn pri" id="go">ルートを計算</button></div>
  <div class="bar" id="bar" hidden><i></i></div><p class="hint" id="st"></p>
 </section>
 <div id="map" style="margin:0 0 12px;border-radius:10px;overflow:hidden"></div>
@@ -60,8 +60,7 @@ a{color:var(--acc)}
  <p class="hint" id="notes"></p>
 </section>
 <section id="s-res" hidden><h2>③ 結果</h2><div class="cards" id="cards"></div><p class="hint" id="gap-note" style="color:#B58900"></p>
- <div class="row" style="margin-top:10px"><label><input type="checkbox" id="ov" checked> 3つを重ねて地図に表示</label></div>
-</section>
+ </section>
 <section id="s-cl"><h2>通行止めの確認</h2>
  <div id="cl-found"><p class="hint" style="margin:0">ルートを計算すると、そのルートを調べて見つかった通行規制だけがここに出ます。</p></div>
  <h3 id="cl-mine-h" hidden style="margin-top:12px">あなたが地図で登録した通行止め</h3>
@@ -94,9 +93,9 @@ a{color:var(--acc)}
 const $=s=>document.querySelector(s);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const VAL='https://valhalla1.openstreetmap.de';
 const DEM_Z=13;
-const st={points:[],closures:[],cands:[],sel:null,A:null,B:null,C:null};
-try{const o=JSON.parse(localStorage.getItem('rt-state')||'{}');if(Array.isArray(o.points))st.points=o.points.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));if(Array.isArray(o.closures))st.closures=o.closures.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));if(o.detour)$('#detour').value=o.detour}catch(e){}
-const save=()=>{try{localStorage.setItem('rt-state',JSON.stringify({points:st.points,closures:st.closures,detour:$('#detour').value}))}catch(e){}};
+const st={points:[],closures:[],cands:[],sel:null,best:null};
+try{const o=JSON.parse(localStorage.getItem('rt-state')||'{}');if(Array.isArray(o.points))st.points=o.points.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));if(Array.isArray(o.closures))st.closures=o.closures.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));if(o.detour)$('#detour').value=o.detour;if(o.obj==='min'||o.obj==='max')$('#obj').value=o.obj}catch(e){}
+const save=()=>{try{localStorage.setItem('rt-state',JSON.stringify({points:st.points,closures:st.closures,detour:$('#detour').value,obj:$('#obj').value}))}catch(e){}};
 
 /* ---------- geo ---------- */
 const R=6371008.8,rad=Math.PI/180;
@@ -121,15 +120,15 @@ function metrics(D,z0){if(!z0)return{gain:null};const z=med3(z0);const tp=zigzag
   return{gain:Math.round(gain),loss:Math.round(loss),climbDist:climb,avgAll:D.total?gain/D.total:0,avgClimb:climb>0?gain/climb:0,maxGrade:maxg,z,zmin:Math.min(...z),zmax:Math.max(...z)}}
 
 /* ---------- ルート計算(Valhalla) ---------- */
-const VARIANTS=[
- {bicycle_type:'Road',use_hills:0,avoid_bad_surfaces:1,use_roads:0.3},
- {bicycle_type:'Hybrid',use_hills:0,avoid_bad_surfaces:0.5,use_roads:0.3},
- {bicycle_type:'Mountain',use_hills:0,avoid_bad_surfaces:0,use_roads:0.2},
- {bicycle_type:'Road',use_hills:0.3,avoid_bad_surfaces:1,use_roads:0.5},
- {bicycle_type:'Hybrid',use_hills:0.5,avoid_bad_surfaces:0.5,use_roads:0.5},
- {bicycle_type:'Road',use_hills:1,avoid_bad_surfaces:1,use_roads:0.8},
- {bicycle_type:'Hybrid',use_hills:1,avoid_bad_surfaces:0.5,use_roads:0.8},
- {bicycle_type:'Road',use_hills:0,avoid_bad_surfaces:1,use_roads:1}];
+/* 目的ごとの探索設定。最小: 坂を避ける設定、最大: 坂を好む設定。候補は同時に問い合わせる */
+const VAR={
+ min:[{bicycle_type:'Road',use_hills:0,avoid_bad_surfaces:1,use_roads:0.3},
+  {bicycle_type:'Hybrid',use_hills:0,avoid_bad_surfaces:0.5,use_roads:0.3},
+  {bicycle_type:'Mountain',use_hills:0,avoid_bad_surfaces:0,use_roads:0.2}],
+ max:[{bicycle_type:'Road',use_hills:1,avoid_bad_surfaces:1,use_roads:0.8},
+  {bicycle_type:'Hybrid',use_hills:1,avoid_bad_surfaces:0.5,use_roads:0.8},
+  {bicycle_type:'Mountain',use_hills:1,avoid_bad_surfaces:0,use_roads:0.5}]};
+const objective=()=>$('#obj').value==='max'?'max':'min';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function vpost(path,body,tries=2){let err;for(let t=0;t<tries;t++){try{const r=await fetch(VAL+path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});const j=await r.json();if(r.ok)return j;err=new Error(j.error||('HTTP '+r.status));err.code=j.error_code;if(r.status<500&&r.status!==429)throw err}catch(e){err=e;if(e.code)throw e}await sleep(800)}throw err}
 function locs(){return st.points.map((p,i)=>({lat:p.lat,lon:p.lon,type:(i===0||i===st.points.length-1)?'break':'through'}))}
@@ -142,20 +141,24 @@ function nearClosure(pts){const hits=[];for(const c of st.closures){let m=1e9;fo
 function setProg(f,t){$('#bar').hidden=f==null;if(f!=null)$('#bar i').style.width=Math.round(f*100)+'%';$('#st').textContent=t||''}
 let busy=false;
 async function compute(){if(busy)return;if(!compute._r)Closures.resetBoost();if(st.points.length<2){setProg(null,'出発地と目的地を入れてください');return}busy=true;$('#go').disabled=true;$('#s-res').hidden=$('#s-prof').hidden=true;st.cands=[];
-  try{if(!compute._r){setProg(0.02,'通行止め情報を自動取得しています(最大60秒。失敗しても計算は続けます)');try{await Closures.autoFetch(60000)}catch(e){}}
-  const raw=[];const total=VARIANTS.length;for(let i=0;i<total;i++){setProg(i/(total+4)*0.5,`ルート候補を作成中 ${i+1}/${total}`);try{const r=await routeVariant(VARIANTS[i],i===0?2:0);raw.push(...r)}catch(e){if(i===0){throw e}}await sleep(150)}
+  try{const first=!compute._r;
+  const closureP=first?Closures.autoFetch(60000).catch(()=>{}):Promise.resolve();
+  const vs=VAR[objective()];setProg(0.05,first?`通行止め情報を取得しながら、ルート候補を作成しています(${vs.length}通りを同時に問い合わせ)`:`ルート候補を作り直しています(${vs.length}通りを同時に問い合わせ)`);
+  const res=await Promise.allSettled(vs.map((v,i)=>routeVariant(v,i===0?2:0)));
+  const raw=[];let firstErr=null;for(const r of res){if(r.status==='fulfilled')raw.push(...r.value);else if(!firstErr)firstErr=r.reason}
+  if(!raw.length)throw firstErr||new Error('ルートが見つかりませんでした');
+  setProg(0.4,'通行止め情報の取得を待っています');await closureP;
     const seen=new Map();for(const r of raw){const k=sig(r.pts);if(!seen.has(k))seen.set(k,r)}const cs=[...seen.values()];
-    if(!cs.length)throw new Error('ルートが見つかりませんでした');
     {const hh=cs.flatMap(c=>Closures.hits(c.pts));if(hh.length&&(compute._r||0)<2){compute._r=(compute._r||0)+1;setProg(null,`「避ける」を確定した規制を通るため、除外を追加して再計算します(${compute._r}/2)`);Closures.addBoost(hh);busy=false;return compute()}}
-    for(let i=0;i<cs.length;i++){const c=cs[i];setProg(0.5+0.5*i/cs.length,`標高と路面を調べています ${i+1}/${cs.length}`);const D=densify(c.pts,25);c.D=D;c.len=D.total;const [z,sf]=await Promise.all([elevations(D),surfaceOf(c)]);c.m=metrics(D,z);c.sf=sf;c.paved=sf?sf.paved:null;c.gain=c.m.gain;c.closed=nearClosure(c.pts);c.hitsAuto=Closures.hits(c.pts);c.unkAuto=Closures.warnings(c.pts);await sleep(100)}
-    st.cands=cs;compute._r=0;choose();setProg(null,'');render();{const gn=document.getElementById('gap-note');if(gn)gn.textContent=Closures.gapText()}}
+    let done=0;await Promise.all(cs.map(async c=>{const D=densify(c.pts,25);c.D=D;c.len=D.total;const z=await elevations(D);c.m=metrics(D,z);c.sf=null;c.paved=null;c.sfDone=false;c.gain=c.m.gain;c.closed=nearClosure(c.pts);c.hitsAuto=Closures.hits(c.pts);c.unkAuto=Closures.warnings(c.pts);done++;setProg(0.5+0.5*done/cs.length,`標高を調べています ${done}/${cs.length}`)}));
+    st.cands=cs;compute._r=0;choose();setProg(null,'');render();{const gn=document.getElementById('gap-note');if(gn)gn.textContent=Closures.gapText()}ensureSurface(st.sel)}
   catch(e){setProg(null,'計算できませんでした: '+(e&&e.message||e)+(e&&e.code===171?'(地点が道路から遠すぎます)':''));}
   busy=false;$('#go').disabled=false}
-function choose(){const cs=st.cands;const minLen=Math.min(...cs.map(c=>c.len));const lim=+$('#detour').value;const ok=cs.filter(c=>c.len<=minLen*lim);st.pool=ok;
-  const withG=ok.filter(c=>c.gain!=null);st.A=withG.length?withG.reduce((a,b)=>(b.gain<a.gain||(b.gain===a.gain&&b.len<a.len))?b:a):null;
-  const withP=ok.filter(c=>c.paved!=null);st.B=withP.length?withP.reduce((a,b)=>(b.paved>a.paved+0.005||(Math.abs(b.paved-a.paved)<=0.005&&b.len<a.len))?b:a):null;
-  st.C=null;if(st.B){const s2=withG.filter(c=>c.paved!=null&&c.paved>=st.B.paved-0.05);if(s2.length)st.C=s2.reduce((a,b)=>(b.gain<a.gain||(b.gain===a.gain&&b.len<a.len))?b:a)}
-  st.sel=st.C||st.A||st.B||ok[0]}
+function choose(){const cs=st.cands;const minLen=Math.min(...cs.map(c=>c.len));const lim=+$('#detour').value;const ok=cs.filter(c=>c.len<=minLen*lim);st.pool=ok;const mx=objective()==='max';
+  const withG=ok.filter(c=>c.gain!=null);st.best=withG.length?withG.reduce((a,b)=>((mx?b.gain>a.gain:b.gain<a.gain)||(b.gain===a.gain&&b.len<a.len))?b:a):null;
+  st.sel=st.best||ok[0]}
+/* 舗装率は選んだルートだけ調べる(全候補を調べると時間がかかるため)。結果は候補ごとに保存 */
+async function ensureSurface(c){if(!c||c.sfDone||c._sf)return;c._sf=true;const sf=await surfaceOf(c);c.sf=sf;c.paved=sf?sf.paved:null;c.sfDone=true;c._sf=false;if(st.sel===c&&st.cands.includes(c))render(true)}
 
 /* ---------- 地図 ---------- */
 const map=L.map('map',{zoomControl:true}).setView([36.5,138],5);
@@ -163,7 +166,7 @@ const gsi=(id,ext,maxZ,att)=>L.tileLayer(`https://cyberjapandata.gsi.go.jp/xyz/$
 const base={'標準':gsi('std','png',18).addTo(map),'淡色':gsi('pale','png',18),'写真':gsi('seamlessphoto','jpg',18),'色別標高':gsi('relief','png',15)};
 L.control.layers(base,null,{collapsed:true}).addTo(map);
 const gPts=L.layerGroup().addTo(map),gRt=L.layerGroup().addTo(map),gCl=L.layerGroup().addTo(map);let hoverMk=null;
-const COL={A:'var(--c-a)',B:'var(--c-b)',C:'var(--c-c)'};const HEX={A:'#2E7D4F',B:'#2440C8',C:'#C25A12'};
+const HEX={min:'#2E7D4F',max:'#C25A12'};
 function pinIcon(t,c){return L.divIcon({className:'',html:`<div class="pin ${c||''}">${t}</div>`,iconSize:[26,26],iconAnchor:[13,13]})}
 function drawPts(){gPts.clearLayers();st.points.forEach((p,i)=>{const last=i===st.points.length-1&&i>0;const mk=L.marker([p.lat,p.lon],{icon:pinIcon(i===0?'S':last?'G':String(i),i===0?'s':last?'g':''),draggable:true}).addTo(gPts);mk.on('dragend',()=>{const ll=mk.getLatLng();p.lat=ll.lat;p.lon=ll.lng;p.name=p.name||'地図上の地点';save();clearResults();listPts()})});
   gCl.clearLayers();st.closures.forEach((c,i)=>{L.circle([c.lat,c.lon],{radius:40,color:'#B3261E',fillColor:'#B3261E',fillOpacity:.25,weight:2}).addTo(gCl);L.marker([c.lat,c.lon],{icon:pinIcon('✕','x')}).addTo(gCl).bindTooltip(esc(c.note||'通行止め'))})}
@@ -181,7 +184,7 @@ function renderClFound(){const box=document.getElementById('cl-found');if(!box)r
   box.innerHTML='<ul class="sr">'+hs.map(x=>li('避ける確定','#B3261E',x.route,'「避ける」を確定した規制を、このルートが通ります(避けるルートが見つかっていません)。','')).join('')
     +ws.map(x=>li(x.status,x.status==='通行止め'?'#B3261E':'#B58900',x.route+(x.municipality?'('+x.municipality+')':''),[x.kind==='candidate'?'位置は推定(地図で確認して「避ける」を押すと迂回します)':'区間を特定できていません(通れるとは判断しません)',x.section?'区間: '+esc(x.section):'',x.period?'期間: '+esc(x.period):'',x.sourceName?esc(x.sourceName):''].filter(Boolean).join(' ・ '),x.sourceUrl)).join('')+'</ul>';
 }
-function clearResults(){renderClFound();st.cands=[];st.A=st.B=st.C=st.sel=null;$('#s-res').hidden=$('#s-prof').hidden=true;gRt.clearLayers()}
+function clearResults(){renderClFound();st.cands=[];st.best=st.sel=null;$('#s-res').hidden=$('#s-prof').hidden=true;gRt.clearLayers()}
 function listPts(){setTimeout(()=>{if(typeof updatePrefs==='function')updatePrefs()},0);const ul=$('#pts');ul.innerHTML='';st.points.forEach((p,i)=>{const last=i===st.points.length-1&&i>0;const li=document.createElement('li');li.innerHTML=`<span class="badge">${i===0?'S':last?'G':i}</span><div class="grow"><div class="nm">${esc(p.name||'地図上の地点')}</div><div class="hint">${i===0?'出発':last?'目的地':'経由'} ・ ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</div></div><button class="btn sm" data-i="${i}">削除</button>`;ul.appendChild(li)});
   if(!st.points.length)ul.innerHTML='<li class="hint">まだ地点がありません</li>';drawPts()}
 function listCl(){renderClFound();const ul=$('#cl');ul.innerHTML='';st.closures.forEach((c,i)=>{const li=document.createElement('li');li.innerHTML=`<span class="badge" style="background:#B3261E">✕</span><div class="grow"><div class="nm">${esc(c.note||'通行止め')}</div><div class="hint">${esc(c.date||'')} ・ ${c.lat.toFixed(5)}, ${c.lon.toFixed(5)}</div></div><button class="btn sm" data-i="${i}">削除</button>`;ul.appendChild(li)});if(!st.closures.length)ul.innerHTML='<li class="hint">登録した通行止めはありません</li>';drawPts()}
@@ -205,26 +208,22 @@ $('#sr').onclick=e=>{const b=e.target.closest('button[data-k]');if(!b)return;con
 $('#geo').onclick=()=>{if(!navigator.geolocation){return}navigator.geolocation.getCurrentPosition(p=>{setStart(p.coords.latitude,p.coords.longitude,'現在地');map.setView([p.coords.latitude,p.coords.longitude],13)},()=>{$('#st').textContent='現在地を取得できませんでした(位置情報の許可を確認してください)'},{enableHighAccuracy:true,timeout:15000})};
 
 /* ---------- 結果の表示 ---------- */
-const NAMES={A:'最低獲得標高',B:'舗装路最大',C:'舗装も標高も(重ね)'};
+const NAMES={min:'最小獲得標高',max:'最大獲得標高'};
 const f1=v=>v==null?'—':v.toFixed(1),pc=v=>v==null?'—':Math.round(v*100)+'%';
-function statsHTML(c){const m=c.m||{};return `<div class="stats"><div><b>${(c.len/1000).toFixed(1)} km</b><span>距離</span></div><div><b>${m.gain==null?'—':'↑'+m.gain+' m'}</b><span>獲得標高</span></div><div><b>${m.gain==null?'—':f1(m.avgAll*100)+'%'}</b><span>平均勾配(獲得÷距離)</span></div><div><b>${m.gain==null?'—':f1(m.avgClimb*100)+'%'}</b><span>登坂区間の平均勾配</span></div><div><b>${m.gain==null?'—':f1(m.maxGrade*100)+'%'}</b><span>最大勾配(100m区間)</span></div><div><b>${pc(c.paved)}</b><span>舗装率(推定)</span></div></div>`}
-function render(){renderClFound();$('#s-res').hidden=$('#s-prof').hidden=false;const cards=$('#cards');cards.innerHTML='';const seenSame=new Map();
-  for(const k of ['A','B','C']){const c=st[k];if(!c){const d=document.createElement('div');d.className='card';d.innerHTML=`<div class="t"><i class="sw" style="background:${COL[k]}"></i>${NAMES[k]}</div><p class="hint" style="margin:4px 0 0">計算できませんでした(標高または路面のデータが取れませんでした)。</p>`;cards.appendChild(d);continue}
-    const same=[...'ABC'].filter(x=>st[x]===c);const d=document.createElement('div');d.className='card'+(st.sel===c?' sel':'');d.dataset.k=k;
-    d.innerHTML=`<div class="t"><i class="sw" style="background:${COL[k]}"></i>${NAMES[k]}${same.length>1&&same[0]!==k?' <span class="hint">(上と同じルート)</span>':''}</div>${statsHTML(c)}${c.closed&&c.closed.length?`<p class="warn" style="margin:6px 0 0">⚠ 登録した通行止め地点(${c.closed.length}件)の近くを通ります</p>`:''}${c.hitsAuto&&c.hitsAuto.length?`<p class="warn" style="margin:6px 0 0">⚠ 「避ける」を確定した規制(${c.hitsAuto.map(h=>esc(h.route)).join('・')})を通ります。避けるルートが見つかりませんでした</p>`:''}${c.unkAuto&&c.unkAuto.length?`<p class="warn" style="margin:6px 0 0">⚠ 規制がある道(${c.unkAuto.map(h=>esc(h.route)+(h.kind==='candidate'?'・未確定':'・区間不明')).join('、')})を通る可能性があります。「避ける」を確定していない、または区間を特定できていないため、通れるとは判断していません。公式ページで確認してください</p>`:''}`;cards.appendChild(d)}
-  const tb=$('#tb');const pool=new Set(st.pool);tb.innerHTML='<tr><th>候補</th><th>距離</th><th>獲得標高</th><th>舗装率</th></tr>'+st.cands.map((c,i)=>{const tags=[...'ABC'].filter(x=>st[x]===c).join('');return `<tr class="cand${st.sel===c?' sel':''}" data-i="${i}"><td>${tags?'★'+tags+' ':''}#${i+1}${pool.has(c)?'':' (範囲外)'}</td><td>${(c.len/1000).toFixed(1)}km</td><td>${c.gain==null?'—':c.gain+'m'}</td><td>${pc(c.paved)}</td></tr>`}).join('');
-  drawRoutes(true);drawProfile();notes();updatePrefs()}
-function notes(){const n=[];const sel=st.cands.filter(c=>c.paved==null).length;if(sel)n.push(`${sel}件の候補は舗装率を取得できませんでした。`);if(st.cands.some(c=>c.gain==null))n.push('一部の候補は標高データがなく(国外・海上など)、獲得標高を計算していません。');
-  n.push(`候補は最大${st.cands.length}本です。「最低獲得標高」「舗装路最大」「重ね」は、この候補の中から選んでいます(重ね=舗装率が最大値の−5ポイント以内で獲得標高が最小)。道が少ない地域では、3つが同じルートになります。`);n.push('舗装率は、OpenStreetMapに路面情報がない道を舗装とみなしている場合があります。獲得標高は地理院の標高(約19m間隔)から計算した推定値で、実走の値とは異なります。');$('#notes').textContent=n.join(' ')}
-function drawRoutes(fit){gRt.clearLayers();const show=$('#ov').checked;const lines=[];const sel=st.sel;const mk=(c,col,w,op)=>{const pl=L.polyline(c.pts,{color:col,weight:w,opacity:op}).addTo(gRt);lines.push(pl);return pl};
-  if(show){const done=new Set();for(const k of ['B','A','C']){const c=st[k];if(c&&!done.has(c)){done.add(c);const ks=[...'ABC'].filter(x=>st[x]===c);mk(c,HEX[ks[ks.length-1]],c===sel?6:4,c===sel?.95:.7)}}}
-  if(sel&&!(show&&[...'ABC'].some(x=>st[x]===sel)))mk(sel,'#555',6,.9);
-  if(sel){const ks=[...'ABC'].filter(x=>st[x]===sel);if(!show||!ks.length){}else{L.polyline(sel.pts,{color:HEX[ks[ks.length-1]],weight:7,opacity:1}).addTo(gRt)}}
-  if(fit&&sel){map.fitBounds(L.polyline(sel.pts).getBounds(),{padding:[30,30]})}}
-$('#ov').onchange=()=>drawRoutes(false);
-$('#cards').onclick=e=>{const d=e.target.closest('.card[data-k]');if(!d)return;const c=st[d.dataset.k];if(c){st.sel=c;render()}};
-$('#tb').onclick=e=>{const r=e.target.closest('tr.cand');if(!r)return;st.sel=st.cands[+r.dataset.i];render()};
-$('#detour').onchange=()=>{save();if(st.cands.length){choose();render()}};
+function statsHTML(c){const m=c.m||{};return `<div class="stats"><div><b>${(c.len/1000).toFixed(1)} km</b><span>距離</span></div><div><b>${m.gain==null?'—':'↑'+m.gain+' m'}</b><span>獲得標高</span></div><div><b>${m.gain==null?'—':f1(m.avgAll*100)+'%'}</b><span>平均勾配(獲得÷距離)</span></div><div><b>${m.gain==null?'—':f1(m.avgClimb*100)+'%'}</b><span>登坂区間の平均勾配</span></div><div><b>${m.gain==null?'—':f1(m.maxGrade*100)+'%'}</b><span>最大勾配(100m区間)</span></div><div><b>${c.sfDone?pc(c.paved):'調べ中…'}</b><span>舗装率(推定)</span></div></div>`}
+function render(noFit){renderClFound();$('#s-res').hidden=$('#s-prof').hidden=false;const cards=$('#cards');cards.innerHTML='';const obj=objective();
+  const c=st.sel;const d=document.createElement('div');d.className='card sel';
+  if(!c||!c.m||c.gain==null){d.innerHTML=`<div class="t"><i class="sw" style="background:${HEX[obj]}"></i>${NAMES[obj]}</div><p class="hint" style="margin:4px 0 0">獲得標高を計算できませんでした(標高データが取れませんでした)。</p>`;cards.appendChild(d)}
+  else{const isBest=c===st.best;d.innerHTML=`<div class="t"><i class="sw" style="background:${HEX[obj]}"></i>${isBest?NAMES[obj]:'選んだ候補 #'+(st.cands.indexOf(c)+1)}${isBest?'':' <span class="hint">('+NAMES[obj]+'ではありません)</span>'}</div>${statsHTML(c)}${c.closed&&c.closed.length?`<p class="warn" style="margin:6px 0 0">⚠ 登録した通行止め地点(${c.closed.length}件)の近くを通ります</p>`:''}${c.hitsAuto&&c.hitsAuto.length?`<p class="warn" style="margin:6px 0 0">⚠ 「避ける」を確定した規制(${c.hitsAuto.map(h=>esc(h.route)).join('・')})を通ります。避けるルートが見つかりませんでした</p>`:''}${c.unkAuto&&c.unkAuto.length?`<p class="warn" style="margin:6px 0 0">⚠ 規制がある道(${c.unkAuto.map(h=>esc(h.route)+(h.kind==='candidate'?'・未確定':'・区間不明')).join('、')})を通る可能性があります。「避ける」を確定していない、または区間を特定できていないため、通れるとは判断していません。公式ページで確認してください</p>`:''}`;cards.appendChild(d)}
+  const tb=$('#tb');const pool=new Set(st.pool);tb.innerHTML='<tr><th>候補</th><th>距離</th><th>獲得標高</th><th>舗装率</th></tr>'+st.cands.map((c,i)=>{return `<tr class="cand${st.sel===c?' sel':''}" data-i="${i}"><td>${c===st.best?'★ ':''}#${i+1}${pool.has(c)?'':' (範囲外)'}</td><td>${(c.len/1000).toFixed(1)}km</td><td>${c.gain==null?'—':c.gain+'m'}</td><td>${c.sfDone?pc(c.paved):'—'}</td></tr>`}).join('');
+  drawRoutes(!noFit);drawProfile();notes();updatePrefs()}
+function notes(){const n=[];if(st.cands.some(c=>c.gain==null))n.push('一部の候補は標高データがなく(国外・海上など)、獲得標高を計算していません。');
+  n.push(`候補は${st.cands.length}本です。「${NAMES[objective()]}」は、この候補の中から選んでいます(迂回の上限の範囲内)。経路探索の結果から選ぶため、地域全体で最小・最大になる道とは限りません。道が少ない地域では、候補が1本だけになります。`);n.push('舗装率は、選んだルートだけ調べます(表の「—」は未調査)。OpenStreetMapに路面情報がない道を舗装とみなしている場合があります。獲得標高は地理院の標高(約19m間隔)から計算した推定値で、実走の値とは異なります。');$('#notes').textContent=n.join(' ')}
+function drawRoutes(fit){gRt.clearLayers();const sel=st.sel;if(!sel)return;L.polyline(sel.pts,{color:HEX[objective()],weight:7,opacity:1}).addTo(gRt);
+  if(fit){map.fitBounds(L.polyline(sel.pts).getBounds(),{padding:[30,30]})}}
+$('#tb').onclick=e=>{const r=e.target.closest('tr.cand');if(!r)return;st.sel=st.cands[+r.dataset.i];render();ensureSurface(st.sel)};
+$('#obj').onchange=()=>{save();clearResults()};
+$('#detour').onchange=()=>{save();if(st.cands.length){choose();render();ensureSurface(st.sel)}};
 
 /* ---------- 標高プロファイル ---------- */
 function drawProfile(){const c=st.sel;const el=$('#prof');if(!c||!c.m||!c.m.z){el.innerHTML='<p class="hint">標高データがありません</p>';$('#pn').textContent='';return}
@@ -233,7 +232,7 @@ function drawProfile(){const c=st.sel;const el=$('#prof');if(!c||!c.m||!c.m.z){e
   let ax='';const ys=(e1-e0)>600?200:(e1-e0)>250?100:50;for(let v=e0;v<=e1;v+=ys)ax+=`<line x1="${Lm}" x2="${W-Rm}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="var(--line)"/><text x="${Lm-5}" y="${(Y(v)+4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--muted)">${v}</text>`;
   const xs=D.total/1000>60?10:D.total/1000>25?5:2;for(let k=0;k*xs*1000<=D.total;k++)ax+=`<text x="${X(k*xs*1000).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${k*xs}</text>`;
   el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" id="psvg"><text x="${W-Rm}" y="${H-8}" text-anchor="end" font-size="11" fill="var(--muted)">km</text><text x="${Lm}" y="9" font-size="11" fill="var(--muted)">標高 m</text>${ax}<path d="${d}L${X(D.total)} ${H-B}L${Lm} ${H-B}Z" fill="var(--acc)" opacity=".15"/><path d="${d}" fill="none" stroke="var(--acc)" stroke-width="2"/><line id="pl" y1="${T}" y2="${H-B}" stroke="var(--ink)" stroke-width="1" opacity="0" /></svg>`;
-  $('#pn').textContent=` (${[...'ABC'].filter(x=>st[x]===c).map(x=>NAMES[x]).join('・')||'候補'}) 最高${Math.round(c.m.zmax)}m`;$('#pr').textContent='グラフをなぞると、その地点の標高と勾配(前後50m)が出ます。';
+  $('#pn').textContent=` (${c===st.best?NAMES[objective()]:'候補'}) 最高${Math.round(c.m.zmax)}m`;$('#pr').textContent='グラフをなぞると、その地点の標高と勾配(前後50m)が出ます。';
   const svg=$('#psvg');const mv=ev=>{const r=svg.getBoundingClientRect();const x=(ev.clientX-r.left)/r.width*W;const s=Math.max(0,Math.min(D.total,(x-Lm)/(W-Lm-Rm)*D.total));let i=Math.round(s/D.total*(D.s.length-1));i=Math.max(0,Math.min(D.s.length-1,i));while(i>0&&D.s[i]>s)i--;while(i<D.s.length-1&&D.s[i+1]<=s)i++;
     const a=Math.max(0,i-2),b=Math.min(z.length-1,i+2);const g=(z[b]-z[a])/Math.max(1,D.s[b]-D.s[a])*100;const pl=$('#pl');pl.setAttribute('x1',X(D.s[i]));pl.setAttribute('x2',X(D.s[i]));pl.setAttribute('opacity','.6');
     $('#pr').textContent=`${(D.s[i]/1000).toFixed(1)} km 地点: 標高 ${Math.round(z[i])} m / 勾配 ${g>=0?'+':''}${g.toFixed(1)}%`;if(!hoverMk)hoverMk=L.circleMarker([D.la[i],D.lo[i]],{radius:7,color:'#fff',weight:2,fillColor:'#17211F',fillOpacity:1}).addTo(map);else hoverMk.setLatLng([D.la[i],D.lo[i]])};
@@ -242,7 +241,7 @@ function drawProfile(){const c=st.sel;const el=$('#prof');if(!c||!c.m||!c.m.z){e
 /* ---------- GPX ---------- */
 $('#gpx').onclick=()=>{const c=st.sel;if(!c)return;const D=c.D,z=c.m&&c.m.z;let g='<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="自転車ルート予想" xmlns="http://www.topografix.com/GPX/1/1">\n';
   for(const p of st.points)g+=`<wpt lat="${p.lat}" lon="${p.lon}"><name>${esc(p.name||'地点')}</name></wpt>\n`;
-  const ks=[...'ABC'].filter(x=>st[x]===c).map(x=>NAMES[x]).join('・')||'ルート候補';g+=`<trk><name>${esc(ks)}</name><trkseg>\n`;for(let i=0;i<D.la.length;i++)g+=`<trkpt lat="${D.la[i].toFixed(6)}" lon="${D.lo[i].toFixed(6)}">${z?`<ele>${z[i].toFixed(1)}</ele>`:''}</trkpt>\n`;g+='</trkseg></trk>\n</gpx>\n';
+  const ks=c===st.best?NAMES[objective()]:'ルート候補';g+=`<trk><name>${esc(ks)}</name><trkseg>\n`;for(let i=0;i<D.la.length;i++)g+=`<trkpt lat="${D.la[i].toFixed(6)}" lon="${D.lo[i].toFixed(6)}">${z?`<ele>${z[i].toFixed(1)}</ele>`:''}</trkpt>\n`;g+='</trkseg></trk>\n</gpx>\n';
   const u=URL.createObjectURL(new Blob([g],{type:'application/gpx+xml'}));const a=document.createElement('a');a.href=u;a.download='route.gpx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),30000)};
 $('#go').onclick=compute;
 /* ---------- 通過する県の判定と規制情報ページ ---------- */
