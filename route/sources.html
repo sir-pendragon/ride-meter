@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>通行止め情報の取得元</title>
+<style>
+:root{--bg:#fafafa;--fg:#1c1c1c;--mut:#666;--line:#ddd;--ok:#1b6e3a;--okbg:#e6f4ea;--inv:#8a5a00;--invbg:#fff1d6;--no:#555;--nobg:#eee;--a:#0b57d0}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121212;--fg:#e8e8e8;--mut:#a0a0a0;--line:#333;--ok:#7fd69b;--okbg:#14301f;--inv:#f0c36a;--invbg:#3a2c0c;--no:#bbb;--nobg:#2a2a2a;--a:#8ab4f8}}
+body{margin:0;padding:16px;background:var(--bg);color:var(--fg);font:15px/1.6 system-ui,sans-serif}
+h1{font-size:20px;margin:0 0 4px}p.s{color:var(--mut);margin:0 0 12px;font-size:13px}
+.w{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:720px}th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top;font-size:13px}
+td:first-child{white-space:nowrap;font-weight:600}a{color:var(--a);word-break:break-all}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;white-space:nowrap}.tag.ok{background:var(--okbg);color:var(--ok)}.tag.inv{background:var(--invbg);color:var(--inv)}.tag.none{background:var(--nobg);color:var(--no)}
+</style></head><body>
+<h1>通行止め情報の取得元(都道府県別)</h1>
+<p class="s">ルート画面が自動取得している公式ページの一覧です。確認日 2026-10-14。「未調査」は、まだ公式ページを探していない県です。ここに無い県の通行止めは、アプリには反映されません。</p>
+<div class="w"><table><thead><tr><th>都道府県</th><th>状態</th><th>該当ページ</th><th>URL</th><th>備考</th></tr></thead><tbody>
+<tr><td>北海道</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>青森県</td><td><span class="tag inv">調査済み・未対応</span></td><td>—</td><td>—</td><td>県全体の一覧ページは見つかっていません(調査済み)</td></tr>
+<tr><td>岩手県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>宮城県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>秋田県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>山形県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>福島県</td><td><span class="tag inv">調査済み・未対応</span></td><td>—</td><td>—</td><td>県全体の一覧ページは見つかっていません(調査済み)</td></tr>
+<tr><td>茨城県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr class="ok"><td>栃木県</td><td><span class="tag ok">自動取得中(矢板のみ)</span></td><td>矢板森林管理事務所 林道通行止め情報</td><td><a href="https://www.pref.tochigi.lg.jp/d56/tuukoudome/2025rindo.html" target="_blank" rel="noopener">https://www.pref.tochigi.lg.jp/d56/tuukoudome/2025rindo.html</a></td><td>6路線。表の基準日が古い場合あり。他の森林管理事務所は未調査(※公開前:中継の更新が必要)</td></tr>
+<tr><td>群馬県</td><td><span class="tag inv">調査済み・未対応</span></td><td>—</td><td>—</td><td>県全体の一覧ページは見つかっていません(調査済み)</td></tr>
+<tr class="ok"><td>埼玉県</td><td><span class="tag ok">自動取得中</span></td><td>秩父農林振興センター 林道通行規制</td><td><a href="https://www.pref.saitama.lg.jp/b0904/tukoseigen/index.html" target="_blank" rel="noopener">https://www.pref.saitama.lg.jp/b0904/tukoseigen/index.html</a></td><td></td></tr>
+<tr class="ok"><td></td><td><span class="tag ok">自動取得中</span></td><td>川越農林振興センター 林道通行止め</td><td><a href="https://www.pref.saitama.lg.jp/b0902/forestry/road-closed.html" target="_blank" rel="noopener">https://www.pref.saitama.lg.jp/b0902/forestry/road-closed.html</a></td><td>表(8路線)。地図PDFは未使用</td></tr>
+<tr class="ok"><td></td><td><span class="tag ok">自動取得中</span></td><td>寄居林業事務所 通行止め</td><td><a href="https://www.pref.saitama.lg.jp/b0923/tuukoudome.html" target="_blank" rel="noopener">https://www.pref.saitama.lg.jp/b0923/tuukoudome.html</a></td><td></td></tr>
+<tr><td>千葉県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr class="ok"><td>東京都</td><td><span class="tag ok">自動取得中</span></td><td>東京都 森林事務所 林道規制</td><td><a href="https://forestry-office.metro.tokyo.lg.jp/about/rin/rin_kisei/index.html" target="_blank" rel="noopener">https://forestry-office.metro.tokyo.lg.jp/about/rin/rin_kisei/index.html</a></td><td></td></tr>
+<tr><td>神奈川県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>新潟県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>富山県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>石川県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>福井県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr class="ok"><td>山梨県</td><td><span class="tag ok">自動取得中</span></td><td>県営林道通行規制情報</td><td><a href="https://www.pref.yamanashi.jp/rindoujyouhou/list.php" target="_blank" rel="noopener">https://www.pref.yamanashi.jp/rindoujyouhou/list.php</a></td><td>一覧+路線ごとの詳細。市町村営林道は詳細未対応</td></tr>
+<tr><td>長野県</td><td><span class="tag inv">調査済み・未対応</span></td><td>—</td><td>—</td><td>県全体の一覧ページは見つかっていません(調査済み)</td></tr>
+<tr><td>岐阜県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>静岡県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>愛知県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>三重県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>滋賀県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>京都府</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>大阪府</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>兵庫県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>奈良県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>和歌山県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>鳥取県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>島根県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>岡山県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>広島県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>山口県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>徳島県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>香川県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>愛媛県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>高知県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>福岡県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>佐賀県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>長崎県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>熊本県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>大分県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>宮崎県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>鹿児島県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+<tr><td>沖縄県</td><td><span class="tag none">未調査</span></td><td>—</td><td>—</td><td></td></tr>
+</tbody></table></div>
+<p class="s"><a href="./">ルート画面へ戻る</a></p>
+</body></html>
