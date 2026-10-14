@@ -1,11 +1,13 @@
 @echo off
 chcp 65001 >nul
 cd /d "%~dp0"
+rem インストール不要版のNode.js(node-v*-win-x64 フォルダ)がこのフォルダにあれば、それを使う
+for /d %%d in ("%~dp0node-v*-win-x64") do set "PATH=%%d;%PATH%"
 echo ===== 通行規制の中継を公開します =====
 echo.
 where node >nul 2>nul
 if errorlevel 1 (
-  echo Node.js が入っていません。https://nodejs.org/ の LTS を入れてから、もう一度このファイルを開いてください。
+  echo Node.js が見つかりません。Claude の案内どおり、Node.js(zip版)をこのフォルダに展開してから、もう一度このファイルを開いてください。
   pause
   exit /b 1
 )
