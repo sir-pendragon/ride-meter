@@ -84,12 +84,16 @@
   }
 
   // ---------- つながり(候補)への分割 ----------
+  const GAP = 40;
   const key = (p) => p[0].toFixed(6) + ',' + p[1].toFixed(6);
   function components(ways) {
     const parent = new Map(); const find = (x) => { while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
     const union = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent.set(ra, rb); };
     ways.forEach((w, i) => { const id = 'w' + i; parent.set(id, id); w.pts.forEach((p) => { const k = 'p' + key(p); if (!parent.has(k)) parent.set(k, k); union(id, k); }); });
     const groups = new Map();
+    // OSMでは1本の林道が途切れて(端点が離れて)登録されていることがあるため、40m以内の端点どうしは同じ道とみなす
+    const ends = []; ways.forEach((w, i) => { ends.push([i, w.pts[0]], [i, w.pts[w.pts.length - 1]]); });
+    for (let a = 0; a < ends.length; a++) for (let b = a + 1; b < ends.length; b++) if (ends[a][0] !== ends[b][0] && Math.abs(ends[a][1][0] - ends[b][1][0]) < 0.0005 && hav(ends[a][1], ends[b][1]) <= GAP) union('w' + ends[a][0], 'w' + ends[b][0]);
     ways.forEach((w, i) => { const r = find('w' + i); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(w); });
     return [...groups.values()];
   }
@@ -104,6 +108,10 @@
       const a = key(w.pts[i - 1]), b = key(w.pts[i]); if (a === b) continue;
       pt.set(a, w.pts[i - 1]); pt.set(b, w.pts[i]); const d = hav(w.pts[i - 1], w.pts[i]);
       add(a, b, d); add(b, a, d); segs.push(d);
+    }
+    { // 途切れた端点どうし(40m以内)を、まっすぐな線でつなぐ
+      const ends = [...adj.entries()].filter(([, v]) => v.length === 1).map(([k]) => k);
+      for (let a = 0; a < ends.length; a++) for (let b = a + 1; b < ends.length; b++) { const d = hav(pt.get(ends[a]), pt.get(ends[b])); if (d <= GAP && !adj.get(ends[a]).some((e) => e.to === ends[b])) { add(ends[a], ends[b], d); add(ends[b], ends[a], d); } }
     }
     const deg1 = [...adj.entries()].filter(([, v]) => v.length === 1).length;
     const branched = [...adj.values()].some((v) => v.length > 2);
@@ -209,6 +217,7 @@
       for (const c of nameCandidates(r.route)) for (const w of byName.get(norm(c)) || []) if (!ways.includes(w)) ways.push(w);
       if (!ways.length) return { ...r, candidates: [], ways: [], selected: null, position: { level: 'なし', reason: 'OSMに同名の道が見つかりません(位置は表示しません)' } };
       const sec = parseSection(r.section, r.scope);
+      if (!r.municipality) { const mm = squash(r.section || '').match(/([\u4e00-\u9fff]{1,5}[市町村])[^（）()]{0,12}地内/); if (mm) r = { ...r, municipality: mm[1], municipalityFrom: '区間の文言' }; }
       let comps = components(ways).map((ws) => { const main = mainPath(ws); const c0 = main.path[Math.floor(main.path.length / 2)] || ws[0].pts[0]; return { ways: ws, main, center: c0 }; });
       const notes = [];
       if (r.municipality && opts.muniOf) {

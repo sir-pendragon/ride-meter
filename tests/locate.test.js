@@ -63,3 +63,13 @@ const W=e2(31,'林道太田部峠2号線',Array.from({length:11},(_,i)=>({lat:35
 const lmk=L.parseLandmarks([{type:'way',id:5,tags:{name:'大久保橋',bridge:'yes'},center:{lat:35.9,lon:lonA+d(1000)}}]);
 const r=L.locate([{route:'太田部峠2号線',municipality:'秩父市',scope:'partial',section:'大久保橋通行不可'}],[W],{landmarks:lmk})[0];
 assert(r.selected&&Math.abs(r.selected.d1-r.selected.d0-120)<3);console.log('ok 橋の通行不可は前後60mの区間');}
+// 追加: 途切れて登録された1本の林道(実データで確認された状況)
+{const d=(m)=>m/(111320*Math.cos(35.9*Math.PI/180));
+const seg=(id,m0,m1,gap)=>({type:'way',id,tags:{name:'林道長久保線',highway:'track'},geometry:[{lat:35.9,lon:139+d(m0)},{lat:35.9,lon:139+d(m1)}]});
+const els=[seg(1,0,2000),seg(2,2020,3500),seg(3,3530,5700)]; // 20m,30mの切れ目
+const r=L.locate([{route:'長久保線',municipality:'',scope:'partial',section:'起点より3.5km～終点'}],els)[0];
+assert.strictEqual(new Set(r.candidates.map(c=>c.comp)).size,1);console.log('ok 途切れた断片を1本の道にまとめる');
+assert.strictEqual(r.usable.length,2);
+const lens=r.usable.map(u=>Math.round(u.d1-u.d0));assert(lens.every(x=>Math.abs(x-2150)<80),lens.join());console.log('ok 3.5km～終点は約2.2km(全長約5.7km)',lens.join());
+const r2=L.locate([{route:'定峰線',municipality:'',scope:'whole',section:'全線（秩父市定峰地内）'}],[{type:'way',id:1,tags:{name:'林道定峰線'},geometry:[{lat:35.9,lon:139},{lat:35.9,lon:139.01}]}],{muniOf:()=>'秩父市'})[0];
+assert.strictEqual(r2.municipality,'秩父市');console.log('ok 市町村が空なら区間の文言（○○市…地内）から補う');}
