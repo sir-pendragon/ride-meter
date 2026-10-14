@@ -7,4 +7,4 @@
 //   - APIの制限: Maps JavaScript API(+ Geocoding API を使う場合のみ)
 //   - 予算アラート、または1日あたりの上限(クォータ)
 // relayUrl: Cloudflare Worker 中継のURL(例 https://xxxx.workers.dev)。空欄なら端末に保存した値だけを使います。
-window.RT_CONFIG = { gmapsKey: '', relayUrl: '' };
+window.RT_CONFIG = { gmapsKey: 'AIzaSyB8uREokpOgsqmJvePp7IZpGjgZjy93XNI', relayUrl: '' };
