@@ -203,9 +203,6 @@ function addPoint(kind,lat,lon,name){normPts();if(st.points.length>=MAX_PTS&&!((
   save();clearResults();listPts();map.closePopup()}
 function setStart(lat,lon,name){addPoint('s',lat,lon,name)}
 function setGoal(lat,lon,name){addPoint('g',lat,lon,name)}
-map.on('click',e=>{const{lat,lng}=e.latlng;const d=document.createElement('div');d.innerHTML=`<div class="hint">${lat.toFixed(5)}, ${lng.toFixed(5)}</div><button class="btn sm" data-k="s">スタート</button><button class="btn sm" data-k="v">経由</button><button class="btn sm" data-k="g">ゴール</button><div style="margin-top:6px"><input type="text" placeholder="通行止めのメモ(任意)" style="width:100%;min-height:32px;padding:3px 8px"><button class="btn sm" data-k="x" style="margin-top:4px">✕ 通行止めにする</button></div>`;
-  d.onclick=ev=>{const b=ev.target.closest('[data-k]');if(!b)return;const k=b.dataset.k;if(k==='s')setStart(lat,lng);else if(k==='g')setGoal(lat,lng);else if(k==='v')addPoint('v',lat,lng);else if(k==='x'){const note=d.querySelector('input').value.trim();st.closures.push({lat,lon:lng,note,date:new Date().toISOString().slice(0,10)});save();clearResults();listCl();map.closePopup()}map.closePopup()};
-  L.popup().setLatLng(e.latlng).setContent(d).openOn(map)});
 $('#pts').onclick=e=>{const b=e.target.closest('button[data-i]');if(!b||b.disabled)return;if(b.dataset.mv){const i=+b.dataset.i,j=i+ +b.dataset.mv,P=st.points;if(P[i]&&P[j]&&P[i].k==='v'&&P[j].k==='v'){[P[i],P[j]]=[P[j],P[i]];save();clearResults();listPts()}return}st.points.splice(+b.dataset.i,1);save();clearResults();listPts()};
 $('#cl').onclick=e=>{const b=e.target.closest('button[data-i]');if(!b)return;st.closures.splice(+b.dataset.i,1);save();clearResults();listCl()};
 $('#swap').onclick=()=>{normPts();if(st.points.length>1){st.points.reverse();for(const p of st.points)if(p.k!=='v')p.k=p.k==='s'?'g':'s';save();clearResults();listPts()}};
