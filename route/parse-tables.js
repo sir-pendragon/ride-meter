@@ -57,7 +57,7 @@
           municipality: g('muni') || null,
           typeText: g('type'),
           section: g('section'),
-          period: g('period') || null,
+          period: (g('period') || '').replace(/(?<=[^\x00-\x7f])\s+(?=[^\x00-\x7f])/g, '') || null,
           reason: g('reason') || null,
           status: c.status,
           scope: c.scope,
