@@ -515,11 +515,6 @@
   function renderList(res) {
     const ul = document.querySelector('#ac-list'); ul.innerHTML = '';
     found = res.near;
-    if (found.length) {
-      const lg = document.createElement('li'); lg.className = 'hint'; lg.style.cssText = 'display:block';
-      lg.innerHTML = `地図の色: <b style="color:${COL.confirmed}">━ 確認済み(避ける)</b> / <b style="color:${COL.est}">┅ 推定</b> / <b style="color:${COL.unk}">┈ 不明(区間が分からない。通れるとは判断しません)</b>`;
-      ul.appendChild(lg);
-    }
     for (const [i, r] of found.entries()) {
       const isC = confirmed.some((c) => c.key === keyOf(r));
       const li = document.createElement('li'); li.className = 'ac';
@@ -540,7 +535,7 @@
       ].join('');
       const cands = multi ? '<div class="hint" style="margin-top:4px">候補:</div>' + r.usable.map((u, k) => `<div class="ac-c"><span class="hint">${e(candLabel(r, u, k))}${u.muni ? ' ・' + e(u.muni) : ''}</span><span class="ac-b"><button class="btn sm" data-a="show" data-i="${i}" data-c="${k}">地図で見る</button>${isC ? '' : `<button class="btn sm pri" data-a="avoid" data-i="${i}" data-c="${k}">この案で避ける</button>`}</span></div>`).join('') : '';
       const btns = multi ? `<button class="btn sm" data-a="show" data-i="${i}">全候補を見る</button>${isC ? `<button class="btn sm" data-a="unavoid" data-i="${i}">避けるを解除</button>` : ''}`
-        : `<button class="btn sm" data-a="show" data-i="${i}">地図で見る</button>` + (isC ? `<button class="btn sm" data-a="unavoid" data-i="${i}">避けるを解除</button>` : r.selected ? `<button class="btn sm pri" data-a="avoid" data-i="${i}">確認して避ける</button>` : '');
+        : `<button class="btn sm" data-a="show" data-i="${i}">地図で見る</button>` + (isC ? `<button class="btn sm" data-a="unavoid" data-i="${i}">避けるを解除</button>` : '');
       li.innerHTML = `<div class="ac-h">${badge}<b>${e(r.route)}</b><span class="hint">${e(r.municipality || '')}</span></div><dl class="ac-d">${rows}</dl>${cands}<div class="ac-b">${btns}</div>`;
       ul.appendChild(li);
     }
@@ -648,5 +643,5 @@
   function active() { return confirmed.length > 0; }
   const exportGeoJSON = () => toGeoJSON();
 
-  root.Closures = { init, hasRelay: () => !!relayUrl(), revGeo, rgSave, muniRaw: getMuniRaw, gapText, lastRun: () => lastRun, autoFetch: (ms) => (autoFn ? autoFn(ms) : Promise.resolve(null)), samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _internal: { run, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
+  root.Closures = { init, hasRelay: () => !!relayUrl(), revGeo, rgSave, muniRaw: getMuniRaw, gapText, lastRun: () => lastRun, autoFetch: (ms) => (autoFn ? autoFn(ms) : Promise.resolve(null)), samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _test: { avoid: (i) => avoid(found[i]) }, _internal: { run, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
 })(typeof globalThis !== "undefined" ? globalThis : self);

@@ -71,7 +71,7 @@ def run(honor):
         print('kind:',pg.evaluate('window.__map.kind'));print('STATUS-FULL:',pg.inner_text('#ac-st')[:900])
         print('list:',pg.inner_text('#ac-list').replace('\n',' / ')[:600])
         if MODE=='ok':
-            pg.click('#ac-list button[data-a=avoid]');time.sleep(0.5)
+            pg.evaluate('Closures._test.avoid(0)');time.sleep(0.5)
         print('errors:',errs);b.close()
 for honor in (True,False):
     print('=== 除外を守るサーバー' if honor else '=== 除外を無視するサーバー');run(honor)
