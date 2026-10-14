@@ -84,14 +84,14 @@ D = mkD(2000);
 const P = (t, lo) => ({ t, lat: 35.9, lon: lo });
 let v = C.scenicScore(D, { points: [P('viewpoint', 139.0050), P('peak', 139.0100), P('pass', 139.0150)], lines: [] });
 ok(v.points === 3 && v.counts.viewpoint === 1 && v.counts.peak === 1 && v.counts.pass === 1, '近い展望地・山頂・峠を数える');
-ok(v.waterShare === 0 && !v.partial && near(v.V, 0.4), '水域なし: V = 0.4×点の得点(3つで満点)');
+ok(v.waterShare === 0 && !v.partial && near(v.V, 0.2), '水域なし: V = 0.4×n/(n+3)、3地点で頭打ちにしない');
 v = C.scenicScore(D, { points: [{ t: 'viewpoint', lat: 35.95, lon: 139.0 }], lines: [] }); ok(v.points === 0, '遠い展望地(300m超)は数えない');
 // 川に沿う: ルートの南60m
 const river = [[35.9 - 0.00054, 139.0], [35.9 - 0.00054, 139.0 + 2000 / 90110]];
-v = C.scenicScore(D, { points: [], lines: [river] }); ok(v.waterShare > 0.95 && near(v.V, 0.6, 1e-6), '川に沿う100m以内: 割合約100% → V=0.6(水域30%で満点の項)');
+v = C.scenicScore(D, { points: [], lines: [river] }); ok(v.waterShare > 0.95 && near(v.V, 0.6, 1e-6), '川に沿う100m以内: 割合約100% → V=0.6');
 const far = [[35.9 - 0.003, 139.0], [35.9 - 0.003, 139.0 + 2000 / 90110]];
 v = C.scenicScore(D, { points: [], lines: [far] }); ok(v.waterShare === 0, '100mより遠い水域は数えない');
-v = C.scenicScore(D, { points: [P('viewpoint', 139.005)], lines: null }); ok(v.partial === true && v.waterShare === null && near(v.V, 1 / 3), '水域データなし: 展望地等だけで評価し、partialと明示');
+v = C.scenicScore(D, { points: [P('viewpoint', 139.005)], lines: null }); ok(v.partial === true && v.waterShare === null && near(v.V, 1 / 4), '水域データなし: 展望地等だけで評価し、partialと明示');
 ok(C.scenicScore(D, null) === null, '景観データが取れないときは null(0として扱わない)');
 
 /* 総合スコア */

@@ -121,7 +121,7 @@ env=Env(route=direct,alt=detourN,edges=edgesWalky,feat=[])
 r,pg,b=run(env,'cmf')
 ok(r['cands'][1]['cmf']['walkM']>500 and r['sel']==0,('押し歩き区間が長い候補より、走れると確認できた候補を選ぶ',r['sel'],[c['cmf'].get('walkM') for c in r['cands']]));close(b)
 # ---------- 11. 最小獲得標高でも、橋と確認できた区間の標高補正を、選んだルートに適用する(追加の問い合わせは増やさない) ----------
-env=Env(route=direct,edges=edgesBridge,elev=trench)
+env=Env(route=bridgeRoute,edges=edgesBridge,elev=trench)
 r,pg,b=run(env,'min',wait=1200)
 t=pg.evaluate("document.querySelector('#cards').textContent");g=pg.evaluate("__rt.st.sel.gain")
 ok('橋・トンネルと確認できた区間の標高を補正済み' in t and g==0,('最小獲得標高でも、選んだルートの橋の補正が反映される',g))

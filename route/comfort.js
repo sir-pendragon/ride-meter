@@ -13,7 +13,7 @@
   const OFF = new Set(['cycleway', 'mountain_bike', 'track', 'footway', 'sidewalk', 'path', 'pedestrian']);
   const NONRIDE = new Set(['steps', 'ferry', 'rail-ferry', 'rail', 'bus', 'tram', 'elevator', 'escalator', 'egress_connection', 'platform_connection', 'transit_connection']);
   const NEUTRAL = 0.5; // 不明な辺の交通指数(静かとも多いとも言わない)
-  const ATTRS = ['edge.surface', 'edge.length', 'edge.road_class', 'edge.use', 'edge.lane_count', 'edge.speed_limit', 'edge.cycle_lane', 'edge.bridge', 'edge.tunnel', 'edge.travel_mode'];
+  const ATTRS = ['shape', 'edge.begin_shape_index', 'edge.end_shape_index', 'edge.surface', 'edge.length', 'edge.road_class', 'edge.use', 'edge.lane_count', 'edge.speed_limit', 'edge.cycle_lane', 'edge.bridge', 'edge.tunnel', 'edge.travel_mode'];
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const rad = Math.PI / 180;
@@ -62,12 +62,15 @@
   }
   /* 辺ごとの区間(ルート上の距離 m)。橋・トンネルの補正、交通指数が高い区間の検出に使う */
   function edgeSpans(edges, routeM) {
+    if (edges && edges.length && edges.every(e => Number.isFinite(e._a) && Number.isFinite(e._b) && e._b >= e._a)) {
+      return { ok: true, spans: edges.map(e => ({ a: e._a, b: e._b, T: trafficIndex(e), access: edgeAccess(e), bridge: e.bridge === true, tunnel: e.tunnel === true, rc: e.road_class || null, use: e.use || null })) };
+    }
     const { tot, scale, ok } = edgeScale(edges, routeM);
     if (!ok) return { ok: false, spans: [] };
     const spans = []; let acc = 0;
     for (const e of edges) {
       const L = Math.max(0, Number(e.length) || 0) * scale; if (!L) continue;
-      spans.push({ a: acc, b: acc + L, T: trafficIndex(e), access: edgeAccess(e), bridge: !!e.bridge, tunnel: !!e.tunnel, rc: e.road_class || null, use: e.use || null });
+      spans.push({ a: acc, b: acc + L, T: trafficIndex(e), access: edgeAccess(e), bridge: e._verified === undefined && e.bridge === true, tunnel: e._verified === undefined && e.tunnel === true, rc: e.road_class || null, use: e.use || null });
       acc += L;
     }
     return { ok: true, spans };
@@ -77,13 +80,37 @@
     for (const s of spans) if (s.bridge || s.tunnel) { const l = out[out.length - 1]; if (l && Math.abs(l.b - s.a) < 1) l.b = s.b; else out.push({ a: s.a, b: s.b }); }
     return out;
   }
+  // trace_attributes が経由地の重複頂点などを整理しても、同じ形状であることを両方向で確認する。
+  // 1m超のずれ・逆行・大きな頂点飛ばしは補正しない。各点の探索は最大64辺に限定する。
+  function tracePositions(route, matched) {
+    if (!route || !matched || route.length < 2 || matched.length < 2 || hv(route[0],matched[0])>1 || hv(route[route.length-1],matched[matched.length-1])>1) return null;
+    function project(points, target) {
+      const dist=[0];for(let i=1;i<target.length;i++)dist.push(dist[i-1]+hv(target[i-1],target[i]));
+      const out=[];let at=0,last=0;
+      for(const p of points){let best=null;
+        for(let j=at;j<Math.min(target.length-1,at+64);j++){
+          const a=target[j],b=target[j+1],cos=Math.cos(p[0]*rad),x=(b[1]-a[1])*cos,y=b[0]-a[0],den=x*x+y*y;
+          let t=den?clamp(((p[1]-a[1])*cos*x+(p[0]-a[0])*y)/den,0,1):0;
+          const ds=dist[j+1]-dist[j];if(j===at&&ds>0)t=Math.max(t,clamp((last-dist[j])/ds,0,1));
+          const q=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t],d=hv(p,q),s=dist[j]+ds*t;
+          if(!best||d<best.d-1e-6)best={d,s,j};
+        }
+        if(!best||best.d>1||best.s<last-0.01)return null;
+        out.push(best.s);at=best.j;last=best.s;
+      }
+      return out;
+    }
+    const positions=project(matched,route);return positions&&project(route,matched)?positions:null;
+  }
   /* 橋・トンネルの区間だけ、区間の両端のすぐ外側(区間の外で最も近い標高点)の標高を直線で結ぶ。それ以外の区間(実在する激坂を含む)には触れない */
   function correctZ(D, z, ranges) {
     const out = z.slice(); let changed = 0, used = 0;
     for (const r of ranges || []) {
+      if (!Number.isFinite(r.a) || !Number.isFinite(r.b) || r.a < 0 || r.b > D.s[D.s.length - 1] || r.b <= r.a) continue;
       let ia = -1, ib = -1;
       for (let i = 0; i < D.s.length; i++) { if (D.s[i] < r.a) ia = i; if (D.s[i] > r.b) { ib = i; break; } }
-      if (ia < 0) ia = 0; if (ib < 0) ib = D.s.length - 1;
+      // 両端の外側にDEM点がない構造物は、地面の高さを端点と断定できない。
+      if (ia < 0 || ib < 0) continue;
       if (ib - ia < 2) continue;
       const za = z[ia], zb = z[ib], ds = D.s[ib] - D.s[ia]; if (!(ds > 0) || !Number.isFinite(za) || !Number.isFinite(zb)) continue;
       used++;
@@ -126,7 +153,7 @@
     return out;
   }
   function gridIndex(points, cell) { const m = new Map(); for (const p of points) { const k = Math.floor(p[0] / cell) + ',' + Math.floor(p[1] / cell); (m.get(k) || m.set(k, []).get(k)).push(p); } return m; }
-  function nearAny(idx, cell, p, r) { const a = Math.floor(p[0] / cell), b = Math.floor(p[1] / cell); for (let x = -1; x <= 1; x++) for (let y = -1; y <= 1; y++) { const l = idx.get((a + x) + ',' + (b + y)); if (l) for (const q of l) if (hv(p, q) <= r) return true; } return false; }
+  function nearAny(idx, cell, p, r) { const a = Math.floor(p[0] / cell), b = Math.floor(p[1] / cell), dx = Math.ceil(r / 111195 / cell), dy = Math.ceil(r / (111195 * Math.max(0.01, Math.cos(p[0] * rad))) / cell); for (let x = -dx; x <= dx; x++) for (let y = -dy; y <= dy; y++) { const l = idx.get((a + x) + ',' + (b + y)); if (l) for (const q of l) if (hv(p, q) <= r) return true; } return false; }
   const POINT_R = 300, WATER_R = 100, CELL = 0.0015;
   function scenicScore(D, feat) {
     if (!feat) return null;
@@ -136,13 +163,14 @@
       const idx = gridIndex(rp, CELL);
       for (const f of feat.points) if (nearAny(idx, CELL, [f.lat, f.lon], POINT_R)) { nPts++; if (cnt[f.t] != null) cnt[f.t]++; }
     }
-    const pointScore = Math.min(1, nPts / 3);
+    // 3地点で頭打ちにしない。件数の増加に伴って緩やかに1へ近づける固定基準。
+    const pointScore = nPts / (nPts + 3);
     let share = null, V = pointScore, partial = true;
     if (feat.lines) {
       partial = false;
       const wp = []; for (const w of feat.lines) if (w && w.length > 1) for (const p of densifyLL(w, 25)) wp.push(p);
       if (wp.length) { const idx = gridIndex(wp, CELL); let hit = 0; for (const p of rp) if (nearAny(idx, CELL, p, WATER_R)) hit++; share = rp.length ? hit / rp.length : 0; } else share = 0;
-      V = 0.4 * pointScore + 0.6 * Math.min(1, share / 0.30);
+      V = 0.4 * pointScore + 0.6 * share;
     }
     return { V: clamp(V, 0, 1), points: nPts, counts: cnt, waterShare: share, partial };
   }
@@ -180,6 +208,6 @@
     return out;
   }
 
-  const api = { WEIGHTS, GRADE, ATTRS, NEUTRAL, edgeAccess, trafficIndex, edgeScale, analyzeEdges, edgeSpans, structureRanges, correctZ, gradeProfile, scenicScore, composite, scoreAll, upperBound, enc6, chunkPts, hv };
+  const api = { WEIGHTS, GRADE, ATTRS, NEUTRAL, edgeAccess, trafficIndex, edgeScale, analyzeEdges, edgeSpans, structureRanges, tracePositions, correctZ, gradeProfile, scenicScore, composite, scoreAll, upperBound, enc6, chunkPts, hv };
   if (typeof module !== 'undefined') module.exports = api; else root.Comfort = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
