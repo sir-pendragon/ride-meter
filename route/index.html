@@ -195,7 +195,7 @@ function choose(){const cs=st.cands;const base=cs.filter(c=>!c.auto);const minLe
 /* Overpass(公開API)。予備の overpass.kumi.systems は、実機の診断で5回呼んで成功0回(30秒で打ち切り×4、103秒後に504×1)。失敗のたびに待ちを足すだけだったため外した。
    1接続先あたり30秒で打ち切る。200でも「実行時エラー」の注記があれば失敗扱い(空の結果を保存しない) */
 const CYC_EP=['https://overpass-api.de/api/interpreter'];
-async function ovPost(q){const ms=window.__rtOvpMs||30000;let err;for(const ep of CYC_EP){const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),ms);
+async function ovPost(q,ms0){const ms=window.__rtOvpMs||ms0||30000;let err;for(const ep of CYC_EP){const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),ms);
   try{const r=await fetch(ep,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'content-type':'application/x-www-form-urlencoded'},signal:ac.signal});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();
     if(j&&j.remark&&/runtime error|timed out|out of memory/i.test(j.remark))throw new Error('Overpass: '+String(j.remark).slice(0,60));clearTimeout(tm);return j}
   catch(e){clearTimeout(tm);err=ac.signal.aborted?new Error('時間切れ('+Math.round(ms/1000)+'秒)'):e}}throw err}
@@ -239,8 +239,8 @@ async function cmfAttach(cs){st.cmfErr=[];let feat=null;try{feat=await sceneFeat
   if(miss)st.cmfErr.push('道路の属性を取得できなかった候補があります。静かさは、全候補で評価できたときだけ使います');
   for(const c of pool)cmfEval(c,feat);Comfort.scoreAll(pool)}
 /* Overpass(公開API)。結果は、端末のCache APIに7日間保存する(同じ範囲の再検索では通信しない) */
-async function overpassJ(q,key,reduce){let c=null;const url='https://rt.invalid/scn/'+key;try{c=await caches.open('rt-scn');const m=await c.match(url);if(m){const o=await m.json();if(Date.now()-o.t<6048e5)return o.d}}catch(e){c=null}
-  const j=await ovPost(q);const d=reduce(j.elements||[]);if(c){try{await c.put(url,new Response(JSON.stringify({t:Date.now(),d})))}catch(e){}}return d}
+async function overpassJ(q,key,reduce,ms){let c=null;const url='https://rt.invalid/scn/'+key;try{c=await caches.open('rt-scn');const m=await c.match(url);if(m){const o=await m.json();if(Date.now()-o.t<6048e5)return o.d}}catch(e){c=null}
+  const j=await ovPost(q,ms);const d=reduce(j.elements||[]);if(c){try{await c.put(url,new Response(JSON.stringify({t:Date.now(),d})))}catch(e){}}return d}
 function gridBB(pts,pad,g){g=g||0.05;let a=90,b=180,c2=-90,d=-180;for(const p of pts){if(p[0]<a)a=p[0];if(p[1]<b)b=p[1];if(p[0]>c2)c2=p[0];if(p[1]>d)d=p[1]}return[Math.floor((a-pad)/g)*g,Math.floor((b-pad)/g)*g,Math.ceil((c2+pad)/g)*g,Math.ceil((d+pad)/g)*g].map(v=>+v.toFixed(2))}
 /* 景観のデータ: 展望地・山頂・峠(点)と、川・湖・海岸(線)。範囲が広いときは点だけ(水域は未評価)。森林・山並みは対象外 */
 async function sceneFeat(cs){const b=gridBB(cs.flatMap(c=>c.pts),0.002),bb=b.join(','),full=(b[2]-b[0])*(b[3]-b[1])<=0.25;
@@ -248,6 +248,12 @@ async function sceneFeat(cs){const b=gridBB(cs.flatMap(c=>c.pts),0.002),bb=b.joi
   const q=`[out:json][timeout:25];(${pts}${full?lines:''});out ${full?'geom('+bb+')':'body'} qt;`;
   return overpassJ(q,'scn/'+(full?'f/':'p/')+bb,els=>{const points=[],ln=[];for(const e of els){if(e.type==='node'&&e.tags&&Number.isFinite(e.lat)){const t=e.tags.tourism==='viewpoint'?'viewpoint':e.tags.mountain_pass==='yes'?'pass':e.tags.natural==='peak'?'peak':null;if(t)points.push({t,lat:+e.lat.toFixed(5),lon:+e.lon.toFixed(5)})}else if(e.type==='way'&&Array.isArray(e.geometry)){/* geom(範囲) は、範囲の外の点を null で返す(実機で確認)。null で線を分け、点が2つ以上ある部分だけ使う */let seg=[];const fl=()=>{if(seg.length>1)ln.push(seg);seg=[]};for(const p of e.geometry){if(p&&Number.isFinite(p.lat)&&Number.isFinite(p.lon))seg.push([+p.lat.toFixed(5),+p.lon.toFixed(5)]);else fl()}fl()}}return{points,lines:full?ln:null}})}
 /* 最大獲得標高: 利用者の地点の周辺(約13km)の峠・鞍部・山頂(標高の記載があるものだけ) */
+/* 国道を避ける迂回: 国道(幹線)が続く区間の周辺だけで、峠・鞍部(山頂は使わない)を探す。範囲が狭いので、全体の範囲より速い。待ち時間は長め(混んでいるとき約50秒かかることがある) */
+async function quietPassData(best){const q=Explore.CFG.quiet,D=best.D,cm=best.cmf||{},pts=[];let acc=0;
+  for(const sp of (cm.spans||[])){if(sp.rc==='trunk'||sp.rc==='primary'||sp.rc==='motorway'){for(let s=sp.a;s<=sp.b;s+=1000){let i=0;while(i<D.s.length-1&&D.s[i+1]<s)i++;pts.push([D.la[i],D.lo[i]])}}}
+  if(!pts.length)return[];const dl=q.radiusM/111195,dg=q.radiusM/90110,b=gridBB(pts.flatMap(p=>[[p[0]-dl,p[1]-dg],[p[0]+dl,p[1]+dg]]),0),bb=b.join(',');if((b[2]-b[0])*(b[3]-b[1])>0.6)return[];
+  const qq=`[out:json][timeout:60];(node["mountain_pass"="yes"](${bb});node["natural"="saddle"](${bb}););out body qt;`;
+  return overpassJ(qq,'pass3/'+bb,els=>els.filter(e=>e.type==='node'&&e.tags&&Number.isFinite(e.lat)).map(e=>({lat:+e.lat.toFixed(5),lon:+e.lon.toFixed(5),ele:parseFloat(String(e.tags.ele||'').replace(',','.')),name:e.tags.name||'',k:e.tags.mountain_pass==='yes'?'pass':'saddle'})),70000)}
 async function passData(userPts){const d=Explore.CFG.corridorDeg,b=gridBB(userPts.map(p=>[p.lat,p.lon]).flatMap(p=>[[p[0]-d.lat,p[1]-d.lon],[p[0]+d.lat,p[1]+d.lon]]),0),bb=b.join(',');if((b[2]-b[0])*(b[3]-b[1])>0.6)return[];
   const q=`[out:json][timeout:25];(node["mountain_pass"="yes"](${bb});node["natural"="saddle"](${bb});node["natural"="peak"](${bb}););out body qt;`;
   return overpassJ(q,'pass2/'+bb,els=>els.filter(e=>e.type==='node'&&e.tags&&Number.isFinite(e.lat)).map(e=>({lat:+e.lat.toFixed(5),lon:+e.lon.toFixed(5),ele:parseFloat(String(e.tags.ele||'').replace(',','.')),name:e.tags.name||'',k:e.tags.mountain_pass==='yes'?'pass':e.tags.natural==='peak'?'peak':'saddle'})).filter(p=>Number.isFinite(p.ele)))}
@@ -267,7 +273,7 @@ async function exploreRun(cs){const mode=objective(),log=st.xlog={mode,on:EXPLOR
     if(mode==='min'||mode==='max'){setProg(0.92,'道路の属性を調べています');if(!best.edges)best.edges=await attrsOf(best);fixStruct(best);best=pickB(rank())||best}
     const ctx={mode,best,userPts,minLen,passes:null,ways:null,feat:null};
     if(mode==='max'){setProg(0.93,'峠のデータを調べています');try{ctx.passes=await passData(userPts)}catch(e){log.note='峠のデータを取得できませんでした(追加探索なし)'}}
-    else if(mode==='cyc')ctx.ways=st.cycWaysList||null;else if(mode==='cmf'){ctx.feat=st.feat||null;if(best.cmf&&best.cmf.heavyM>=Explore.CFG.quiet.heavyMinM){setProg(0.93,'国道が長く続くため、迂回に使える峠を調べています');try{ctx.passes=await passData(userPts)}catch(e){log.note='峠のデータを取得できませんでした(国道を避ける迂回の提案なし)'}}}
+    else if(mode==='cyc')ctx.ways=st.cycWaysList||null;else if(mode==='cmf'){ctx.feat=st.feat||null;if(best.cmf&&best.cmf.heavyM>=Explore.CFG.quiet.heavyMinM){setProg(0.93,'国道が長く続くため、迂回に使える峠を調べています');try{ctx.passes=await quietPassData(best)}catch(e){log.note='峠のデータを取得できませんでした(国道を避ける迂回の提案なし): '+(e&&e.message||e)}}}
     let fams=Explore.families(ctx);if(!fams.length){log.note=log.note||'改善の余地がないため、追加探索なし';return}
     const vp=Explore.viaPoints(fams);if(vp.length){setProg(0.94,'経由地の候補が、自転車で通れる道か確認しています');const okSet=await locateOK(vp);log.locate++;fams=Explore.filterVerified(fams,q=>okSet.has(ptKey(q)));if(!fams.length){log.note='経由地の候補は、自転車で通れる道に載ると確認できなかったため使いません';return}}
     const bud=new Explore.Budget({routeLeft:Explore.CFG.routeMax-(compute._r||0)});let props=Explore.firstProposals(fams).slice(0,Math.max(0,bud.routeLeft)),cur=best;const D0=best.D;
