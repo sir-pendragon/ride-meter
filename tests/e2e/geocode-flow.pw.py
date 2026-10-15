@@ -30,6 +30,7 @@ HTML='''<html><body><p>掲載日：2026年10月1日</p><table><tr><th>路線名<
 GF={'ok':"(r)=>{const m={'上落合橋':[35.9000,139.0900],'志賀坂峠':[35.9030,139.1050]};for(const k in m)if(r.address.includes(k))return{results:[{partial_match:false,geometry:{location:{lat:()=>m[k][0],lng:()=>m[k][1]}}}]};return{results:[]}}",
  'far':"(r)=>({results:[{partial_match:false,geometry:{location:{lat:()=>35.5,lng:()=>139.5}}}]})",
  'denied':"(r)=>{const e=new Error('REQUEST_DENIED');e.code='REQUEST_DENIED';throw e}",
+ 'gsi':"(r)=>{window.__geoCalls=(window.__geoCalls||0)+1;return{results:[]}}",
  'over':"(r)=>{window.__geoCalls=(window.__geoCalls||0)+1;const e=new Error('OVER_QUERY_LIMIT');e.code='OVER_QUERY_LIMIT';throw e}"}[MODE]
 def run(honor):
     reqs=[]
@@ -56,6 +57,13 @@ def run(honor):
             if 'valhalla' in u: return route.fulfill(status=400,json={'error':'x'})
             if 'cyberjapandata' in u and '/dem/' in u: return route.fulfill(headers={'access-control-allow-origin':'*'},body='\n'.join(','.join(str(100+i//4) for i in range(256)) for _ in range(256)))
             if 'cyberjapandata' in u: return route.fulfill(status=404,body='')
+            if 'msearch.gsi.go.jp' in u:
+                if MODE!='gsi': return route.fulfill(json=[])
+                from urllib.parse import unquote
+                q=unquote(u.split('q=')[1]);m={'上落合橋':[35.9000,139.0900],'志賀坂峠':[35.9030,139.1050]}
+                if q in m:
+                    return route.fulfill(headers={'access-control-allow-origin':'*'},json=[{'type':'Feature','properties':{'title':q},'geometry':{'type':'Point','coordinates':[m[q][1],m[q][0]]}},{'type':'Feature','properties':{'title':q},'geometry':{'type':'Point','coordinates':[140.0,43.0]}}])
+                return route.fulfill(headers={'access-control-allow-origin':'*'},json=[])
             if 'nominatim' in u: return route.fulfill(json=[])
             if '127.0.0.1' in u: return route.continue_()
             return route.fulfill(status=204,body='')
@@ -73,6 +81,8 @@ def run(honor):
         print('list:',pg.inner_text('#ac-list').replace('\n',' / ')[:600])
         if MODE=='ok':
             pg.evaluate('Closures._test.avoid(0)');time.sleep(0.5)
+        if MODE=='gsi':
+            print('gsi: google calls =',pg.evaluate('window.__geoCalls||0'),'/ gsi basis shown =','国土地理院の検索' in pg.inner_text('#ac-list'))
         if MODE=='over':
             print('over-limit: geocode calls =',pg.evaluate('window.__geoCalls||0'),'/ flag saved =',pg.evaluate('!!localStorage.getItem("rt-geo-over")'),'/ note shown =','上限に達している' in pg.inner_text('#ac-st')+pg.inner_text('#cards'))
         print('errors:',errs);b.close()
