@@ -32,7 +32,7 @@
   let lastRun = null; // 直近のルート調査(取得が最後まで終わったときだけ入る)
   const PREF_NAMES = { 2: '青森県(国道・県道のみ)', 7: '福島県(国道・県道のみ)', 10: '群馬県(国道・県道のみ)', 20: '長野県(松本市・安曇野市・伊那市のみ)', 11: '埼玉県', 13: '東京都', 14: '神奈川県(県営林道)', 19: '山梨県', 9: '栃木県(矢板のみ)' };
   const PDFJS = ['https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'];
-  const OVERPASS = ['https://overpass-api.de/api/interpreter']; // 予備の kumi.systems は実機診断で成功0回・30〜103秒ハングしたため外した
+  const OVERPASS = ['https://overpass-api.de/api/interpreter']; // (本体 index.html は予備を追加済み。ここは従来どおり) 予備の kumi.systems は実機診断で成功0回・30〜103秒ハングしたため外した
   const OVERPASS_MS = 30000;
   const PARSER_VER = 'p9'; // 解析プログラムを変えたら上げる(保存済みの解析結果を使い回さないため)
   const rad = Math.PI / 180, R = 6371000;

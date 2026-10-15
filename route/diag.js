@@ -264,7 +264,7 @@
       for (const k of Object.keys(ctl.counts)) { const s = k.split(':')[0]; cnt[s] = (cnt[s] || 0) + ctl.counts[k]; }
       const ua = navigator.userAgent || '', m = ua.match(/(Chrome|Firefox|Safari)\/(\d+)/);
       const rep = {
-        tool: 'ride-meter-diag', version: VERSION, appCache: 'route-v68', at: new Date().toISOString(),
+        tool: 'ride-meter-diag', version: VERSION, appCache: 'route-v69', at: new Date().toISOString(),
         client: { browser: m ? m[1] + '/' + m[2] : 'unknown', mobile: /Mobile|Android/i.test(ua) },
         route: { preset: PRESET.id, customCoords: custom, note: '地点の座標は結果に含めない' },
         limits: LIMITS, aborted: ctl.abort || null,
