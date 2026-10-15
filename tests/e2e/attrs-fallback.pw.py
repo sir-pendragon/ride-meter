@@ -53,7 +53,7 @@ pg.click('#go');pg.wait_for_selector('#cards .card',timeout=40000);pg.wait_for_t
 ok('景観のデータを取得できませんでした' in pg.evaluate("(__rt.st.cmfErr||[]).join('|')"),'実行時エラーの注記つきは失敗として扱い、景観は評価しない旨を表示')
 ok(pg.evaluate("caches.open('rt-scn').then(c=>c.keys()).then(k=>k.length)")==0,'失敗した(空の)結果はキャッシュしない')
 ok(errs==[],errs);b.close()
-# ⑤ 最大獲得標高: Overpass(峠)が失敗しても、基本ルートを返し、追加探索をしていないことを明示。予備サーバーには行かない(1回だけ)
+# ⑤ 最大獲得標高: Overpass(峠)が失敗しても、基本ルートを返し、追加探索をしていないことを明示。本家が失敗したら、予備(private.coffee・maps.mail.ru)を順に試す(計3回)。kumiには行かない
 env=Env(route=direct,edges=edgesOf(),ov_fail=True)
 pg,b,errs=go(env,'max')
 reqs=[];pg.on('request',lambda r:reqs.append(r.url))
@@ -61,6 +61,7 @@ pg.click('#go');pg.wait_for_selector('#cards .card',timeout=40000);pg.wait_for_t
 txt=pg.inner_text('#cards')
 ok(pg.evaluate("__rt.st.cands.length>=1 && !!__rt.st.sel"),'峠データが取れなくても、基本ルートを返す')
 ok('追加探索は行っていません' in txt and '峠のデータを取得できませんでした' in txt,('追加探索が未実施であることと理由を表示',txt[:300]))
-ok(len(env.ov)==1 and not any('kumi' in u for u in reqs),('Overpassは1回だけ(予備サーバーなし)',len(env.ov)))
+ok(len(env.ov)==3 and not any('kumi' in u for u in reqs),('Overpassは本家+予備2か所の計3回',len(env.ov)))
+ok('地図データの取得:' in txt and 'overpass.private.coffee' in txt and 'maps.mail.ru' in txt,('取得先ごとの成否を表示',txt[-400:]))
 ok(errs==[],errs);b.close()
 done('attrs-fallback')
