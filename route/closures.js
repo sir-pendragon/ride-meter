@@ -691,7 +691,7 @@
     for (const c of avoidAll()) {
       autoKeys.add(c.key);
       if (!c.lines.some((l) => nearLine(rd, densify(l, 25), 30).length)) continue;
-      for (const l of c.lines) ctx.L.polyline(l, { color: COL.confirmed, weight: 8, opacity: .95 }).addTo(layerHit).bindPopup(popupHTML(c, '通行止め(このルートが通ります)')).bindTooltip('通行止め: ' + ctx.esc(c.route));
+      for (const l of c.lines) ctx.L.polyline(l, { color: COL.confirmed, weight: 6, opacity: .95 }).addTo(layerHit).bindPopup(popupHTML(c, '通行止め(このルートが通ります)')).bindTooltip('通行止め: ' + ctx.esc(c.route));
       n++;
     }
     for (const r of found) {
@@ -700,7 +700,7 @@
       const lines = cand || (r.ways || []).map((w) => w.pts);
       if (!lines.some((l) => nearLine(rd, densify(l, 25), 30).length)) continue;
       const est = !!(r.selected || cand);
-      for (const l of lines) ctx.L.polyline(l, { color: est ? COL.est : COL.unk, weight: est ? 7 : 5, opacity: .9, dashArray: est ? '8 6' : '2 8' }).addTo(layerHit).bindPopup(popupHTML(r, est ? '通行止め(位置は推定。このルートが通る可能性があります)' : '通行止め(区間不明。通れるとは判断していません)')).bindTooltip(ctx.esc(r.route) + (est ? '(位置は推定)' : '(区間不明)'));
+      for (const l of lines) ctx.L.polyline(l, { color: est ? COL.est : COL.unk, weight: est ? 5 : 4, opacity: .9, dashArray: est ? '8 6' : '2 8' }).addTo(layerHit).bindPopup(popupHTML(r, est ? '通行止め(位置は推定。このルートが通る可能性があります)' : '通行止め(区間不明。通れるとは判断していません)')).bindTooltip(ctx.esc(r.route) + (est ? '(位置は推定)' : '(区間不明)'));
       n++;
     }
     return n;
