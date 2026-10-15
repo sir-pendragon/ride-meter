@@ -70,8 +70,8 @@
       this._events((add) => add('click', (e) => {
         if (!self._map || self._pop == null) return;
         const iw = new gm.InfoWindow({ content: typeof self._pop === 'string' ? (() => { const d = document.createElement('div'); d.innerHTML = self._pop; return d; })() : self._pop });
-        if (e && e.latLng) iw.setPosition(e.latLng);
-        self._map._openInfo(iw, e && e.latLng ? null : self._anchor && self._anchor());
+        if (e && e.latLng && !self._place) iw.setPosition(e.latLng); else if (self._place) self._place(iw);
+        self._map._openInfo(iw, null);
       }));
     };
 
@@ -124,24 +124,56 @@
       if (icon && icon.html) { el.innerHTML = icon.html; el.style.transform = 'translateY(50%)'; } else { el.style.cssText = 'width:14px;height:14px;border-radius:50%;background:#3388ff;border:2px solid #fff;transform:translateY(50%)'; }
       return el;
     };
+    // 高度なマーカー(AdvancedMarkerElement)は地図IDが必要で、地図IDを付けるとベクター描画になる。
+    // 線が出ない端末があるため、地図IDなし(ラスター描画)でも動く OverlayView 方式でHTMLの丸・ピンを置く。
     Marker.prototype._ensure = function () {
       if (this.g) return;
-      this.g = new gm.marker.AdvancedMarkerElement({ position: this.pos, content: this._content(), gmpDraggable: !!this.s.draggable, gmpClickable: true });
+      const self = this, el = document.createElement('div');
+      const draggable = !!this.s.draggable, clickable = this.kind !== 'circle';
+      // 位置の真下中央が基準(高度なマーカーと同じ)。中身側の translateY(50%) で丸の中心を座標に合わせる
+      el.style.cssText = 'position:absolute;transform:translate(-50%,-100%);' + (clickable ? 'cursor:pointer;' : 'pointer-events:none;') + (draggable ? 'touch-action:none;' : '');
+      el.appendChild(this._content());
+      const ov = new gm.OverlayView(), L = {};
+      const px = () => { const pr = ov.getProjection(); return pr ? pr.fromLatLngToDivPixel(new gm.LatLng(self.pos.lat, self.pos.lng)) : null; };
+      ov.onAdd = function () { const pn = this.getPanes(); (clickable ? pn.overlayMouseTarget : pn.overlayLayer).appendChild(el); };
+      ov.draw = function () { const pt = px(); if (pt) { el.style.left = pt.x + 'px'; el.style.top = pt.y + 'px'; } };
+      ov.onRemove = function () { if (el.parentNode) el.parentNode.removeChild(el); };
+      const fire = (ev, arg) => (L[ev] || []).forEach((f) => f(arg));
+      let moved = false;
+      if (clickable) {
+        el.addEventListener('click', (e) => { e.stopPropagation(); if (moved) { moved = false; return; } fire('click', { latLng: new gm.LatLng(self.pos.lat, self.pos.lng) }); });
+        el.addEventListener('pointerdown', (e) => e.stopPropagation());
+        el.addEventListener('dblclick', (e) => e.stopPropagation());
+      }
+      if (draggable) {
+        el.addEventListener('pointerdown', (e) => {
+          const pr = ov.getProjection(); if (!pr) return;
+          const sx = e.clientX, sy = e.clientY, p0 = px(); if (!p0) return;
+          moved = false; try { el.setPointerCapture(e.pointerId); } catch (x) { }
+          const mv = (ev) => { const dx = ev.clientX - sx, dy = ev.clientY - sy; if (!moved && Math.abs(dx) + Math.abs(dy) < 4) return; moved = true; el.style.left = (p0.x + dx) + 'px'; el.style.top = (p0.y + dy) + 'px'; };
+          const up = (ev) => {
+            el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up);
+            if (!moved) return;
+            const ll2 = pr.fromDivPixelToLatLng(new gm.Point(p0.x + (ev.clientX - sx), p0.y + (ev.clientY - sy)));
+            if (ll2) { self.pos = { lat: ll2.lat(), lng: ll2.lng() }; ov.draw(); fire('dragend'); }
+            setTimeout(() => { moved = false; }, 0);
+          };
+          el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+        });
+      }
+      this.g = { ov, el, content: el, addListener(ev, fn) { (L[ev] = L[ev] || []).push(fn); }, redraw() { ov.draw(); } };
       for (const [ev, fn] of Object.entries(this._h)) this._hook(ev, fn);
     };
-    Marker.prototype._hook = function (ev, fn) {
-      const self = this;
-      if (ev === 'dragend') this.g.addListener('dragend', () => { const p = self.g.position; self.pos = { lat: typeof p.lat === 'function' ? p.lat() : p.lat, lng: typeof p.lng === 'function' ? p.lng() : p.lng }; fn(); });
-      else this.g.addListener(ev, fn);
-    };
+    Marker.prototype._hook = function (ev, fn) { this.g.addListener(ev, fn); };
     Marker.prototype.on = function (ev, fn) { this._h[ev] = fn; if (this.g) this._hook(ev, fn); return this; };
-    Marker.prototype._attach = function (map) { this._map = map; this._ensure(); this.g.map = map.g; };
-    Marker.prototype._detach = function () { if (this.g) this.g.map = null; this._map = null; };
+    Marker.prototype._attach = function (map) { this._map = map; this._ensure(); this.g.ov.setMap(map.g); };
+    Marker.prototype._detach = function () { if (this.g) this.g.ov.setMap(null); this._map = null; };
     Marker.prototype.getLatLng = function () { return { lat: this.pos.lat, lng: this.pos.lng }; };
-    Marker.prototype.setLatLng = function (p) { this.pos = ll(p); if (this.g) this.g.position = this.pos; return this; };
+    Marker.prototype.setLatLng = function (p) { this.pos = ll(p); if (this.g) this.g.redraw(); return this; };
     Marker.prototype._events = function (cb) { this._ensure(); cb((ev, fn) => { if (ev === 'click') this.g.addListener('click', fn); else if (ev === 'mouseover') this.g.content.addEventListener('mouseenter', fn); else if (ev === 'mouseout') this.g.content.addEventListener('mouseleave', fn); }); };
-    Marker.prototype._openTip = function (iw) { iw.open({ map: this._map.g, anchor: this.g }); };
-    Marker.prototype._anchor = function () { return this.g; };
+    Marker.prototype._openTip = function (iw) { this._place(iw); iw.open({ map: this._map.g }); };
+    Marker.prototype._place = function (iw) { iw.setPosition(this.pos); try { if (gm.Size) iw.setOptions({ pixelOffset: new gm.Size(0, -18) }); } catch (e) { } };
+    Marker.prototype._anchor = function () { return null; };
 
     // ---- 吹き出し ----
     function Popup() { this._pos = null; this._content = null; }
