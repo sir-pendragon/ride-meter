@@ -273,7 +273,7 @@ async function exploreRun(cs){const mode=objective(),log=st.xlog={mode,on:EXPLOR
     if(mode==='min'||mode==='max'){setProg(0.92,'道路の属性を調べています');if(!best.edges)best.edges=await attrsOf(best);fixStruct(best);best=pickB(rank())||best}
     const ctx={mode,best,userPts,minLen,passes:null,ways:null,feat:null};
     if(mode==='max'){setProg(0.93,'峠のデータを調べています');try{ctx.passes=await passData(userPts)}catch(e){log.note='峠のデータを取得できませんでした(追加探索なし)'}}
-    else if(mode==='cyc')ctx.ways=st.cycWaysList||null;else if(mode==='cmf'){ctx.feat=st.feat||null;if(best.cmf&&best.cmf.heavyM>=Explore.CFG.quiet.heavyMinM){setProg(0.93,'国道が長く続くため、迂回に使える峠を調べています');try{ctx.passes=await quietPassData(best)}catch(e){log.note='峠のデータを取得できませんでした(国道を避ける迂回の提案なし): '+(e&&e.message||e)}}}
+    else if(mode==='cyc')ctx.ways=st.cycWaysList||null;else if(mode==='cmf'){ctx.feat=st.feat||null;if(best.cmf&&best.cmf.heavyM>=Explore.CFG.quiet.heavyMinM){setProg(0.93,'国道が長く続くため、迂回に使える峠を調べています');try{ctx.passes=await quietPassData(best)}catch(e){log.note='峠のデータを取得できませんでした(国道を避ける迂回の提案なし): '+(e&&e.message||e);log.quietFail=log.note}}}
     let fams=Explore.families(ctx);if(!fams.length){log.note=log.note||'改善の余地がないため、追加探索なし';return}
     const vp=Explore.viaPoints(fams);if(vp.length){setProg(0.94,'経由地の候補が、自転車で通れる道か確認しています');const okSet=await locateOK(vp);log.locate++;fams=Explore.filterVerified(fams,q=>okSet.has(ptKey(q)));if(!fams.length){log.note='経由地の候補は、自転車で通れる道に載ると確認できなかったため使いません';return}}
     const bud=new Explore.Budget({routeLeft:Explore.CFG.routeMax-(compute._r||0)});let props=Explore.firstProposals(fams).slice(0,Math.max(0,bud.routeLeft)),cur=best;const D0=best.D;
@@ -319,6 +319,7 @@ function noteHTML(c){let h='';const n=[],warnP=t=>`<p class="warn" style="margin
   if(st.xlog&&st.xlog.stages&&st.xlog.stages.length){const dr={};for(const s of st.xlog.stages)for(const k in s.drop||{})dr[k]=(dr[k]||0)+s.drop[k];const L={added:'候補に追加',dup:'既存とほぼ同じ道',cap:'距離の上限超え',hit:'通行止めにかかる',dominated:'点数が届かない',nodata:'データなし'},t=Object.keys(L).filter(k=>dr[k]).map(k=>L[k]+' '+dr[k]).join('・');if(t)n.push(`追加探索の内訳: ${t}(提案: ${st.xlog.stages.map(s=>s.props.join('+')).join(' → ')}${st.xlog.stages.some(s=>s.improved)?'':'。どれも現在の最良を上回りませんでした'})`)}
   h+=bullets(n);
   const len0=compute._len0||st.minLen;if(objective()!=='max'&&len0&&c.len>len0*1.5)h+=warnP(`通行止めを避けるため、最短(${(len0/1000).toFixed(1)} km)の1.5倍を超えています(${(c.len/1000).toFixed(1)} km)。通行止めの回避を優先しました`);
+  if(st.xlog&&st.xlog.quietFail)h+=warnP(esc(st.xlog.quietFail)+'。国道が続くルートですが、静かな迂回を試せていません。もう一度計算すると取得できることがあります');
   if(!(st.xlog&&st.xlog.routes)&&st.xlog&&st.xlog.note&&/取得できません|確認できなかった|時間/.test(st.xlog.note))h+=warnP(`追加探索は行っていません: ${esc(st.xlog.note)}。基本の候補から選んでいます`);
   return h}
 
