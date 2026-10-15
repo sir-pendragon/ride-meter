@@ -149,4 +149,19 @@ const back = dec6(C.enc6(pts)); ok(back.length === 4 && back.every((p, i) => nea
 const long = []; for (let i = 0; i <= 100; i++) long.push([35.9, 139 + i * 0.005]);
 const ch = C.chunkPts(long, 10000); ok(ch.length > 3 && ch[0][ch[0].length - 1] === ch[1][0] && ch.reduce((s, c) => s + c.length - 1, 0) === 100, '長いルートを分割し、境界の点を共有する');
 ok(C.chunkPts([[35.9, 139], [35.9, 139.01]], 60000).length === 1, '短いルートは分割しない');
+
+/* 国道など幹線道路が長く続くことへの減点 */
+a = C.analyzeEdges([E({ road_class: 'trunk', length: 6000 }), E({ road_class: 'residential', length: 4000 })], 10000);
+ok(near(a.heavyM, 6000, 1e-6) && near(a.heavyShare, 0.6) && near(a.heavyRunM, 6000, 1e-6), '幹線(trunk/primary)の距離・割合・最長連続');
+a = C.analyzeEdges([E({ road_class: 'primary', length: 2000 }), E({ road_class: 'residential', length: 1000 }), E({ road_class: 'trunk', length: 1000 })], 4000);
+ok(near(a.heavyM, 3000, 1e-6) && near(a.heavyRunM, 2000, 1e-6), '途中で切れたら最長連続は長い方');
+a = C.analyzeEdges([E({ road_class: 'secondary', length: 5000 })], 5000); ok(a.heavyM === 0, 'secondary は幹線に数えない');
+a = C.analyzeEdges([E({ road_class: 'trunk', travel_mode: 'pedestrian', length: 5000 })], 5000); ok(a.heavyM === 0, '押し歩き区間は幹線に数えない');
+ok(C.heavyPenalty({ heavyM: 1000 }, 10000) === 0 && C.heavyPenalty({ heavyM: 500 }, 10000) === 0, '1kmまでは減点しない');
+ok(near(C.heavyPenalty({ heavyM: 6000 }, 10000), 0.4), '6km/10km → 0.8×5000/10000=0.4');
+ok(C.heavyPenalty({ heavyM: 10000 }, 10000) === C.HEAVY.maxPen && C.heavyPenalty({}, 10000) === 0 && C.heavyPenalty({ heavyM: 5000 }, 0) === 0, '上限・欠損・距離0');
+ok(C.heavyWarn({ heavyM: 3000, heavyShare: 0.1 }) && C.heavyWarn({ heavyM: 1500, heavyShare: 0.3 }) && !C.heavyWarn({ heavyM: 2000, heavyShare: 0.1 }) && !C.heavyWarn(null), '警告: 3km以上、または30%以上');
+{ const m2 = (Q, heavyM, len) => ({ len, cmf: { Q, H: 0.8, V: 0.5, heavyM } });
+  const cs2 = [m2(0.3, 23000, 37000), m2(0.8, 0, 45000)]; C.scoreAll(cs2);
+  ok(cs2[0].cmf.pen > 0.4 && cs2[1].cmf.pen === 0 && cs2[1].cmf.S > cs2[0].cmf.S, '国道が長い候補は減点され、静かな迂回案が上回る'); }
 console.log('全 ' + n + ' 件OK (comfort)');
