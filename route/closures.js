@@ -438,18 +438,20 @@
             for (const nm of [sec.a, sec.b].filter(Boolean)) if (!have.has(strip(nm)) && !need.has(strip(nm))) need.set(strip(nm), { name: nm, hint: t.municipality || '' });
           }
           if (need.size) {
-            say(`橋名・峠名 ${Math.min(need.size, GEO_MAX)}件をGoogleマップで検索しています…`);
-            let added = 0, denied = false, over = false;
-            for (const { name, hint } of [...need.values()].slice(0, GEO_MAX)) {
+            say(`橋名・峠名 ${Math.min(need.size, 30)}件の位置を検索しています…`);
+            let nGsi = 0, nGoogle = 0, gCalls = 0, denied = false, over = false;
+            for (const { name, hint } of [...need.values()].slice(0, 30)) {
               const q = String(hint || '').replace(/[ 　]*[→→].*$/, '').replace(/大字.*$/, '').trim();
-              const p = await ctx.geocode(`${name} ${q}`.trim(), bbox);
-              if (p && p.over) { over = true; break; }
-              if (p && p.denied) { denied = true; break; }
-              if (p) { landmarks.push({ name, lat: p.lat, lon: p.lon, kind: 'google', src: 'google' }); added++; }
+              // 先に国土地理院の検索(無料)で探し、見つからない名前だけGoogleで補う。Googleは1回の検索で GEO_MAX 回まで
+              const p = await ctx.geocode(`${name} ${q}`.trim(), bbox, name, { google: gCalls < GEO_MAX && !over && !denied });
+              if (p && p.g) gCalls++;
+              if (p && p.over) { over = true; continue; }
+              if (p && p.denied) { denied = true; continue; }
+              if (p && p.lat != null) { landmarks.push({ name, lat: p.lat, lon: p.lon, kind: p.src, src: p.src }); if (p.src === 'gsi') nGsi++; else nGoogle++; }
             }
-            if (over) notes.push('⚠ Googleの住所検索の1日の上限に達しているため、OSMに無い橋名・峠名の位置は補えませんでした(上限は日が変わると戻ります)');
-            else if (denied) notes.push('Googleの住所検索(Geocoding API)が許可されていないため、OSMに無い橋名・峠名の位置は補えませんでした');
-            else if (added) notes.push(`OSMに無い橋名・峠名のうち${added}件はGoogleマップの検索で位置が得られました(道から150m以内の場合だけ使い、座標は保存しません)`);
+            if (over) notes.push('⚠ Googleの住所検索の1日の上限に達しているため、国土地理院で見つからなかった橋名・峠名の位置は補えませんでした(上限は日が変わると戻ります)');
+            else if (denied) notes.push('Googleの住所検索(Geocoding API)が許可されていないため、国土地理院で見つからなかった橋名・峠名の位置は補えませんでした');
+            if (nGsi + nGoogle) notes.push(`OSMに無い橋名・峠名のうち${nGsi + nGoogle}件は検索で位置が得られました(国土地理院${nGsi}件・Googleマップ${nGoogle}件。道から150m以内の場合だけ使い、座標は保存しません)`);
           }
         }
         let loc = ClosureLocate.locate(targets, els, { landmarks });
