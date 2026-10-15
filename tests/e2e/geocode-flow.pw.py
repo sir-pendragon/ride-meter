@@ -4,6 +4,7 @@ ROOT=__import__('os').path.join(__import__('os').path.dirname(__import__('os').p
 FAKE=open('/home/claude/ride-meter/tests/e2e/fake-google-maps.js',encoding='utf-8').read()
 import sys
 MODE=sys.argv[1] if len(sys.argv)>1 else 'ok'
+OUT=len(sys.argv)>2 and sys.argv[2]=='out'
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self,*a):pass
 H=functools.partial(Q,directory=ROOT)
@@ -61,6 +62,8 @@ def run(honor):
                 if MODE!='gsi': return route.fulfill(json=[])
                 from urllib.parse import unquote
                 q=unquote(u.split('q=')[1]);m={'上落合橋':[35.9000,139.0900],'志賀坂峠':[35.9030,139.1050]}
+                if q=='志賀坂峠' and MODE=='gsi' and OUT:
+                    return route.fulfill(headers={'access-control-allow-origin':'*'},json=[{'type':'Feature','properties':{'title':q},'geometry':{'type':'Point','coordinates':[140.0,43.0]}}])
                 if q in m:
                     return route.fulfill(headers={'access-control-allow-origin':'*'},json=[{'type':'Feature','properties':{'title':q},'geometry':{'type':'Point','coordinates':[m[q][1],m[q][0]]}},{'type':'Feature','properties':{'title':q},'geometry':{'type':'Point','coordinates':[140.0,43.0]}}])
                 return route.fulfill(headers={'access-control-allow-origin':'*'},json=[])
