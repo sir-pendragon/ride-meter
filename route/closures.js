@@ -265,7 +265,7 @@
     const at = baked.map((b) => b.at).sort()[0];
     if (want.length && baked.length === want.length) { notes.push(`林道の道筋は、${at} にOpenStreetMapから取得して同梱したデータを使いました(新しい林道は反映されていないことがあります)`); return fromBaked(); }
     try { return await overpass(ClosureLocate.buildQuery(forest, bbox)); }
-    catch (e) { if (!baked.length) throw e; notes.push(`OpenStreetMapが混んでいて取得できなかったため、${at} に取得して同梱した林道の道筋を使いました(対象外の県の林道は位置なしになります)`); return fromBaked(); }
+    catch (e) { if (!baked.length) throw e; notes.push(`⚠ OpenStreetMapが混んでいて取得できなかったため、${at} に取得して同梱した林道の道筋を使いました(対象外の県の林道は位置なしになります)`); return fromBaked(); }
   }
 
   // OSMの道の位置は変わりにくいので、成功した結果を端末に保存する(同じ検索は7日間そのまま使い、Overpassが混んで失敗したときは60日前まで古い結果で代用する)。
@@ -460,7 +460,7 @@
         located = loc;
       } catch (e) { fails.push('OpenStreetMap検索: ' + e.message); located = targets.map((t) => ({ ...t, position: { level: 'なし', reason: 'OSM検索に失敗したため位置なし' }, ways: [] })); }
     }
-    if (ovpStaleAt) notes.push(`OpenStreetMapが混んでいて取得できなかったため、${Math.max(1, Math.round((Date.now() - ovpStaleAt) / 864e5))}日前に取得した道の位置を使いました(道の位置は変わりにくいものです)`);
+    if (ovpStaleAt) notes.push(`⚠ OpenStreetMapが混んでいて取得できなかったため、${Math.max(1, Math.round((Date.now() - ovpStaleAt) / 864e5))}日前に取得した道の位置を使いました(道の位置は変わりにくいものです)`);
     // 範囲内(bbox)に道がないものは一覧から外す(遠い県内の路線を並べない)
     // 道路(国道・県道)の規制は、位置が決まらないものを地図に出さない(長い道の全体を「不明」で描くと誤解を招くため)。林道は従来どおり描く
     const isRoadUnk = (r) => r.layer === 'road' && !/林道/.test(r.route) && r.position && (r.position.level === '不明' || r.position.level === 'なし');
@@ -629,7 +629,7 @@
       if (!(lastAuto && lastAuto.sig === sig)) lastRun = null; // 別のルートの調査結果を使い回さない
       if (auto && lastAuto && lastAuto.sig === sig && Date.now() - lastAuto.t < 600000) { setStatus('直前に取得済みのため再取得しません(10分以内)'); return null; }
       try {
-        const res = await run(bbox, known, setStatus, muniKeys); lastRun = { fails: res.fails.slice(), unsupported: codes.filter((k) => !SOURCES[k]).map(prefName) }; renderList(res); buildGaps(res, codes); renderGaps(); lastAuto = { sig, t: Date.now() };
+        const res = await run(bbox, known, setStatus, muniKeys); lastRun = { fails: res.fails.slice(), warn: res.notes.filter((n) => /^⚠/.test(n)), unsupported: codes.filter((k) => !SOURCES[k]).map(prefName) }; renderList(res); buildGaps(res, codes); renderGaps(); lastAuto = { sig, t: Date.now() };
         const log = root.FetchCore ? fc().getLog().slice(-6).map((l) => `${l.label}:${l.result}`).join(' / ') : '';
         setStatus(`取得: 規制あり ${res.regulated}路線(全${res.total}行)のうち、この範囲でOSMに同名の道がある ${res.near.length}路線を表示。範囲外/道が見つからない ${res.outside}路線は表示しません。` + (res.fails.length ? ' 失敗: ' + res.fails.join(' / ') : '') + (res.notes.length ? ' 未対応・注意: ' + res.notes.join(' / ') : '') + (log ? ' 〔取得状況 ' + log + '〕' : ''));
       } catch (e) { buildGaps({ gaps: { unjudged: [], notFound: [], noPos: [], fails: ['取得できませんでした: ' + e.message], sources: {} } }, codes); renderGaps(); setStatus('取得できませんでした: ' + e.message); }

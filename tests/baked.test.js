@@ -35,7 +35,7 @@ for(const c of ['13','11']){const j=JSON.parse(fs.readFileSync(__dirname+'/../da
   const n2=[];ovpCalls=0;r=await I.forestEls([{route:'林道奥沢線'}],bb,['13','20'],n2);
   eq([r.length,ovpCalls],[1,1],'同梱なしの県を含むときは、従来どおりOverpass');
   const n3=[];ovp='504';I.resetOvp();r=await I.forestEls([{route:'林道奥沢線'}],[35.5,138.8,36,139.8],['13','20'],n3);
-  eq([r.length>=1,/混んでいて/.test(n3[0])],[true,true],'Overpass失敗: 同梱の県の道を代用し、理由を明示');
+  eq([r.length>=1,/^⚠ OpenStreetMapが混んでいて/.test(n3[0])],[true,true],'Overpass失敗: 同梱の県の道を代用し、理由を明示');
   // Overpass失敗+同梱なし → 失敗のまま
   let err=null;try{await I.forestEls([{route:'林道X線'}],bb,['20'],[])}catch(e){err=e}eq(!!err,true,'同梱なしの県だけでOverpass失敗: 失敗のまま(推測しない)');
   console.log('全',n,'件OK (baked)');
