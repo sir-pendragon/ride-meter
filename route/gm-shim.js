@@ -11,7 +11,9 @@
     function GMap(el, mopts) {
       const node = typeof el === 'string' ? document.getElementById(el) : el;
       this.g = new gm.Map(node, {
-        center: { lat: 36.5, lng: 138 }, zoom: 5, mapId: o.mapId || 'DEMO_MAP_ID',
+        center: { lat: 36.5, lng: 138 }, zoom: 5,
+        // mapId を付けるとベクター描画(GPU使用)になり、端末によって線が出ないため、付けずにラスター描画にする。o.mapId を明示したときだけ付ける
+        ...(o.mapId ? { mapId: o.mapId } : { renderingType: gm.RenderingType ? gm.RenderingType.RASTER : 'RASTER' }),
         mapTypeControl: true, streetViewControl: false, fullscreenControl: false, gestureHandling: 'greedy',
         zoomControl: !mopts || mopts.zoomControl !== false, clickableIcons: false,
       });
