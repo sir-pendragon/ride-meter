@@ -243,6 +243,31 @@
     return (b.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 39000);
   }
 
+  // 林道の道筋の事前データ(data/osm-forest/<県コード>.json。OSMから取得した日付つき)。Overpassが混んでいても位置が付く
+  const BAKED = { 11: 'saitama', 13: 'tokyo' };
+  const bakedMem = {};
+  const decPoly = (str) => { const out = []; let i = 0, la = 0, lo = 0; while (i < str.length) { let r = 0, sh = 0, b; do { b = str.charCodeAt(i++) - 63; r |= (b & 31) << sh; sh += 5; } while (b >= 32); la += (r & 1) ? ~(r >> 1) : (r >> 1); r = 0; sh = 0; do { b = str.charCodeAt(i++) - 63; r |= (b & 31) << sh; sh += 5; } while (b >= 32); lo += (r & 1) ? ~(r >> 1) : (r >> 1); out.push({ lat: la / 1e5, lon: lo / 1e5 }); } return out; };
+  async function loadBaked(code) {
+    if (!BAKED[code]) return null;
+    if (bakedMem[code] !== undefined) return bakedMem[code];
+    let v = null;
+    try {
+      const r = await fetch('../data/osm-forest/' + code + '.json'); if (!r.ok) throw new Error('HTTP ' + r.status);
+      const j = await r.json(); if (!j || !Array.isArray(j.ways)) throw new Error('形式が違います');
+      v = { at: j.at, els: j.ways.map((w) => ({ type: 'way', id: w[0], tags: { name: w[1], highway: w[2], ...(w[3] ? { surface: w[3] } : {}) }, geometry: decPoly(w[4]) })) };
+    } catch (e) { v = null; }
+    bakedMem[code] = v; return v;
+  }
+  async function forestEls(forest, bbox, codes, notes) {
+    const want = codes.filter((c) => SOURCES[c]); const baked = [];
+    for (const c of want) { const b = await loadBaked(c); if (b) baked.push(b); }
+    const fromBaked = () => baked.flatMap((b) => ClosureLocate.filterForest(b.els, forest, bbox));
+    const at = baked.map((b) => b.at).sort()[0];
+    if (want.length && baked.length === want.length) { notes.push(`林道の道筋は、${at} にOpenStreetMapから取得して同梱したデータを使いました(新しい林道は反映されていないことがあります)`); return fromBaked(); }
+    try { return await overpass(ClosureLocate.buildQuery(forest, bbox)); }
+    catch (e) { if (!baked.length) throw e; notes.push(`OpenStreetMapが混んでいて取得できなかったため、${at} に取得して同梱した林道の道筋を使いました(対象外の県の林道は位置なしになります)`); return fromBaked(); }
+  }
+
   // OSMの道の位置は変わりにくいので、成功した結果を端末に保存する(同じ検索は7日間そのまま使い、Overpassが混んで失敗したときは60日前まで古い結果で代用する)。
   const LS_OVP = 'rt-ovp', OVP_FRESH = 7 * 864e5, OVP_STALE = 60 * 864e5, OVP_MAX = 8;
   let ovpStaleAt = 0; const ovpStale = () => ovpStaleAt; // 今回の実行で、古い保存結果を使ったときの保存日時(0なら使っていない)
@@ -396,7 +421,7 @@
       say('OpenStreetMapで同名の道を探しています…');
       try {
         const forest = targets.filter((t) => t.layer !== 'road'), roads = targets.filter((t) => t.layer === 'road');
-        const els = forest.length ? await overpass(ClosureLocate.buildQuery(forest, bbox)) : [];
+        const els = forest.length ? await forestEls(forest, bbox, codes, notes) : [];
         if (roads.length) { try { els.push(...(await overpass(ClosureLocate.buildRoadQuery(roads, bbox)))); } catch (e) { notes.push('道路(国道・県道)の位置の取得に失敗したため、それらは位置なしになります'); } }
         let landmarks = [];
         if (targets.some((t) => /橋|峠|トンネル|隧道|ダム/.test(t.section || ''))) {
@@ -672,5 +697,5 @@
   function active() { return avoidAll().length > 0; }
   const exportGeoJSON = () => toGeoJSON();
 
-  root.Closures = { init, hasRelay: () => !!relayUrl(), revGeo, rgSave, muniRaw: getMuniRaw, gapText, lastRun: () => lastRun, lastStatus: () => lastStatus, autoFetch: (ms) => (autoFn ? autoFn(ms) : Promise.resolve(null)), samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _test: { avoid: (i) => avoid(found[i]), setFound: (f) => { found = f; }, autoAvoid }, _internal: { run, overpass, hashS, ovpStale, resetOvp: () => { ovpStaleAt = 0; }, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
+  root.Closures = { init, hasRelay: () => !!relayUrl(), revGeo, rgSave, muniRaw: getMuniRaw, gapText, lastRun: () => lastRun, lastStatus: () => lastStatus, autoFetch: (ms) => (autoFn ? autoFn(ms) : Promise.resolve(null)), samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _test: { avoid: (i) => avoid(found[i]), setFound: (f) => { found = f; }, autoAvoid }, _internal: { run, overpass, loadBaked, forestEls, decPoly, hashS, ovpStale, resetOvp: () => { ovpStaleAt = 0; }, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
 })(typeof globalThis !== "undefined" ? globalThis : self);

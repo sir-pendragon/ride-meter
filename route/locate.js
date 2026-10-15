@@ -27,13 +27,22 @@
     for (const s of [...set]) set.add(s.replace(/ヶ/g, 'ケ'));
     return [...set];
   }
-  function buildQuery(records, bbox) {
+  function forestStems(records) {
     const stems = new Set();
     for (const r of records) {
       const base = squash(stripParen(r.route)).replace(/線$/, '');
       if (base) { stems.add(base); stems.add(base.replace(/ヶ/g, 'ケ')); stems.add(base.replace(/ケ/g, 'ヶ')); }
     }
-    const re = [...stems].map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+    return [...stems].map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  }
+  // 同梱した林道データ(事前取得)から、buildQueryと同じ条件(名前に「林道」を含み、路線名の語幹に一致、bboxと交差)で選ぶ
+  function filterForest(elements, records, bbox) {
+    const re = forestStems(records); if (!re) return [];
+    const rx = new RegExp('(' + re + ')'); const [s, w, n, e] = bbox;
+    return (elements || []).filter((el) => el.tags && /林道/.test(el.tags.name || '') && rx.test(el.tags.name) && (el.geometry || []).some((g) => g && g.lat >= s && g.lat <= n && g.lon >= w && g.lon <= e));
+  }
+  function buildQuery(records, bbox) {
+    const re = forestStems(records);
     const [s, w, n, e] = bbox;
     return `[out:json][timeout:60];way["highway"]["name"~"林道"]["name"~"(${re})"](${s},${w},${n},${e});out tags geom;`;
   }
@@ -271,6 +280,6 @@
   // 旧API(互換): locate() の薄いラッパー
   function match(records, elements, opts) { return locate(records, elements, opts); }
 
-  const api = { nameCandidates, buildQuery, buildRoadQuery, buildLandmarkQuery, parseLandmarks, parseSection, components, mainPath, cutPath, project, locate, match };
+  const api = { nameCandidates, filterForest, buildQuery, buildRoadQuery, buildLandmarkQuery, parseLandmarks, parseSection, components, mainPath, cutPath, project, locate, match };
   if (typeof module !== 'undefined') module.exports = api; else root.ClosureLocate = api;
 })(typeof globalThis !== 'undefined' ? globalThis : (typeof self !== 'undefined' ? self : this));
