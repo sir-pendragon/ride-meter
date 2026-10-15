@@ -679,6 +679,32 @@
     }
     return res;
   }
+  // 選んだルートが通る規制の道だけを、地図に重ねる(近くを通るだけの規制は描かない)。
+  //   赤の実線 = 通行止めの位置が確実で、ルートが通る / 橙の破線 = 位置が推定 / 灰の点線 = 位置不明(同名の道の全体)
+  let layerHit = null;
+  function drawOnRoute(routePts) {
+    if (!ctx || !ctx.L || !ctx.map) return 0;
+    if (!layerHit) layerHit = ctx.L.layerGroup().addTo(ctx.map);
+    layerHit.clearLayers();
+    if (!routePts || routePts.length < 2) return 0;
+    const rd = densify(routePts, 25); let n = 0; const autoKeys = new Set();
+    for (const c of avoidAll()) {
+      autoKeys.add(c.key);
+      if (!c.lines.some((l) => nearLine(rd, densify(l, 25), 30).length)) continue;
+      for (const l of c.lines) ctx.L.polyline(l, { color: COL.confirmed, weight: 8, opacity: .95 }).addTo(layerHit).bindPopup(popupHTML(c, '通行止め(このルートが通ります)')).bindTooltip('通行止め: ' + ctx.esc(c.route));
+      n++;
+    }
+    for (const r of found) {
+      if (autoKeys.has(keyOf(r))) continue;
+      const cand = (r.usable && r.usable.length) ? r.usable.map((u) => u.pts) : null;
+      const lines = cand || (r.ways || []).map((w) => w.pts);
+      if (!lines.some((l) => nearLine(rd, densify(l, 25), 30).length)) continue;
+      const est = !!(r.selected || cand);
+      for (const l of lines) ctx.L.polyline(l, { color: est ? COL.est : COL.unk, weight: est ? 7 : 5, opacity: .9, dashArray: est ? '8 6' : '2 8' }).addTo(layerHit).bindPopup(popupHTML(r, est ? '通行止め(位置は推定。このルートが通る可能性があります)' : '通行止め(区間不明。通れるとは判断していません)')).bindTooltip(ctx.esc(r.route) + (est ? '(位置は推定)' : '(区間不明)'));
+      n++;
+    }
+    return n;
+  }
   // まだ「避ける」を確定していない規制の道をルートが通る場合の注意。
   //   kind 'unknown'  : 区間を特定できていない(通れるとは判断しない・除外もできない)
   //   kind 'candidate': 位置の候補はあるが、ユーザーが確定していない
@@ -697,5 +723,5 @@
   function active() { return avoidAll().length > 0; }
   const exportGeoJSON = () => toGeoJSON();
 
-  root.Closures = { init, hasRelay: () => !!relayUrl(), revGeo, rgSave, muniRaw: getMuniRaw, gapText, lastRun: () => lastRun, lastStatus: () => lastStatus, autoFetch: (ms) => (autoFn ? autoFn(ms) : Promise.resolve(null)), samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _test: { avoid: (i) => avoid(found[i]), setFound: (f) => { found = f; }, autoAvoid }, _internal: { run, overpass, loadBaked, forestEls, decPoly, hashS, ovpStale, resetOvp: () => { ovpStaleAt = 0; }, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
+  root.Closures = { init, drawOnRoute, hasRelay: () => !!relayUrl(), revGeo, rgSave, muniRaw: getMuniRaw, gapText, lastRun: () => lastRun, lastStatus: () => lastStatus, autoFetch: (ms) => (autoFn ? autoFn(ms) : Promise.resolve(null)), samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _test: { setCtx: (c) => { ctx = c; }, avoid: (i) => avoid(found[i]), setFound: (f) => { found = f; }, autoAvoid }, _internal: { run, overpass, loadBaked, forestEls, decPoly, hashS, ovpStale, resetOvp: () => { ovpStaleAt = 0; }, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
 })(typeof globalThis !== "undefined" ? globalThis : self);
