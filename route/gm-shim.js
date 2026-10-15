@@ -16,6 +16,13 @@
         zoomControl: !mopts || mopts.zoomControl !== false, clickableIcons: false,
       });
       this._popup = null; this._handlers = {};
+      // ズーム後に線が消える端末があるため、ズーム操作の終了後に線を付け直す(見た目は変わらない)
+      this._lines = new Set(); this._zoomed = false; const self = this;
+      this.g.addListener('zoom_changed', () => { self._zoomed = true; });
+      this.g.addListener('idle', () => {
+        if (!self._zoomed) return; self._zoomed = false;
+        self._lines.forEach((l) => { try { if (l.g) { l.g.setMap(null); l.g.setMap(self.g); } } catch (e) { } });
+      });
     }
     GMap.prototype.setView = function (c, z) { this.g.setCenter(ll(c)); if (z != null) this.g.setZoom(z); return this; };
     GMap.prototype.getCenter = function () { const c = this.g.getCenter(); return { lat: c.lat(), lng: c.lng() }; };
@@ -67,19 +74,29 @@
     };
 
     // ---- 折れ線 ----
+    // 描く点を間引く(約6m未満の点は省略。端点は残す)。点が多いと端末によって描画が止まるため
+    function thin(p) {
+      if (p.length < 400) return p;
+      const out = [p[0]]; let last = p[0]; const k = Math.cos(p[0].lat * Math.PI / 180);
+      for (let i = 1; i < p.length - 1; i++) {
+        const dx = (p[i].lng - last.lng) * 111320 * k, dy = (p[i].lat - last.lat) * 110540;
+        if (dx * dx + dy * dy >= 36) { out.push(p[i]); last = p[i]; }
+      }
+      out.push(p[p.length - 1]); return out;
+    }
     function Polyline(pts, s) { Layer.call(this); this.pts = arr(pts); this.s = s || {}; this.g = null; }
     Polyline.prototype = Object.create(Layer.prototype);
     Polyline.prototype._build = function () {
       const s = this.s; const w = s.weight || 3, op = s.opacity != null ? s.opacity : 1, col = s.color || '#3388ff';
-      const base = { path: this.pts, strokeColor: col, geodesic: false, clickable: true, zIndex: 1 };
+      const base = { path: thin(this.pts), strokeColor: col, geodesic: false, clickable: true, zIndex: 1 };
       if (s.dashArray) {
         const n = String(s.dashArray).split(/[ ,]+/).map(Number); const dash = n[0] || 8, gap = n[1] || 6;
         return new gm.Polyline({ ...base, strokeOpacity: 0, icons: [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: op, strokeColor: col, strokeWeight: w, scale: dash / 2 }, offset: '0', repeat: (dash + gap) + 'px' }] });
       }
       return new gm.Polyline({ ...base, strokeOpacity: op, strokeWeight: w });
     };
-    Polyline.prototype._attach = function (map) { this._map = map; if (!this.g) this.g = this._build(); this.g.setMap(map.g); };
-    Polyline.prototype._detach = function () { if (this.g) this.g.setMap(null); this._map = null; };
+    Polyline.prototype._attach = function (map) { this._map = map; if (!this.g) this.g = this._build(); this.g.setMap(map.g); if (map._lines) map._lines.add(this); };
+    Polyline.prototype._detach = function () { if (this.g) this.g.setMap(null); if (this._map && this._map._lines) this._map._lines.delete(this); this._map = null; };
     Polyline.prototype._events = function (cb) { const g = this.g || (this.g = this._build()); cb((ev, fn) => g.addListener(ev, fn)); };
     Polyline.prototype._openTip = function (iw) { const pts = this.pts; const m = pts[Math.floor(pts.length / 2)]; iw.setPosition(m); this._map._popupTip = iw; iw.open({ map: this._map.g }); };
     Polyline.prototype.getBounds = function () { return new Bounds(this.pts); };
