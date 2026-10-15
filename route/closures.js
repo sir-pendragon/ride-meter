@@ -243,12 +243,27 @@
     return (b.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 39000);
   }
 
+  // OSMの道の位置は変わりにくいので、成功した結果を端末に保存する(同じ検索は7日間そのまま使い、Overpassが混んで失敗したときは60日前まで古い結果で代用する)。
+  const LS_OVP = 'rt-ovp', OVP_FRESH = 7 * 864e5, OVP_STALE = 60 * 864e5, OVP_MAX = 8;
+  let ovpStaleAt = 0; const ovpStale = () => ovpStaleAt; // 今回の実行で、古い保存結果を使ったときの保存日時(0なら使っていない)
+  const hashS = (t) => { let h = 5381; for (let i = 0; i < t.length; i++) h = ((h * 33) ^ t.charCodeAt(i)) >>> 0; return h.toString(36) + t.length.toString(36); };
+  const ovpLoad = () => { try { const o = JSON.parse(localStorage.getItem(LS_OVP)); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } };
+  const ovpSave = (k, els) => {
+    const o = ovpLoad(); o[k] = { at: Date.now(), els };
+    const keys = Object.keys(o).sort((a, b) => o[b].at - o[a].at);
+    for (const x of keys.slice(OVP_MAX)) delete o[x];
+    for (let n = Object.keys(o).length; n >= 1; n--) { // 容量超過のときは、古いものから減らして保存する
+      try { localStorage.setItem(LS_OVP, JSON.stringify(o)); return; } catch (e) { const old = Object.keys(o).sort((a, b) => o[a].at - o[b].at)[0]; if (!old || old === k && n === 1) return; delete o[old]; }
+    }
+  };
   async function overpass(q) {
-    let err;
+    let err; const key = hashS(q); const hit = ovpLoad()[key];
+    if (hit && Array.isArray(hit.els) && Date.now() - hit.at < OVP_FRESH) return hit.els;
     for (const h of OVERPASS) {
       const ac = new AbortController(), tm = setTimeout(() => ac.abort(), root.__rtOvpMs || OVERPASS_MS);
-      try { const r = await fetch(h, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ac.signal }); if (!r.ok) throw new Error('HTTP ' + r.status); const j = await r.json(); if (j.remark && /error|timed out|timeout|memory/i.test(j.remark)) throw new Error('OSM検索が途中で打ち切られました'); return j.elements || []; } catch (e) { err = ac.signal.aborted ? new Error('OSM検索が時間内に終わりませんでした(公開サーバーが混雑中)') : e; } finally { clearTimeout(tm); }
+      try { const r = await fetch(h, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ac.signal }); if (!r.ok) throw new Error('HTTP ' + r.status); const j = await r.json(); if (j.remark && /error|timed out|timeout|memory/i.test(j.remark)) throw new Error('OSM検索が途中で打ち切られました'); const els = j.elements || []; ovpSave(key, els); return els; } catch (e) { err = ac.signal.aborted ? new Error('OSM検索が時間内に終わりませんでした(公開サーバーが混雑中)') : e; } finally { clearTimeout(tm); }
     }
+    if (hit && Array.isArray(hit.els) && Date.now() - hit.at < OVP_STALE) { ovpStaleAt = Math.max(ovpStaleAt, hit.at); return hit.els; }
     throw err;
   }
 
@@ -360,6 +375,7 @@
 
   async function run(bbox, codes, say, muniKeys) {
     aiBlocked = false;
+    ovpStaleAt = 0;
     const results = []; const fails = []; const notes = []; const aiOnly = []; const skipped = []; let aiTried = false;
     for (const code of codes) {
       for (const u of UNSUPPORTED[code] || []) notes.push(u);
@@ -419,6 +435,7 @@
         located = loc;
       } catch (e) { fails.push('OpenStreetMap検索: ' + e.message); located = targets.map((t) => ({ ...t, position: { level: 'なし', reason: 'OSM検索に失敗したため位置なし' }, ways: [] })); }
     }
+    if (ovpStaleAt) notes.push(`OpenStreetMapが混んでいて取得できなかったため、${Math.max(1, Math.round((Date.now() - ovpStaleAt) / 864e5))}日前に取得した道の位置を使いました(道の位置は変わりにくいものです)`);
     // 範囲内(bbox)に道がないものは一覧から外す(遠い県内の路線を並べない)
     // 道路(国道・県道)の規制は、位置が決まらないものを地図に出さない(長い道の全体を「不明」で描くと誤解を招くため)。林道は従来どおり描く
     const isRoadUnk = (r) => r.layer === 'road' && !/林道/.test(r.route) && r.position && (r.position.level === '不明' || r.position.level === 'なし');
@@ -655,5 +672,5 @@
   function active() { return avoidAll().length > 0; }
   const exportGeoJSON = () => toGeoJSON();
 
-  root.Closures = { init, hasRelay: () => !!relayUrl(), revGeo, rgSave, muniRaw: getMuniRaw, gapText, lastRun: () => lastRun, lastStatus: () => lastStatus, autoFetch: (ms) => (autoFn ? autoFn(ms) : Promise.resolve(null)), samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _test: { avoid: (i) => avoid(found[i]), setFound: (f) => { found = f; }, autoAvoid }, _internal: { run, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
+  root.Closures = { init, hasRelay: () => !!relayUrl(), revGeo, rgSave, muniRaw: getMuniRaw, gapText, lastRun: () => lastRun, lastStatus: () => lastStatus, autoFetch: (ms) => (autoFn ? autoFn(ms) : Promise.resolve(null)), samplePoints, hits, warnings, addBoost, resetBoost, active, exportGeoJSON, _test: { avoid: (i) => avoid(found[i]), setFound: (f) => { found = f; }, autoAvoid }, _internal: { run, overpass, hashS, ovpStale, resetOvp: () => { ovpStaleAt = 0; }, parseVer: PARSER_VER, SOURCES, keyOf, densify, nearLine } };
 })(typeof globalThis !== "undefined" ? globalThis : self);
