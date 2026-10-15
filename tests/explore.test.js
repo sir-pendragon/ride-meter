@@ -101,4 +101,15 @@ const B2 = new X.Budget({ routeLeft: 3, now: () => t }); B2.use(1, 9000); ok(B2.
 const B3 = new X.Budget({ routeLeft: 3, now: () => t }); t += 19999; ok(B3.timeUp() === false && B3.canStage(1), '20秒未満は続けられる(時刻の基準は作成時)'); t += 2; ok(B3.timeUp() && !B3.canStage(1), '20秒を超えたら止まる');
 ok(new X.Budget({ routeLeft: 1 }).routeLeft === 1 && new X.Budget({ routeLeft: -2 }).routeLeft === 0 && !new X.Budget({ routeLeft: 0 }).canStage(1), '通行止めの再計算で使った分は、枠から引く');
 const B4 = new X.Budget({ routeLeft: 3, now: () => t }); B4.use(1, 100); B4.use(1, 100); ok(!B4.canStage(1), '段階は最大2回');
+
+/* 国道を避ける迂回(quiet) */
+{ const D5 = mkD(30000), sp = [{ a: 0, b: 5000, rc: 'residential', T: 0.2 }, { a: 5000, b: 20000, rc: 'trunk', T: 1 }, { a: 20000, b: 30000, rc: 'residential', T: 0.2 }];
+  const bq = { D: D5, len: 30000, cmf: { Q: 0.3, H: 0.8, V: 0.5, heavyM: 15000, spans: sp } };
+  const ps = [{ lat: ll(12000, 3000).lat, lon: ll(12000).lon, k: 'saddle', ele: 500 }, { lat: ll(12000, 6000).lat, lon: ll(12000).lon, k: 'pass', ele: 600 }, { lat: ll(12000, 60000).lat, lon: ll(12000).lon, k: 'pass', ele: 700 }, { lat: ll(12000, 3000).lat, lon: ll(12000).lon, k: 'peak', ele: 900 }, { lat: ll(12000, 100).lat, lon: ll(12000).lon, k: 'pass', ele: 100 }];
+  const q = X.quietItems({ best: bq, userPts: U2(30000), minLen: 30000, passes: ps });
+  ok(q.length === 2 && q[0].dL <= q[1].dL && q.every(i => i.name !== undefined), '国道が3km以上続くとき、近くの峠・鞍部を最大2か所(遠すぎ・山頂・すでにルート上は除く)');
+  ok(X.quietItems({ best: Object.assign({}, bq, { cmf: Object.assign({}, bq.cmf, { heavyM: 2000 }) }), userPts: U2(30000), minLen: 30000, passes: ps }).length === 0, '幹線が短ければ提案しない');
+  ok(X.quietItems({ best: bq, userPts: U2(30000), minLen: 30000, passes: null }).length === 0, '峠データなしなら提案しない');
+  const fq = X.families({ mode: 'cmf', best: bq, userPts: U2(30000), minLen: 30000, feat: null, passes: ps });
+  ok(fq.some(f => f.fam === 'quiet1' && f.kind === 'via' && f.items.length === 1) && fq.some(f => f.fam === 'quiet2'), 'families に quiet1/quiet2 が入る(1か所ずつ別案)'); }
 console.log('全 ' + n + ' 件OK (explore)');

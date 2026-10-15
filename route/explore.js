@@ -20,6 +20,7 @@
     passMinGainM: 100,    // 峠は、基本ルートの該当位置より100m以上高いものだけ
     minWindowG: { min: 0.06, cmf: 0.09 },  // 除外点にする急坂の下限(200m窓)
     busyT: 0.75, busyMinM: 400,            // 静かさ: 交通指数が高く、400m以上続く区間に除外点
+    quiet: { heavyMinM: 3000, radiusM: 12000, minSepM: 3000, n: 2 }, // 幹線道路が3km以上続くとき、その周辺12km以内の峠・鞍部を、迂回の経由地の候補にする(最大2か所)
     scenicMaxFromRouteM: 1500,             // 景観: ルートからの距離の上限
     dupOverlap: 0.9, dupM: 30,             // 他の候補と30m以内で90%以上重なるものは重複
     improve: { max: { abs: 50, rel: 0.05 }, min: { abs: 30, rel: 0.05 }, cyc: { abs: 0.05 }, cmf: { abs: 0.03 } }
@@ -127,6 +128,26 @@
     const pick = []; for (const o of out) { if (pick.some(q => Math.abs(q.s - o.s) < 3000)) continue; pick.push(o); if (pick.length >= CFG.maxItems) break; }
     return pick;
   }
+  /* 快適・絶景: 幹線道路(trunk/primary)が長く続くとき、その周辺の峠・鞍部を、迂回の経由地の候補にする。
+     迂回の見込み距離が上限内のものだけ、追加距離の小さい順。実際に静かか・激坂でないかは、ルートを作ってから採点する */
+  const HEAVY_RC = new Set(['trunk', 'primary', 'motorway']);
+  function quietItems(ctx) {
+    const { best, userPts, minLen, passes } = ctx, cm = best.cmf || {}; if (!passes || !passes.length || !cm.spans || !(cm.heavyM >= CFG.quiet.heavyMinM)) return [];
+    const D = best.D; let run = null, bestRun = null;
+    for (const sp of cm.spans) { if (HEAVY_RC.has(sp.rc)) { if (run && Math.abs(run.b - sp.a) < 1) run.b = sp.b; else { run = { a: sp.a, b: sp.b }; } if (!bestRun || run.b - run.a > bestRun.b - bestRun.a) bestRun = run; } else run = null; }
+    if (!bestRun) return [];
+    const mid = pointAt(D, (bestRun.a + bestRun.b) / 2), us = userSpans(D, userPts), rf = roadFactor(best, userPts), cap = minLen * CFG.capNormal, out = [];
+    for (const p of passes) {
+      if (p.k === 'peak') continue;
+      if (hv([mid.lat, mid.lon], [p.lat, p.lon]) > CFG.quiet.radiusM) continue;
+      const r = nearest(D, p, 0); if (r.d <= 300) continue; // すでにルート上にある
+      const dL = detourEst(D, us, userPts, p, rf); if (best.len + dL > cap) continue;
+      out.push({ pt: { lat: p.lat, lon: p.lon }, dL, name: p.name || '' });
+    }
+    out.sort((a, b) => a.dL - b.dL);
+    const pick = []; for (const o of out) { if (pick.some(q => hv([q.pt.lat, q.pt.lon], [o.pt.lat, o.pt.lon]) < CFG.quiet.minSepM)) continue; pick.push(o); if (pick.length >= CFG.quiet.n) break; }
+    return pick;
+  }
   /* 快適・絶景: ルートの近くにある展望地・山頂・峠。追加距離が小さいものから */
   function scenicItems(ctx) {
     const { best, userPts, minLen, feat } = ctx; if (!feat || !feat.points || !feat.points.length) return [];
@@ -152,6 +173,7 @@
       const c = best.cmf || {}, loss = { steep: 0.35 * (1 - (c.H == null ? 1 : c.H)), busy: 0.45 * (1 - (c.Q == null ? 1 : c.Q)), scenic: 0.20 * (1 - (c.V == null ? 1 : c.V)) };
       if (z && best.cmf && best.cmf.H != null && best.cmf.H < 1) { const it = steepWindows(best.D, z, CFG.minWindowG.cmf, userS); if (it.length) fam.push({ fam: 'steep', kind: 'exclude', loss: loss.steep, items: it.map(x => ({ pt: x.pt, g: x.g })) }); }
       if (c.spans && c.Q != null && c.Q < 1) { const it = busySpans(c.spans, best.D, userS); if (it.length) fam.push({ fam: 'busy', kind: 'exclude', loss: loss.busy, items: it.map(x => ({ pt: x.pt, len: x.len })) }); }
+      { const it = quietItems(ctx); it.forEach((x, i) => fam.push({ fam: 'quiet' + (i + 1), kind: 'via', loss: loss.busy + 0.02 - i * 0.001, items: [x] })); } // 幹線道路を避ける迂回: 1か所ずつ別の案(組み合わせない)
       if (ctx.feat && c.V != null && c.V < 1) { const it = scenicItems(ctx); if (it.length) fam.push({ fam: 'scenic', kind: 'via', loss: loss.scenic, items: it }); }
     }
     return fam.sort((a, b) => b.loss - a.loss);
@@ -206,6 +228,6 @@
   Budget.prototype.canStage = function (n) { return this.stages < CFG.stageMax && this.routeLeft >= (n || 1) && !this.timeUp() && !this.slow; };
   Budget.prototype.use = function (n, ms) { this.routeLeft -= n; this.stages++; if (ms > CFG.slowMs) this.slow = true; };
 
-  const api = { CFG, pointAt, nearest, userSpans, insertVia, overlap, isDup, steepWindows, busySpans, passItems, cycItems, scenicItems, families, viaPoints, filterVerified, mkProposal, firstProposals, refineProposal, valueOf, improved, capFor, Budget, roadFactor };
+  const api = { CFG, pointAt, nearest, userSpans, insertVia, overlap, isDup, steepWindows, busySpans, passItems, cycItems, scenicItems, quietItems, families, viaPoints, filterVerified, mkProposal, firstProposals, refineProposal, valueOf, improved, capFor, Budget, roadFactor };
   if (typeof module !== 'undefined') module.exports = api; else root.Explore = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

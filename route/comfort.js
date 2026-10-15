@@ -12,6 +12,10 @@
   const RC = { service_other: 0.2, residential: 0.2, unclassified: 0.3, tertiary: 0.5, secondary: 0.75, primary: 0.9, trunk: 1.0, motorway: 1.0 };
   const OFF = new Set(['cycleway', 'mountain_bike', 'track', 'footway', 'sidewalk', 'path', 'pedestrian']);
   const NONRIDE = new Set(['steps', 'ferry', 'rail-ferry', 'rail', 'bus', 'tram', 'elevator', 'escalator', 'egress_connection', 'platform_connection', 'transit_connection']);
+  // 国道など交通量の多い幹線道路(OSMの trunk / primary)が長く続くルートへの減点。重み・しきい値はすべて仮置き。
+  //  減点 = k × (幹線道路の長さ − freeM) ÷ ルート長(上限 maxPen)。交差・短い併用(freeM まで)は減点しない。
+  //  warnM 以上、または warnShare 以上のときは画面に警告を出す。
+  const HEAVY = { classes: new Set(['trunk', 'primary', 'motorway']), freeM: 1000, k: 0.8, maxPen: 0.6, warnM: 3000, warnShare: 0.3 };
   const NEUTRAL = 0.5; // 不明な辺の交通指数(静かとも多いとも言わない)
   const ATTRS = ['edge.surface', 'edge.length', 'edge.road_class', 'edge.use', 'edge.lane_count', 'edge.speed_limit', 'edge.cycle_lane', 'edge.bridge', 'edge.tunnel', 'edge.travel_mode', 'edge.begin_shape_index', 'edge.end_shape_index', 'shape'];
   // shape と begin/end_shape_index は、橋・トンネルの位置をルート上に正確に重ねるために使う(辺の長さの比例配分は、実測で0.3%ずれた)
@@ -51,15 +55,16 @@
   function analyzeEdges(edges, routeM) {
     const { tot, scale } = edgeScale(edges, routeM);
     if (!(tot > 0)) return null;
-    let sumT = 0, unk = 0, walk = 0, known = 0;
+    let sumT = 0, unk = 0, walk = 0, known = 0, heavy = 0, run = 0, maxRun = 0;
     for (const e of edges) {
       const L = Math.max(0, Number(e.length) || 0); if (!L) continue;
       const a = edgeAccess(e), t = trafficIndex(e);
+      if (a === 'ok' && HEAVY.classes.has(e.road_class)) { heavy += L; run += L; if (run > maxRun) maxRun = run; } else run = 0;
       if (a === 'walk') { walk += L; unk += L; sumT += L * NEUTRAL; }
       else if (t == null) { unk += L; sumT += L * NEUTRAL; }
       else { known += L; sumT += L * t; }
     }
-    return { Q: clamp(1 - sumT / tot, 0, 1), unknownRatio: unk / tot, walkRatio: walk / tot, walkM: walk / tot * (routeM || tot * scale), knownRatio: known / tot, n: edges.length };
+    return { Q: clamp(1 - sumT / tot, 0, 1), unknownRatio: unk / tot, walkRatio: walk / tot, walkM: walk / tot * (routeM || tot * scale), knownRatio: known / tot, n: edges.length, heavyShare: heavy / tot, heavyM: heavy / tot * (routeM || tot * scale), heavyRunM: maxRun / tot * (routeM || tot * scale) };
   }
   /* 辺ごとの区間(ルート上の距離 m)。橋・トンネルの補正、交通指数が高い区間の検出に使う */
   function edgeSpans(edges, routeM) {
@@ -201,10 +206,16 @@
     for (const k of ['q', 'h', 'v']) { const v = parts[k.toUpperCase()]; if (avail[k] && v != null) { w += WEIGHTS[k]; s += WEIGHTS[k] * v; } }
     return w > 0 ? s / w : null;
   }
+  /* 幹線道路が長く続くことへの減点(0〜maxPen)。道路の属性が取得できていない候補は0(減点しない) */
+  function heavyPenalty(cm, routeM) {
+    if (!cm || !(cm.heavyM > 0) || !(routeM > 0)) return 0;
+    return clamp(HEAVY.k * Math.max(0, cm.heavyM - HEAVY.freeM) / routeM, 0, HEAVY.maxPen);
+  }
+  function heavyWarn(cm) { return !!cm && ((cm.heavyM || 0) >= HEAVY.warnM || (cm.heavyShare || 0) >= HEAVY.warnShare); }
   function scoreAll(cands) {
     const has = (c, k) => c.cmf && c.cmf[k] != null;
     const avail = { q: cands.length > 0 && cands.every(c => has(c, 'Q')), h: cands.length > 0 && cands.every(c => has(c, 'H')), v: cands.length > 0 && cands.every(c => has(c, 'V')) };
-    for (const c of cands) { if (!c.cmf) c.cmf = {}; c.cmf.S = composite(c.cmf, avail); c.cmf.avail = avail; }
+    for (const c of cands) { if (!c.cmf) c.cmf = {}; const b = composite(c.cmf, avail); c.cmf.pen = heavyPenalty(c.cmf, c.len); c.cmf.S = b == null ? null : Math.max(0, b - c.cmf.pen); c.cmf.avail = avail; }
     return avail;
   }
   /* 静かさが未取得の候補の上限(Q=1と仮定)。有望な候補を、静かさの取得前に不当に外さないための比較に使う */
@@ -228,6 +239,6 @@
     return out;
   }
 
-  const api = { WEIGHTS, GRADE, ATTRS, NEUTRAL, edgeAccess, trafficIndex, edgeScale, analyzeEdges, edgeSpans, structureRanges, alignedRanges, padRanges, correctZ, gradeProfile, scenicScore, composite, scoreAll, upperBound, enc6, chunkPts, hv };
+  const api = { HEAVY, heavyPenalty, heavyWarn, WEIGHTS, GRADE, ATTRS, NEUTRAL, edgeAccess, trafficIndex, edgeScale, analyzeEdges, edgeSpans, structureRanges, alignedRanges, padRanges, correctZ, gradeProfile, scenicScore, composite, scoreAll, upperBound, enc6, chunkPts, hv };
   if (typeof module !== 'undefined') module.exports = api; else root.Comfort = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
