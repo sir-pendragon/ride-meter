@@ -316,6 +316,7 @@ function noteHTML(c){let h='';const n=[],warnP=t=>`<p class="warn" style="margin
   if(objective()==='cmf'||st.cands.some(x=>x.auto))n.push('取得できた候補の中の最良です。最適解を保証するものではありません');
   if(objective()==='sht')n.push('距離だけを基準に選んでいます。急な坂や未舗装の道を通ることがあります(最大勾配・舗装率を確認してください)');
   if(st.xlog&&st.xlog.routes)n.push(`追加探索: ${st.xlog.routes}回(経由地の確認 ${st.xlog.locate}回)`);
+  if(st.xlog&&st.xlog.stages&&st.xlog.stages.length){const dr={};for(const s of st.xlog.stages)for(const k in s.drop||{})dr[k]=(dr[k]||0)+s.drop[k];const L={added:'候補に追加',dup:'既存とほぼ同じ道',cap:'距離の上限超え',hit:'通行止めにかかる',dominated:'点数が届かない',nodata:'データなし'},t=Object.keys(L).filter(k=>dr[k]).map(k=>L[k]+' '+dr[k]).join('・');if(t)n.push(`追加探索の内訳: ${t}(提案: ${st.xlog.stages.map(s=>s.props.join('+')).join(' → ')}${st.xlog.stages.some(s=>s.improved)?'':'。どれも現在の最良を上回りませんでした'})`)}
   h+=bullets(n);
   const len0=compute._len0||st.minLen;if(objective()!=='max'&&len0&&c.len>len0*1.5)h+=warnP(`通行止めを避けるため、最短(${(len0/1000).toFixed(1)} km)の1.5倍を超えています(${(c.len/1000).toFixed(1)} km)。通行止めの回避を優先しました`);
   if(!(st.xlog&&st.xlog.routes)&&st.xlog&&st.xlog.note&&/取得できません|確認できなかった|時間/.test(st.xlog.note))h+=warnP(`追加探索は行っていません: ${esc(st.xlog.note)}。基本の候補から選んでいます`);
