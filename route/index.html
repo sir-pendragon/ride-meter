@@ -149,7 +149,7 @@ function nearClosure(pts){const hits=[];for(const c of st.closures){let m=1e9;fo
 
 function setProg(f,t){$('#bar').hidden=f==null;if(f!=null)$('#bar i').style.width=Math.round(f*100)+'%';$('#st').textContent=t||''}
 let busy=false;
-async function compute(){if(busy)return;if(!compute._r){Closures.resetBoost();compute._len0=null}normPts();if(!st.points.some(p=>p.k==='s')||!st.points.some(p=>p.k==='g')){setProg(null,'スタートとゴールを入れてください(経由地だけでは計算できません)');return}busy=true;$('#go').disabled=true;$('#s-res').hidden=$('#s-prof').hidden=true;st.cands=[];
+async function compute(){if(busy)return;if(!compute._r){Closures.resetBoost();compute._len0=null}normPts();if(!st.points.some(p=>p.k==='s')||!st.points.some(p=>p.k==='g')){setProg(null,'スタートとゴールを入れてください(経由地だけでは計算できません)');return}busy=true;$('#go').disabled=true;$('#s-res').hidden=$('#s-prof').hidden=true;st.cands=[];st.passDBat=null;
   try{const first=!compute._r;
   const closureP=first?Closures.autoFetch(60000).catch(()=>{}):Promise.resolve();
   const vs=VAR[objective()];setProg(0.05,first?'通行止め情報を取得しながら、ルート候補を作成しています':'ルート候補を作り直しています');
@@ -252,13 +252,22 @@ async function sceneFeat(cs){const b=gridBB(cs.flatMap(c=>c.pts),0.002),bb=b.joi
   const q=`[out:json][timeout:25];(${pts}${full?lines:''});out ${full?'geom('+bb+')':'body'} qt;`;
   return overpassJ(q,'scn/'+(full?'f/':'p/')+bb,els=>{const points=[],ln=[];for(const e of els){if(e.type==='node'&&e.tags&&Number.isFinite(e.lat)){const t=e.tags.tourism==='viewpoint'?'viewpoint':e.tags.mountain_pass==='yes'?'pass':e.tags.natural==='peak'?'peak':null;if(t)points.push({t,lat:+e.lat.toFixed(5),lon:+e.lon.toFixed(5)})}else if(e.type==='way'&&Array.isArray(e.geometry)){/* geom(範囲) は、範囲の外の点を null で返す(実機で確認)。null で線を分け、点が2つ以上ある部分だけ使う */let seg=[];const fl=()=>{if(seg.length>1)ln.push(seg);seg=[]};for(const p of e.geometry){if(p&&Number.isFinite(p.lat)&&Number.isFinite(p.lon))seg.push([+p.lat.toFixed(5),+p.lon.toFixed(5)]);else fl()}fl()}}return{points,lines:full?ln:null}})}
 /* 最大獲得標高: 利用者の地点の周辺(約13km)の峠・鞍部・山頂(標高の記載があるものだけ) */
+/* 峠・鞍部・山頂の座標データベース(data/osm-pass/jp.json。OSMから取得した日付つき。tools/build_pass_db.py で作る)。
+   範囲がデータベースの範囲に収まるときは、0.1°の升目だけを見て即座に返す(Overpassを待たない)。収まらない・読めない・必要な種類(山頂)がないときは null(呼び出し側がOverpassに聞く) */
+let passDBp=null;
+function passDB(){if(!passDBp)passDBp=fetch('../data/osm-pass/jp.json').then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}).then(j=>{if(!j||!Array.isArray(j.pts)||!j.idx||!j.bbox)throw new Error('形式');return j}).catch(()=>null);return passDBp}
+async function passLocal(bb,kinds){const db=await passDB();if(!db)return null;const B=db.bbox;if(bb[0]<B[0]||bb[1]<B[1]||bb[2]>B[2]||bb[3]>B[3])return null;if(kinds.some(k=>!db.kinds.includes(k)))return null;
+  const g=db.g||0.1,out=[];for(let a=Math.floor(bb[0]/g);a<=Math.floor(bb[2]/g);a++)for(let b=Math.floor(bb[1]/g);b<=Math.floor(bb[3]/g);b++){const e=db.idx[a+','+b];if(!e)continue;for(let i=e[0];i<e[0]+e[1];i++){const p=db.pts[i];if(p[0]<bb[0]||p[0]>bb[2]||p[1]<bb[1]||p[1]>bb[3]||!kinds.includes(p[3]))continue;out.push({lat:p[0],lon:p[1],ele:p[2]==null?NaN:p[2],name:p[4]||'',k:p[3]})}}
+  st.passDBat=db.at;return out}
 /* 国道を避ける迂回: 国道(幹線)が続く区間の周辺だけで、峠・鞍部(山頂は使わない)を探す。範囲が狭いので、全体の範囲より速い。待ち時間は長め(混んでいるとき約50秒かかることがある) */
 async function quietPassData(best){const q=Explore.CFG.quiet,D=best.D,cm=best.cmf||{},pts=[];let acc=0;
   for(const sp of (cm.spans||[])){if(sp.rc==='trunk'||sp.rc==='primary'||sp.rc==='motorway'){for(let s=sp.a;s<=sp.b;s+=1000){let i=0;while(i<D.s.length-1&&D.s[i+1]<s)i++;pts.push([D.la[i],D.lo[i]])}}}
   if(!pts.length)return[];const dl=q.radiusM/111195,dg=q.radiusM/90110,b=gridBB(pts.flatMap(p=>[[p[0]-dl,p[1]-dg],[p[0]+dl,p[1]+dg]]),0),bb=b.join(',');if((b[2]-b[0])*(b[3]-b[1])>0.6)return[];
+  const loc=await passLocal(b,['pass','saddle']);if(loc)return loc;
   const qq=`[out:json][timeout:60];(node["mountain_pass"="yes"](${bb});node["natural"="saddle"](${bb}););out body qt;`;
   return overpassJ(qq,'pass3/'+bb,els=>els.filter(e=>e.type==='node'&&e.tags&&Number.isFinite(e.lat)).map(e=>({lat:+e.lat.toFixed(5),lon:+e.lon.toFixed(5),ele:parseFloat(String(e.tags.ele||'').replace(',','.')),name:e.tags.name||'',k:e.tags.mountain_pass==='yes'?'pass':'saddle'})),70000)}
 async function passData(userPts){const d=Explore.CFG.corridorDeg,b=gridBB(userPts.map(p=>[p.lat,p.lon]).flatMap(p=>[[p[0]-d.lat,p[1]-d.lon],[p[0]+d.lat,p[1]+d.lon]]),0),bb=b.join(',');if((b[2]-b[0])*(b[3]-b[1])>0.6)return[];
+  const loc=await passLocal(b,['pass','saddle','peak']);if(loc)return loc.filter(p=>Number.isFinite(p.ele));
   const q=`[out:json][timeout:25];(node["mountain_pass"="yes"](${bb});node["natural"="saddle"](${bb});node["natural"="peak"](${bb}););out body qt;`;
   return overpassJ(q,'pass2/'+bb,els=>els.filter(e=>e.type==='node'&&e.tags&&Number.isFinite(e.lat)).map(e=>({lat:+e.lat.toFixed(5),lon:+e.lon.toFixed(5),ele:parseFloat(String(e.tags.ele||'').replace(',','.')),name:e.tags.name||'',k:e.tags.mountain_pass==='yes'?'pass':e.tags.natural==='peak'?'peak':'saddle'})).filter(p=>Number.isFinite(p.ele)))}
 /* 自動の経由地は、自転車で通れる道に35m以内で載ると確認できたものだけ使う(/locate を1回)。確認できない・取得に失敗したものは使わない */
@@ -320,6 +329,7 @@ function noteHTML(c){let h='';const n=[],warnP=t=>`<p class="warn" style="margin
   if(objective()==='cmf'||st.cands.some(x=>x.auto))n.push('取得できた候補の中の最良です。最適解を保証するものではありません');
   if(objective()==='sht')n.push('距離だけを基準に選んでいます。急な坂や未舗装の道を通ることがあります(最大勾配・舗装率を確認してください)');
   if(window.__ovpLog&&window.__ovpLog.some(x=>!x.ok))n.push('地図データの取得: '+window.__ovpLog.slice(-6).map(x=>`${x.ep} ${x.ok?'成功':'失敗('+x.err+')'} ${Math.round(x.ms/1000)}秒`).join(' → '));
+  if(st.passDBat&&(objective()==='max'||(st.xlog&&st.xlog.stages&&st.xlog.stages.some(s=>s.props.some(p=>/^quiet/.test(p))))))n.push(`峠のデータ: 同梱の座標データベース(OSM ${esc(st.passDBat)})`);
   if(st.xlog&&st.xlog.routes)n.push(`追加探索: ${st.xlog.routes}回(経由地の確認 ${st.xlog.locate}回)`);
   if(st.xlog&&st.xlog.stages&&st.xlog.stages.length){const dr={};for(const s of st.xlog.stages)for(const k in s.drop||{})dr[k]=(dr[k]||0)+s.drop[k];const L={added:'候補に追加',dup:'既存とほぼ同じ道',cap:'距離の上限超え',hit:'通行止めにかかる',dominated:'点数が届かない',nodata:'データなし'},t=Object.keys(L).filter(k=>dr[k]).map(k=>L[k]+' '+dr[k]).join('・');if(t)n.push(`追加探索の内訳: ${t}(提案: ${st.xlog.stages.map(s=>s.props.join('+')).join(' → ')}${st.xlog.stages.some(s=>s.improved)?'':'。どれも現在の最良を上回りませんでした'})`)}
   h+=bullets(n);
