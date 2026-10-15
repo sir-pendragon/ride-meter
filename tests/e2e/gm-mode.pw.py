@@ -29,10 +29,12 @@ print('Google script requested:',any('maps.googleapis.com' in r for r in reqs),'
 # 地図タップでの追加は廃止。地点は検索などで入れる(ここでは内部関数で入れてマーカーを確認)
 pg.evaluate("__rt.addPoint('s',35.7,139.5);__rt.addPoint('g',35.8,139.6)");pg.wait_for_timeout(300)
 log=pg.evaluate('window.__glog')
-print('markers created:',sum(1 for l in log if l[0]=='AME'),' draggable:',[l[1] for l in log if l[0]=='AME'])
-mk=pg.evaluate('window.__mk.length')
-# ドラッグ → 位置が更新される
-pg.evaluate('(()=>{const m=window.__mk[0];m.position={lat:()=>35.71,lng:()=>139.51};m.fire("dragend")})()');pg.wait_for_timeout(300)
+print('Map options (mapId, rendering):',[(l[1],l[3]) for l in log if l[0]=='Map'])
+print('overlay markers created:',sum(1 for l in log if l[0]=='OV'),' attached:',sum(1 for l in log if l[0]=='ov.setMap' and l[1]))
+# ドラッグ(ポインタ操作)→ 位置が更新される
+before=pg.evaluate('JSON.parse(localStorage.getItem("rt-state")).points[0].lat')
+pg.evaluate('''(()=>{const el=window.__ov.map(o=>o._panes.overlayMouseTarget.firstChild).find(Boolean);const ev=(t,x,y)=>el.dispatchEvent(new PointerEvent(t,{clientX:x,clientY:y,bubbles:true,pointerId:1}));ev('pointerdown',100,100);ev('pointermove',100,150);ev('pointerup',100,150)})()''');pg.wait_for_timeout(300)
+print('lat before drag:',before)
 print('dragend handled, state saved:',pg.evaluate('JSON.parse(localStorage.getItem("rt-state")).points[0].lat'))
 print('page errors:',errs)
 b.close();p.stop()
