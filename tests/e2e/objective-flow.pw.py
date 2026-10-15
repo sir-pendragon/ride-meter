@@ -45,7 +45,7 @@ with sync_playwright() as p:
         if u.startswith('http://127.0.0.1'):return route.continue_()
         if 'valhalla' in u and u.endswith('/route'):
             body=json.loads(route.request.post_data);v=body['costing_options']['bicycle'];routes.append(v)
-            pts=HILL if v['use_hills']>=1 else FLAT
+            pts=HILL if v.get('use_hills',0)>=1 else FLAT
             j={'trip':{'legs':[{'shape':enc(pts)}]}}
             if body.get('alternates'):j['alternates']=[{'trip':{'legs':[{'shape':enc(FLAT if pts is HILL else HILL)}]}}]
             return route.fulfill(json=j)
@@ -63,7 +63,7 @@ with sync_playwright() as p:
     pg.route('**/*',h)
     pg.goto('http://127.0.0.1:%d/index.html'%srv.server_address[1]);pg.wait_for_function('typeof __rt!=="undefined"',timeout=20000)
     ok(pg.inner_text('#go')=='ルートを計算','ボタン名')
-    ok(pg.evaluate("[...document.querySelectorAll('#obj option')].map(o=>o.textContent)")==['最小獲得標高','最大獲得標高','自転車ルートを優先','快適・絶景'],'プルダウンの選択肢(既存の3つ+快適・絶景)')
+    ok(pg.evaluate("[...document.querySelectorAll('#obj option')].map(o=>o.textContent)")==['最小獲得標高','最大獲得標高','自転車ルートを優先','快適・絶景','最短距離ルート'],'プルダウンの選択肢(既存の4つ+最短距離ルート)')
     pg.evaluate("__rt.st.points=[{lat:%f,lon:%f,name:'S'},{lat:%f,lon:%f,name:'G'}]"%(S+G))
     def run(obj):
         routes.clear();tr.clear()
@@ -98,6 +98,13 @@ with sync_playwright() as p:
     pg.evaluate("caches.delete('rt-cyc')");OV['mode']='fail'
     run('cyc');r4=pg.evaluate("document.querySelector('#cards').textContent")
     ok('自転車ルートのデータを取得できませんでした' in r4 and '登録済み自転車ルート沿い' not in r4,r4)
+    # 最短距離ルート: shortest を指定して1回だけ問い合わせ、候補の中で一番短いものを選ぶ
+    run('sht')
+    ok(len(routes)==1 and routes[0].get('shortest') is True,('最短距離は shortest を指定した1回の問い合わせ',routes))
+    r5=pg.evaluate("({title:document.querySelector('#cards .t').textContent,sel:__rt.st.sel.len,lens:__rt.st.cands.map(c=>c.len),txt:document.querySelector('#cards').textContent})")
+    print('sht:',r5['title'],r5['sel'],r5['lens'])
+    ok('最短距離ルート' in r5['title'] and r5['sel']==min(r5['lens']),r5)
+    ok('距離だけを基準に選んでいます' in r5['txt'],'注意書き')
     # 目的を変えたら結果を消す(候補の作り方が違うため)
     pg.select_option('#obj','min');pg.wait_for_timeout(200)
     ok(pg.evaluate("document.getElementById('s-res').hidden"),'目的を変えたら結果を消す')

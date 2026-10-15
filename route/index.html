@@ -48,7 +48,7 @@ a{color:var(--acc)}
  <ul class="pts" id="pts"></ul>
 </section>
 <section id="s-opt"><h2>② ルートを計算</h2>
- <div class="row"><label>条件 <select id="obj"><option value="min" selected>最小獲得標高</option><option value="max">最大獲得標高</option><option value="cyc">自転車ルートを優先</option><option value="cmf">快適・絶景</option></select></label><button class="btn pri" id="go">ルートを計算</button></div>
+ <div class="row"><label>条件 <select id="obj"><option value="min" selected>最小獲得標高</option><option value="max">最大獲得標高</option><option value="cyc">自転車ルートを優先</option><option value="cmf">快適・絶景</option><option value="sht">最短距離ルート</option></select></label><button class="btn pri" id="go">ルートを計算</button></div>
  <input type="hidden" id="detour" value="1.5">
  <div class="bar" id="bar" hidden><i></i></div><p class="hint" id="st"></p>
 </section>
@@ -130,8 +130,10 @@ const VAR={
  max:[{bicycle_type:'Hybrid',use_hills:1,avoid_bad_surfaces:0.5,use_roads:0.5}],
  cyc:[{bicycle_type:'Hybrid',use_hills:0.5,avoid_bad_surfaces:0.5,use_roads:0.1}],
  /* 快適・絶景: 坂と車の多い道を避ける設定で候補を作り、静かさ・激坂・景観の評価で選ぶ(仮置き。Valhallaには勾配や交通量そのものの指定がないため) */
- cmf:[{bicycle_type:'Hybrid',use_hills:0.1,avoid_bad_surfaces:0.5,use_roads:0.1}]};
-const objective=()=>{const v=$('#obj').value;return v==='max'||v==='cyc'||v==='cmf'?v:'min'};
+ cmf:[{bicycle_type:'Hybrid',use_hills:0.1,avoid_bad_surfaces:0.5,use_roads:0.1}],
+ /* 最短距離: Valhallaの shortest(距離だけで選ぶ)。他の設定(坂・路面)は効かない。公開サーバーで、同じ区間が cyc 38.2km → shortest 34.7km になることを確認済み */
+ sht:[{bicycle_type:'Hybrid',shortest:true}]};
+const objective=()=>{const v=$('#obj').value;return v==='max'||v==='cyc'||v==='cmf'||v==='sht'?v:'min'};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function vpost(path,body,tries=2){let err;for(let t=0;t<tries;t++){try{const r=await fetch(VAL+path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});const j=await r.json();if(r.ok)return j;err=new Error(j.error||('HTTP '+r.status));err.code=j.error_code;if(r.status<500&&r.status!==429)throw err}catch(e){err=e;if(e.code)throw e}await sleep(800)}throw err}
 function locs(){return st.points.map((p,i)=>({lat:p.lat,lon:p.lon,type:(i===0||i===st.points.length-1)?'break':'through'}))}
@@ -175,6 +177,9 @@ async function restoreLast(){if(busy||st.cands.length)return;let o=null;try{o=JS
    自動で足した候補(c.auto)だけ、最大獲得標高でも最短の2倍まで(内部の範囲)。最短は、自動で足した候補を除いた候補の中で数える */
 function choose(){const cs=st.cands;const base=cs.filter(c=>!c.auto);const minLen=Math.min(...(base.length?base:cs).map(c=>c.len));const o=objective(),mx=o==='max';const lim=+$('#detour').value;st.minLen=minLen;
   const capOf=c=>mx?(c.auto?Explore.CFG.capAutoMax:Infinity):lim;const ok=cs.filter(c=>c.len<=minLen*capOf(c));st.pool=ok;
+  if(o==='sht'){/* 最短距離: 通行止めを通る候補は、ほかにあれば選ばない。そのうえで一番短い候補 */
+    const hit=c=>(c.hitsAuto&&c.hitsAuto.length)||(c.closed&&c.closed.length);let pool=ok.filter(c=>!hit(c));if(!pool.length)pool=ok;
+    st.best=pool.length?pool.reduce((a,b)=>b.len<a.len?b:a):null;st.sel=st.best||ok[0];return}
   if(o==='cyc'){const w=ok.filter(c=>c.cyc!=null);st.best=w.length?w.reduce((a,b)=>(b.cyc>a.cyc||(b.cyc===a.cyc&&b.len<a.len))?b:a):null;st.sel=st.best||ok[0];return}
   if(o==='cmf'){/* 通行止め・自転車で走れない候補は、スコアに関係なく除外する。通行止めの回避を、距離の上限より優先する */
     const hit=c=>(c.hitsAuto&&c.hitsAuto.length)||(c.closed&&c.closed.length);const live=c=>!(c.cmf&&c.cmf.excluded);
@@ -251,7 +256,7 @@ const ptKey=p=>p.lat.toFixed(6)+','+p.lon.toFixed(6);
 async function locateOK(pts){const ok=new Set();try{const j=await vpost('/locate',{locations:pts.map(p=>({lat:p.lat,lon:p.lon})),costing:'bicycle',verbose:true},1);(Array.isArray(j)?j:[]).forEach((r,i)=>{const p=pts[i];if(!p||!r)return;for(const e of (r.edges||[])){const la=e.correlated_lat,lo=e.correlated_lon;if(!Number.isFinite(la)||!Number.isFinite(lo))continue;const acc=(e.edge&&e.edge.access)||e.access;if(hav([p.lat,p.lon],[la,lo])<=Explore.CFG.snapM&&acc&&acc.bicycle===true){ok.add(ptKey(p));break}}})}catch(e){}return ok}
 const EXPLORE_ON=(()=>{try{return localStorage.getItem('rt-explore')!=='0'}catch(e){return true}})();
 /* 共通探索: 全モード共通。通常検索は /route 1回のまま、改善の余地があるときだけ、追加探索を最大3回(2段階)まで行う。AIは使わない */
-async function exploreRun(cs){const mode=objective(),log=st.xlog={mode,on:EXPLORE_ON,routes:0,locate:0,ms:0,stages:[],note:''};if(!EXPLORE_ON){log.note='無効';return}const t0=Date.now();
+async function exploreRun(cs){const mode=objective(),log=st.xlog={mode,on:EXPLORE_ON,routes:0,locate:0,ms:0,stages:[],note:''};if(!EXPLORE_ON){log.note='無効';return}if(mode==='sht'){log.note='最短距離は追加探索なし';return}const t0=Date.now();
   try{if(!cs.length)return;const userPts=st.points.map(p=>({lat:p.lat,lon:p.lon,k:p.k}));const minLen=Math.min(...cs.map(c=>c.len));
     const elig=c=>c.len<=minLen*Explore.capFor(mode,!!c.auto)&&!(c.cmf&&c.cmf.excluded);
     const rank=()=>{const p=cs.filter(elig);if(mode==='cmf')Comfort.scoreAll(p.filter(c=>c.cmf));return p};
@@ -302,6 +307,7 @@ function cmfHTML(c){const m=c.cmf;if(!m||m.excluded)return '';const g=m.g||{},vd
 function noteHTML(c){let h='';const n=[],warnP=t=>`<p class="warn" style="margin:6px 0 0;font-size:14px">⚠ ${t}</p>`;
   if(c.auto&&c.propObj)n.push(`追加探索の候補です(自動の経由地${c.propObj.via.length}点・除外点${c.propObj.excl.length}点)`);
   if(objective()==='cmf'||st.cands.some(x=>x.auto))n.push('取得できた候補の中の最良です。最適解を保証するものではありません');
+  if(objective()==='sht')n.push('距離だけを基準に選んでいます。急な坂や未舗装の道を通ることがあります(最大勾配・舗装率を確認してください)');
   if(st.xlog&&st.xlog.routes)n.push(`追加探索: ${st.xlog.routes}回(経由地の確認 ${st.xlog.locate}回)`);
   h+=bullets(n);
   const len0=compute._len0||st.minLen;if(objective()!=='max'&&len0&&c.len>len0*1.5)h+=warnP(`通行止めを避けるため、最短(${(len0/1000).toFixed(1)} km)の1.5倍を超えています(${(c.len/1000).toFixed(1)} km)。通行止めの回避を優先しました`);
@@ -314,7 +320,7 @@ const gsi=(id,ext,maxZ,att)=>L.tileLayer(`https://cyberjapandata.gsi.go.jp/xyz/$
 const base={'標準':gsi('std','png',18).addTo(map),'淡色':gsi('pale','png',18),'写真':gsi('seamlessphoto','jpg',18),'色別標高':gsi('relief','png',15)};
 L.control.layers(base,null,{collapsed:true}).addTo(map);
 const gPts=L.layerGroup().addTo(map),gRt=L.layerGroup().addTo(map),gCl=L.layerGroup().addTo(map);let hoverMk=null;
-const HEX={min:'#2E7D4F',max:'#C25A12',cyc:'#1F6FB5',cmf:'#7B4FB5'};
+const HEX={min:'#2E7D4F',max:'#C25A12',cyc:'#1F6FB5',cmf:'#7B4FB5',sht:'#C2395F'};
 function pinIcon(t,c){return L.divIcon({className:'',html:`<div class="pin ${c||''}">${t}</div>`,iconSize:[26,26],iconAnchor:[13,13]})}
 /* 地点の役割(スタート s / 経由 v / ゴール g)を、位置ではなく印で持つ。並びは常に [スタート, 経由…, ゴール]。
    印の無い地点(古い保存データ)は、先頭=スタート、末尾=ゴール(2点以上のとき)、間=経由とみなす */
@@ -368,7 +374,7 @@ $('#qgo').onclick=search;$('#q').addEventListener('keydown',e=>{if(e.key==='Ente
 $('#sr').onclick=e=>{const b=e.target.closest('button[data-k]');if(!b)return;const li=b.closest('li');const lat=+li.dataset.lat,lon=+li.dataset.lon,nm=li.dataset.nm;const k=b.dataset.k;if(k==='s')setStart(lat,lon,nm);else if(k==='g')setGoal(lat,lon,nm);else addPoint('v',lat,lon,nm);map.setView([lat,lon],Math.max(map.getZoom(),12));$('#sr').innerHTML=''};
 
 /* ---------- 結果の表示 ---------- */
-const NAMES={min:'最小獲得標高',max:'最大獲得標高',cyc:'自転車ルート優先',cmf:'快適・絶景'};
+const NAMES={min:'最小獲得標高',max:'最大獲得標高',cyc:'自転車ルート優先',cmf:'快適・絶景',sht:'最短距離ルート'};
 const f1=v=>v==null?'—':v.toFixed(1),pc=v=>v==null?'—':Math.round(v*100)+'%';
 function statsHTML(c){const m=c.m||{};return `<div class="stats"><div><b>${(c.len/1000).toFixed(1)} km</b><span>距離</span></div><div><b>${m.gain==null?'—':'↑'+m.gain+' m'}</b><span>獲得標高</span></div><div><b>${m.gain==null?'—':f1(m.avgClimb*100)+'%'}</b><span>登り平均</span></div><div><b>${m.gain==null?'—':f1(m.maxGrade*100)+'%'}</b><span>最大勾配</span></div><div><b>${c.sfDone?pc(c.paved):'調べ中…'}</b><span>舗装(推定)</span></div>${c.cyc!=null?`<div><b>${Math.round(c.cyc*100)}%</b><span>登録済み自転車ルート沿い</span></div>`:''}</div>${m.fixed?`<p class="hint" style="margin:1px 0 0;font-size:10px;line-height:1.3">※最大勾配は200m区間 ・ 橋・トンネルと確認できた区間の標高を補正済み</p>`:''}${m.gradeExcl?`<p class="hint" style="margin:2px 0 0;font-size:11px">※勾配30%超の${m.gradeExcl}区間は、トンネル・橋など標高データの誤りの可能性があるため、最大勾配から除外</p>`:''}`}
 function render(noFit){renderClFound();$('#s-res').hidden=$('#s-prof').hidden=false;const cards=$('#cards');cards.innerHTML='';const obj=objective();
