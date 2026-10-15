@@ -29,7 +29,8 @@ HTML='''<html><body><p>掲載日：2026年10月1日</p><table><tr><th>路線名<
 <tr><td>長久保線</td><td>一部区間通行止め</td><td>起点より3.5km~終点</td><td>当面の間</td><td>崩落</td></tr></table></body></html>'''
 GF={'ok':"(r)=>{const m={'上落合橋':[35.9000,139.0900],'志賀坂峠':[35.9030,139.1050]};for(const k in m)if(r.address.includes(k))return{results:[{partial_match:false,geometry:{location:{lat:()=>m[k][0],lng:()=>m[k][1]}}}]};return{results:[]}}",
  'far':"(r)=>({results:[{partial_match:false,geometry:{location:{lat:()=>35.5,lng:()=>139.5}}}]})",
- 'denied':"(r)=>{const e=new Error('REQUEST_DENIED');e.code='REQUEST_DENIED';throw e}"}[MODE]
+ 'denied':"(r)=>{const e=new Error('REQUEST_DENIED');e.code='REQUEST_DENIED';throw e}",
+ 'over':"(r)=>{window.__geoCalls=(window.__geoCalls||0)+1;const e=new Error('OVER_QUERY_LIMIT');e.code='OVER_QUERY_LIMIT';throw e}"}[MODE]
 def run(honor):
     reqs=[]
     with sync_playwright() as p:
@@ -72,6 +73,8 @@ def run(honor):
         print('list:',pg.inner_text('#ac-list').replace('\n',' / ')[:600])
         if MODE=='ok':
             pg.evaluate('Closures._test.avoid(0)');time.sleep(0.5)
+        if MODE=='over':
+            print('over-limit: geocode calls =',pg.evaluate('window.__geoCalls||0'),'/ flag saved =',pg.evaluate('!!localStorage.getItem("rt-geo-over")'),'/ note shown =','上限に達している' in pg.inner_text('#ac-st')+pg.inner_text('#cards'))
         print('errors:',errs);b.close()
 for honor in (True,False):
     print('=== 除外を守るサーバー' if honor else '=== 除外を無視するサーバー');run(honor)

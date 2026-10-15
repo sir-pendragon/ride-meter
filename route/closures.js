@@ -438,15 +438,17 @@
             for (const nm of [sec.a, sec.b].filter(Boolean)) if (!have.has(strip(nm)) && !need.has(strip(nm))) need.set(strip(nm), { name: nm, hint: t.municipality || '' });
           }
           if (need.size) {
-            say(`橋名・峠名 ${Math.min(need.size, 30)}件をGoogleマップで検索しています…`);
-            let added = 0, denied = false;
-            for (const { name, hint } of [...need.values()].slice(0, 30)) {
+            say(`橋名・峠名 ${Math.min(need.size, GEO_MAX)}件をGoogleマップで検索しています…`);
+            let added = 0, denied = false, over = false;
+            for (const { name, hint } of [...need.values()].slice(0, GEO_MAX)) {
               const q = String(hint || '').replace(/[ 　]*[→→].*$/, '').replace(/大字.*$/, '').trim();
               const p = await ctx.geocode(`${name} ${q}`.trim(), bbox);
+              if (p && p.over) { over = true; break; }
               if (p && p.denied) { denied = true; break; }
               if (p) { landmarks.push({ name, lat: p.lat, lon: p.lon, kind: 'google', src: 'google' }); added++; }
             }
-            if (denied) notes.push('Googleの住所検索(Geocoding API)が許可されていないため、OSMに無い橋名・峠名の位置は補えませんでした');
+            if (over) notes.push('⚠ Googleの住所検索の1日の上限に達しているため、OSMに無い橋名・峠名の位置は補えませんでした(上限は日が変わると戻ります)');
+            else if (denied) notes.push('Googleの住所検索(Geocoding API)が許可されていないため、OSMに無い橋名・峠名の位置は補えませんでした');
             else if (added) notes.push(`OSMに無い橋名・峠名のうち${added}件はGoogleマップの検索で位置が得られました(道から150m以内の場合だけ使い、座標は保存しません)`);
           }
         }
@@ -478,6 +480,8 @@
   }
 
   const keyOf = (r) => r.sourceName + '|' + r.route + '|' + (r.municipality || '') + '|' + (r.section || '') + (r.rid ? '|' + r.rid : '');
+  // 1回の検索でGoogleの住所検索に使う最大数(1日の上限が小さい場合に備えて少なめ)
+  const GEO_MAX = 10;
   const COL = { confirmed: '#B3261E', est: '#C25A12', unk: '#6B6B6B' };
   function densify(line, step) { const out = [line[0]]; for (let i = 1; i < line.length; i++) { const d = hav(line[i - 1], line[i]); const n = Math.max(1, Math.ceil(d / step)); for (let k = 1; k <= n; k++) out.push([line[i - 1][0] + (line[i][0] - line[i - 1][0]) * k / n, line[i - 1][1] + (line[i][1] - line[i - 1][1]) * k / n]); } return out; }
   const lenOfLines = (ls) => ls.reduce((t, l) => { for (let i = 1; i < l.length; i++) t += hav(l[i - 1], l[i]); return t; }, 0);
